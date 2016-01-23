@@ -38,11 +38,6 @@ void Actor::render(IRenderer* renderer)
     if (!m_visible)
         return;
 
-    if (!renderer)
-    {
-        fprintf(stderr, "Error: renderer is null\n");
-    }
-
     renderer->pushModelTransform(m_transform);
     // NOTE: the following is potentially unnecessary, but correct if we are unsure of type;
     // we could iterate over a vector of components this way
@@ -75,18 +70,29 @@ bool Actor::mouseEvent(lua_State* L, bool down)//MouseEvent& event)
     return handled;
 }
 
-void Actor::moveBy(float x, float y)
+void Actor::refAdded(lua_State* L, int index)
 {
-    //printf("Actor(%p)::moveBy\n", this);
-    m_transform.moveBy(x, y);
+    // Add userdata to the registry while it is ref'd by engine
+    // NOTE: should we validate the userdata (check if pointer matches this)
+    if (m_refCount++ == 0)
+    {
+        //printf("Actor(%p) added to registry\n", this);
+        lua_pushlightuserdata(L, this);
+        lua_pushvalue(L, index); // push the Actor userdata
+        lua_settable(L, LUA_REGISTRYINDEX);
+    }
 }
 
-void Actor::removeFromCanvas()
+void Actor::refRemoved(lua_State* L)
 {
-    // TODO: this function is weird; responsibility split between Canvas and Actor
-    if (m_canvas)
-        m_canvas->removeActor(this);
-    //m_canvas = nullptr;
+    // Remove from registry if reference count drops to zero
+    if (--m_refCount == 0)
+    {
+        //printf("Actor(%p) removed from registry\n", this);
+        lua_pushlightuserdata(L, this);
+        lua_pushnil(L);
+        lua_settable(L, LUA_REGISTRYINDEX);
+    }
 }
 
 // ==========================================================================================
@@ -101,7 +107,6 @@ int Actor::actor_init(lua_State* L)
     // Push new table to hold member functions
     static const luaL_Reg library[] =
     {
-        {"move", actor_move},
         {"getPosition", actor_getPosition},
         {"setPosition", actor_setPosition},
         {"setScale", actor_setScale},
@@ -253,18 +258,6 @@ int Actor::actor_newindex(lua_State* L)
     lua_pushvalue(L, 3);
     // lua_settable(L, -3);
     lua_rawset(L, -3);
-
-    return 0;
-}
-
-int Actor::actor_move(lua_State* L)
-{
-    // Validate Actor userdata
-    Actor* actor = static_cast<Actor*>(luaL_checkudata(L, 1, "Actor"));
-    float x = static_cast<float>(luaL_checknumber(L, 2));
-    float y = static_cast<float>(luaL_checknumber(L, 3));
-
-    actor->moveBy(x, y);
 
     return 0;
 }

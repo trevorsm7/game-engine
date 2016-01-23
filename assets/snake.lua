@@ -3,9 +3,6 @@ local green = {0, 1, 0}
 local blue = {0, 0, 1}
 local gold = {1, 1, 0}
 
--- use a different seed in each game
-math.randomseed(os.time())
-
 -- simple collision detection method over all objects added to list
 local bodies = {}
 local function getCollision(x, y)
@@ -25,19 +22,6 @@ local function getEmptySpace()
         y = math.random(0, 14) * 32
     until not getCollision(x, y)
     return x, y
-end
-
-god = Actor.create()
-god:setVisible(false)
-god:setScale(640, 480)
-god.score = 0
-function god:mouse(down)
-    if down and not self.dead then
-        io.write("God is dead! Score: ", self.score, "\n")
-        io.flush() -- even this doesn't seem to help all the time???
-        self.dead = true
-    end
-    return true
 end
 
 -- eating apples makes more sense if you're a worm, but what are you gonna do?
@@ -75,7 +59,7 @@ local function newApple(canvas)
 
     -- godmode: eat apples by clicking on them
     function apple:mouse(down)
-        if down and not god.dead then
+        if down and god and not god.dead then
             god.score = god.score + self.score
             self:eaten()
         end
@@ -84,8 +68,6 @@ local function newApple(canvas)
 
     return apple
 end
-
-cannibalism = false
 
 -- create an invisible controller that drives a snake
 local function newSnake(canvas, name, pos, dir, color)
@@ -104,27 +86,6 @@ local function newSnake(canvas, name, pos, dir, color)
         table.insert(bodies, body)
         canvas:addActor(body)
         body:setScale(31, 31)
-        body.score = 1
-
-        function body:eaten()
-            -- disconnect all body members trailing this one
-            if self.next then
-                local temp1 = snake.tail
-                local count = 1
-                while temp1 ~= self do
-                    local temp2 = temp1.next
-                    temp1.next = nil
-                    temp1:setVisible(false)
-                    temp1 = temp2
-                    count = count + 1
-                end
-                snake.tail = self.next
-                snake.curLength = snake.curLength - count
-                snake.length = snake.length - count
-            end
-            self:setVisible(false)
-        end
-
         return body
     end
 
@@ -147,9 +108,6 @@ local function newSnake(canvas, name, pos, dir, color)
     function snake:die()
         io.write(self.name, " is dead! Score: ", self.length, "\n")
         io.flush() -- even this doesn't seem to help all the time???
-        if cannibalism then
-            self.head.food = true
-        end
         self.dead = true
     end
 
@@ -212,9 +170,6 @@ local function newSnake(canvas, name, pos, dir, color)
         -- make the new head the current head of the snake
         head:setPosition(dx, dy)
         self.oldDir = self.dir
-        if cannibalism then
-            self.head.food = true
-        end
         self.head.next = head
         self.head = head
     end
@@ -222,21 +177,49 @@ local function newSnake(canvas, name, pos, dir, color)
     return snake
 end
 
-game = Canvas.create{0, 0, 0, 0}
+local function resetGame(game)
+    game:clear()
+    bodies = {}
 
-game:addActor(god)
+    god = Actor.create()
+    game:addActor(god)
+    god:setVisible(false)
+    god:setScale(640, 480)
+    god.score = 0
+    function god:mouse(down)
+        if down and not self.dead then
+            io.write("God is dead! Score: ", self.score, "\n")
+            io.flush() -- even this doesn't seem to help all the time???
+            self.dead = true
+        end
+        return true
+    end
 
-player1 = newSnake(game, "Red", {32, 224}, {1, 0}, red)
-registerKey("key_a", player1:moveFactory{-1, 0})
-registerKey("key_d", player1:moveFactory{1, 0})
-registerKey("key_s", player1:moveFactory{0, -1})
-registerKey("key_w", player1:moveFactory{0, 1})
+    local player1 = newSnake(game, "Red", {32, 224}, {1, 0}, red)
+    registerKey("key_a", player1:moveFactory{-1, 0})
+    registerKey("key_d", player1:moveFactory{1, 0})
+    registerKey("key_s", player1:moveFactory{0, -1})
+    registerKey("key_w", player1:moveFactory{0, 1})
 
-player2 = newSnake(game, "Blue", {576, 224}, {-1, 0}, blue)
-registerKey("key_left", player2:moveFactory{-1, 0})
-registerKey("key_right", player2:moveFactory{1, 0})
-registerKey("key_down", player2:moveFactory{0, -1})
-registerKey("key_up", player2:moveFactory{0, 1})
+    local player2 = newSnake(game, "Blue", {576, 224}, {-1, 0}, blue)
+    registerKey("key_left", player2:moveFactory{-1, 0})
+    registerKey("key_right", player2:moveFactory{1, 0})
+    registerKey("key_down", player2:moveFactory{0, -1})
+    registerKey("key_up", player2:moveFactory{0, 1})
 
-newApple(game)
-newApple(game)
+    newApple(game)
+    newApple(game)
+end
+
+-- set a fresh random seed when we start up
+math.randomseed(os.time())
+
+-- create and populate our game canvas
+local game = Canvas.create{0, 0, 0, 0}
+resetGame(game)
+
+registerKey("key_space", function (down)
+    if down then
+        resetGame(game)
+    end
+end)

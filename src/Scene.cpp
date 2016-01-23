@@ -50,7 +50,7 @@ void Scene::addCanvas(Canvas *canvas)
 {
     // push canvases on top of previous ones
     m_canvases.push_back(canvas);
-    canvas->setScene(this);
+    canvas->m_scene = this;
 }
 
 void Scene::update(float delta)
@@ -63,6 +63,12 @@ void Scene::update(float delta)
 
 void Scene::render(IRenderer* renderer)
 {
+    if (!renderer)
+    {
+        fprintf(stderr, "Invalid renderer\n");
+        return;
+    }
+
     // dispatch render calls from bottom to top
     auto end = m_canvases.end();
     for (auto it = m_canvases.begin(); it != end; ++it)

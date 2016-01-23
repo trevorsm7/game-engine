@@ -18,14 +18,10 @@ public:
 
     void setColor(float red, float green, float blue) {m_color = {red, green, blue};}
 
-    //void setVisible(bool isVisible) {m_isVisible = isVisible;}
     virtual void render(IRenderer *renderer)
     {
-        if (renderer)
-        {
-            renderer->setColor(m_color.r, m_color.g, m_color.b);
-            renderer->drawSprite();
-        }
+        renderer->setColor(m_color.r, m_color.g, m_color.b);
+        renderer->drawSprite();
     }
 };
 

@@ -6,72 +6,87 @@
 
 Canvas::~Canvas()
 {
-    // NOTE: by the time this is called, it would be too late to remove any
-    // remaining Actors... however, Lua will take care of this in lua_close
-}
-
-void Canvas::addActor(Actor *actor)
-{
-    m_toAdd.push_back(actor);
-
-    // NOTE: wait until after update/events to do the following
-    // Can't belong to more than one canvas AND prevent duplicate copies
-    //if (actor->m_canvas != nullptr)
-    //    actor->m_canvas->removeActor(actor);
-    //actor->removeFromCanvas();
-
-    //m_actors.push_back(actor);
-    //actor->setCanvas(this);
-}
-
-void Canvas::removeActor(Actor *actor)
-{
-    // TODO: make sure this doesn't happen while m_actors is being iterated over
-    m_actors.erase(std::remove(m_actors.begin(), m_actors.end(), actor), m_actors.end());
-    actor->setCanvas(nullptr);
+    // NOTE: Lua-related cleanup should be done in canvas_delete instead!
 }
 
 void Canvas::update(lua_State *L, float delta)
 {
+    // Discard updates for this Canvas if it is paused
+    // NOTE: currently also pauses removal and adding of Actors
     if (m_paused)
         return;
 
-    // order of update dispatch doesn't really matter; choose bottom to top
-    for (auto end = m_actors.end(), it = m_actors.begin(); it != end; ++it)
-        (*it)->update(L, delta);
-
-    // done with update iterator; add new Actors to the end
-    //m_actors.insert(m_actors.end(), m_toAdd.begin(), m_toAdd.end());
-    for (auto end = m_toAdd.end(), it = m_toAdd.begin(); it != end; ++it)
+    // Order of update dispatch doesn't really matter; choose bottom to top
+    auto tail = m_actors.begin();
+    for (auto end = m_actors.end(), it = tail; it != end; ++it)
     {
-        // NOTE: we should probably make sure the remove happens right anyway
-        // especially in the case of paused canvases
-        (*it)->removeFromCanvas();
+        // Remove actor if it is marked for delete, then skip
+        if ((*it)->m_canvas != this)
+        {
+            (*it)->refRemoved(L);
+            continue;
+        }
 
-        m_actors.push_back(*it);
-        (*it)->setCanvas(this);
+        // Shift elements back if we have empty space from removals
+        if (tail != it)
+            *tail = *it;
+        ++tail;
+
+        // NOTE: if we do not pause above, pause here to prevent updates
+        //if (!m_paused)
+        (*it)->update(L, delta);
     }
-    m_toAdd.clear();
+
+    // If any Actors were removed, clear the end of the list
+    if (tail != m_actors.end())
+        m_actors.erase(tail, m_actors.end());
+
+    // NOTE: if we do not pause above, pause here to prevent adds
+    //if (m_paused)
+    //    return;
+
+    // Recently added Actors should now be added to the end
+    for (auto& actor : m_added)
+    {
+        // Remove actor if it is marked for delete, then skip
+        if (actor->m_canvas != this)
+        {
+            actor->refRemoved(L);
+            continue;
+        }
+
+        m_actors.push_back(actor);
+    }
+    m_added.clear();
 }
 
 void Canvas::render(IRenderer *renderer)
 {
-    if (!renderer)
-    {
-        fprintf(stderr, "Renderer is null at Canvas::render\n");
+    // Don't render anything if Canvas is not visible
+    if (!m_visible)
         return;
-    }
 
     renderer->setViewport(m_bounds.l, m_bounds.b, m_bounds.r, m_bounds.t);
+
     // TODO: add alternate structure to iterate in sorted order/down quadtree
     // NOTE: rendering most recently added last (on top)
     auto end = m_actors.end();
     for (auto it = m_actors.begin(); it != end; ++it)
+    {
+        // Skip Actor if it is marked for removal
+        if ((*it)->m_canvas != this)
+            continue;
+
         (*it)->render(renderer);
+    }
 }
 
 bool Canvas::mouseEvent(lua_State *L, MouseEvent& event)
 {
+    // Don't allow capturing mouse events when Canvas is not visible
+    if (!m_visible)
+        return false;
+
     // Compute canvas bounds and reject if click is outside canvas
     int left = m_bounds.l < 0 ? event.w + m_bounds.l : m_bounds.l;
     int bottom = m_bounds.b < 0 ? event.h + m_bounds.b : m_bounds.b;
@@ -88,8 +103,12 @@ bool Canvas::mouseEvent(lua_State *L, MouseEvent& event)
     auto end = m_actors.rend();
     for (auto it = m_actors.rbegin(); it != end; ++it)
     {
+        // Skip Actor if it is marked for removal
+        if ((*it)->m_canvas != this)
+            continue;
+
         // Compute actor bounds and reject if click is outside actor
-        // TODO: this is only using basic transform
+        // TODO: make this more robust; hook into gfx component
         int left = floor((*it)->m_transform.getX());
         int bottom = floor((*it)->m_transform.getY());
         int width = floor((*it)->m_transform.getW());
@@ -122,7 +141,9 @@ int Canvas::canvas_init(lua_State *L)
     {
         {"addActor", canvas_addActor},
         {"removeActor", canvas_removeActor},
+        {"clear", canvas_clear},
         {"setPaused", canvas_setPaused},
+        {"setVisible", canvas_setVisible},
         {nullptr, nullptr}
     };
     luaL_newlib(L, library);
@@ -177,7 +198,6 @@ int Canvas::canvas_create(lua_State *L)
     luaL_argcheck(L, scene != nullptr, 1, "invalid Scene\n");
 
     // Create Actor userdata and construct Actor object in the allocated memory
-    // NOTE: consider using a shared_ptr here instead of the Canvas object directly
     Canvas *canvas = static_cast<Canvas*>(lua_newuserdata(L, sizeof(Canvas)));
     new(canvas) Canvas(); // call the constructor on the already allocated block of memory
     canvas->m_bounds.l = bounds[0];
@@ -206,6 +226,16 @@ int Canvas::canvas_delete(lua_State *L)
 {
     Canvas *canvas = static_cast<Canvas*>(luaL_checkudata(L, 1, "Canvas"));
     //printf("deleting Canvas(%p)\n", canvas);
+    // TODO: should we clear/update the Canvas before deleting?
+
+    // Mark each Actor in primary list for removal
+    for (auto& actor : canvas->m_actors)
+        actor->refRemoved(L);
+
+    // Mark each actor in pending list for removal
+    for (auto& actor : canvas->m_added)
+        actor->refRemoved(L);
+
     canvas->~Canvas(); // manually call destructor before Lua calls free()
 
     return 0;
@@ -217,13 +247,24 @@ int Canvas::canvas_addActor(lua_State *L)
     Canvas *canvas = static_cast<Canvas*>(luaL_checkudata(L, 1, "Canvas"));
     Actor *actor = static_cast<Actor*>(luaL_checkudata(L, 2, "Actor"));
 
-    // Add Actor to Canvas
-    canvas->addActor(actor);
+    // Don't allow adding an Actor that already belongs to another Canvas
+    // NOTE: while we could implicitly remove, might be better to throw an error
+    luaL_argcheck(L, (actor->m_canvas == nullptr), 2, "already belongs to a Canvas\n");
 
-    // Add the Canvas to the registry since it is now ref'd from C++
-    lua_pushlightuserdata(L, actor);
-    lua_pushvalue(L, 2); // get the Actor userdata
-    lua_settable(L, LUA_REGISTRYINDEX);
+    // Check if Actor already added (a previous removal was still pending)
+    // NOTE: this will prevent duplicates and faulty ref counts
+    auto& actors = canvas->m_actors;
+    auto& added = canvas->m_added;
+    if (std::find(actors.begin(), actors.end(), actor) == actors.end() &&
+        std::find(added.begin(), added.end(), actor) == added.end())
+    {
+        // Queue up the add; will take affect after the update loop
+        canvas->m_added.push_back(actor);
+        actor->refAdded(L, 2); // pass index of the full userdata
+    }
+
+    // Finally, mark Actor as added to this Canvas
+    actor->m_canvas = canvas;
 
     return 0;
 }
@@ -232,19 +273,34 @@ int Canvas::canvas_removeActor(lua_State *L)
 {
     // Validate function arguments
     Canvas *canvas = static_cast<Canvas*>(luaL_checkudata(L, 1, "Canvas"));
-    //luaL_argcheck(L, canvas != nullptr, 1, "invalid Canvas\n");
     Actor *actor = static_cast<Actor*>(luaL_checkudata(L, 2, "Actor"));
 
-    // Add Actor to Canvas
-    canvas->removeActor(actor);
+    // Actor must belong to this Canvas before we can remove it obviously...
+    luaL_argcheck(L, (actor->m_canvas == canvas), 2, "doesn't belong to this Canvas\n");
 
-    // TODO: don't remove from registry unless it actually belongs to the Canvas!
-    // TODO: consider a "to remove" queue... will run into same problems as add
+    // Mark Actor for later removal (after we're done iterating)
+    // NOTE: can't touch ref count or registry until then!
+    actor->m_canvas = nullptr;
 
-    // Remove the Actor from the registry as it is no longer ref'd from C++
-    lua_pushlightuserdata(L, actor);
-    lua_pushnil(L); // remove the ref to the Actor userdate
-    lua_settable(L, LUA_REGISTRYINDEX);
+    return 0;
+}
+
+int Canvas::canvas_clear(lua_State* L)
+{
+    // Validate function arguments
+    Canvas *canvas = static_cast<Canvas*>(luaL_checkudata(L, 1, "Canvas"));
+
+    // Mark each Actor belonging to primary list for removal
+    auto& actors = canvas->m_actors;
+    for (auto end = actors.end(), it = actors.begin(); it != end; ++it)
+        if ((*it)->m_canvas == canvas)
+            (*it)->m_canvas = nullptr;
+
+    // Mark each actor belonging to pending list for removal
+    auto& added = canvas->m_added;
+    for (auto end = added.end(), it = added.begin(); it != end; ++it)
+        if ((*it)->m_canvas == canvas)
+            (*it)->m_canvas = nullptr;
 
     return 0;
 }
@@ -256,6 +312,17 @@ int Canvas::canvas_setPaused(lua_State *L)
     luaL_argcheck(L, lua_isboolean(L, 2), 2, "must be boolean (true to pause)\n");
 
     canvas->m_paused = lua_toboolean(L, 2);
+
+    return 0;
+}
+
+int Canvas::canvas_setVisible(lua_State *L)
+{
+    // Validate function arguments
+    Canvas *canvas = static_cast<Canvas*>(luaL_checkudata(L, 1, "Canvas"));
+    luaL_argcheck(L, lua_isboolean(L, 2), 2, "must be boolean (true for visible)\n");
+
+    canvas->m_visible = lua_toboolean(L, 2);
 
     return 0;
 }
