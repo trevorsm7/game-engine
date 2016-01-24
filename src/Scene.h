@@ -1,14 +1,14 @@
 #ifndef __SCENE_H__
 #define __SCENE_H__
 
+#include "IRenderer.h"
+#include "Canvas.h"
+#include "Event.h"
+
 #include <vector>
 #include <memory>
 #include <functional>
 #include "lua.hpp"
-
-#include "Renderer.h"
-#include "Canvas.h"
-#include "Event.h"
 
 class Scene
 {

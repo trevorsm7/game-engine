@@ -1,13 +1,14 @@
 #ifndef __ACTOR_H__
 #define __ACTOR_H__
 
-#include <memory>
-#include "lua.hpp"
-
-#include "Renderer.h"
-#include "Component.h"
+#include "IRenderer.h"
+#include "IGraphics.h"
+#include "ICollider.h"
 #include "Transform.h"
 #include "Event.h"
+
+#include <memory>
+#include "lua.hpp"
 
 class Canvas;
 
@@ -15,11 +16,17 @@ class Actor
 {
     friend class Canvas;
 
-    Transform m_transform;
-    ComponentPtr m_graphics;
-    Canvas *m_canvas;
+    typedef std::unique_ptr<IGraphics> IGraphicsPtr;
+    typedef std::unique_ptr<ICollider> IColliderPtr;
+
+public:
+    Transform m_transform; // TODO: how/who can access this???
+private:
+    IGraphicsPtr m_graphics;
+    IColliderPtr m_collider;
+    Canvas* m_canvas;
     int m_refCount;
-    bool m_visible;
+    bool m_visible; // TODO: consider moving visibility into IGraphics
 
 public:
     Actor(): m_canvas(nullptr), m_refCount(0), m_visible(true) {}
@@ -29,9 +36,10 @@ public:
     void render(IRenderer* renderer);
     bool mouseEvent(lua_State* L, bool down);//MouseEvent& event);
 
-//private:
-    void setGraphics(Component* graphics) {m_graphics = ComponentPtr(graphics);}
+    bool testMouse(float x, float y);
+    bool testCollision(float x, float y);
 
+//private:
     void refAdded(lua_State* L, int index);
     void refRemoved(lua_State* L);
 

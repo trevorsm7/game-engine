@@ -15,7 +15,7 @@ GlfwInstance::~GlfwInstance()
     glfwTerminate();
 }
 
-void GlfwInstance::run(const char *script)
+void GlfwInstance::run(const char* script)
 {
     GlfwInstance instance;
 
@@ -33,7 +33,7 @@ void GlfwInstance::run(const char *script)
     };
 }
 
-bool GlfwInstance::init(const char *script)
+bool GlfwInstance::init(const char* script)
 {
     // Populate keymap with int to string associations
     // TODO: more keys to add
@@ -41,7 +41,8 @@ bool GlfwInstance::init(const char *script)
     // no need to manually track the size or use a sentinel
     static const struct {const int key; const char* const name;} keymap[] =
     {
-        {GLFW_KEY_SPACE, KeyEvent::key_space},//KeyEvent::key_space},
+        // Map GLFW keys to internal string names
+        {GLFW_KEY_SPACE, KeyEvent::key_space},
         {GLFW_KEY_APOSTROPHE, KeyEvent::key_apostrophe},
         {GLFW_KEY_COMMA, KeyEvent::key_comma},
         {GLFW_KEY_MINUS, KeyEvent::key_minus},
@@ -132,10 +133,11 @@ bool GlfwInstance::init(const char *script)
     // NOTE: should we be able to call quit() from load?
     // NOTE: should quit bail immediately?
     // ...current implementation doesn't take effect until end of game loop
-    m_scene = std::unique_ptr<Scene>(new Scene());
+    m_scene = ScenePtr(new Scene());
     m_scene->setQuitCallback([&]{glfwSetWindowShouldClose(m_window, GL_TRUE);});
     m_scene->load(script);
-    // TODO: send an initial "resize" notification to scene?
+
+    // Send an initial resize notification to scene
     int width, height;
     glfwGetWindowSize(m_window, &width, &height);
     m_scene->resize(width, height);
@@ -149,15 +151,14 @@ bool GlfwInstance::init(const char *script)
     //glfwSetFramebufferSizeCallback(m_window, resizeCallback);
 
     // NOTE: should context handling move into GlfwRenderer?
-    // only if multiple windows in one thread
     // NOTE: this must be called before glfwSwapInterval
     glfwMakeContextCurrent(m_window);
 
     // Force vsync on current context
     glfwSwapInterval(1);
 
-    //m_renderer = std::unique_ptr<IRenderer>(new DebugRenderer());
-    m_renderer = std::unique_ptr<IRenderer>(new GlfwRenderer(m_window));
+    //m_renderer = IRendererPtr(new DebugRenderer());
+    m_renderer = IRendererPtr(new GlfwRenderer(m_window));
     m_renderer->init();
 
     return true;
@@ -193,7 +194,7 @@ void GlfwInstance::callback_key(GLFWwindow* window, int key, int scancode, int a
 
     if (action == GLFW_PRESS || action == GLFW_RELEASE)
     {
-        void *ptr = glfwGetWindowUserPointer(window);
+        void* ptr = glfwGetWindowUserPointer(window);
         auto instance = reinterpret_cast<GlfwInstance*>(ptr);
 
         if (instance && instance->m_scene)
@@ -223,7 +224,7 @@ void GlfwInstance::callback_mouse_button(GLFWwindow* window, int button, int act
     // TODO: support mouse drag while a button is down
     if (button == GLFW_MOUSE_BUTTON_LEFT)
     {
-        void *ptr = glfwGetWindowUserPointer(window);
+        void* ptr = glfwGetWindowUserPointer(window);
         auto instance = reinterpret_cast<GlfwInstance*>(ptr);
 
         if (instance && instance->m_scene)
@@ -251,7 +252,7 @@ void GlfwInstance::callback_mouse_button(GLFWwindow* window, int button, int act
 
 void GlfwInstance::callback_window(GLFWwindow* window, int width, int height)
 {
-    void *ptr = glfwGetWindowUserPointer(window);
+    void* ptr = glfwGetWindowUserPointer(window);
     auto instance = reinterpret_cast<GlfwInstance*>(ptr);
 
     if (instance && instance->m_scene)

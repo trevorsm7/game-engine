@@ -1,11 +1,13 @@
 #ifndef __CANVAS_H__
 #define __CANVAS_H__
 
-#include <vector>
-#include "lua.hpp"
-
 #include "Actor.h"
 #include "Event.h"
+#include "ICamera.h"
+
+#include <vector>
+#include <memory>
+#include "lua.hpp"
 
 class Scene;
 
@@ -13,8 +15,11 @@ class Canvas
 {
     friend class Scene;
 
+    typedef std::unique_ptr<ICamera> ICameraPtr;
+
     std::vector<Actor*> m_actors;
     std::vector<Actor*> m_added;
+    ICameraPtr m_camera;
     Scene* m_scene;
     struct {int l, b, r, t;} m_bounds;
     bool m_paused, m_visible;
@@ -36,6 +41,7 @@ public:
     static int canvas_addActor(lua_State* L);
     static int canvas_removeActor(lua_State* L);
     static int canvas_clear(lua_State* L);
+    static int canvas_getCollision(lua_State* L);
     static int canvas_setPaused(lua_State* L);
     static int canvas_setVisible(lua_State* L);
 };

@@ -1,5 +1,5 @@
-#ifndef __RENDERER_H__
-#define __RENDERER_H__
+#ifndef __IRENDERER_H__
+#define __IRENDERER_H__
 
 #include "Transform.h"
 
@@ -14,9 +14,13 @@ public:
 
     virtual void setViewport(int left, int bottom, int right, int top) = 0;
     virtual void pushModelTransform(Transform& transform) = 0;
+    virtual void pushCameraTransform(Transform& transform) = 0;
+    
     virtual void setColor(float red, float green, float blue) = 0;
     virtual void drawSprite() = 0;
+
     virtual void popModelTransform() = 0;
+    virtual void popCameraTransform() = 0;
 };
 
 #endif

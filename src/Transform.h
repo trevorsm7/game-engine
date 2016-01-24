@@ -12,6 +12,7 @@ class Transform
 
 public:
     Transform(): m_x(0.f), m_y(0.f), m_w(1.f), m_h(1.f) {}
+    Transform(float x, float y, float w, float h): m_x(x), m_y(y), m_w(w), m_h(h) {}
 
     void moveBy(float x, float y) {m_x += x; m_y += y;}
 

@@ -1,7 +1,7 @@
 #include "Actor.h"
-#include "Renderer.h"
-#include "GraphicsComponent.h"
 #include "Canvas.h"
+#include "SpriteGraphics.h"
+#include "SpriteCollider.h"
 
 void Actor::update(lua_State* L, float delta)
 {
@@ -30,7 +30,10 @@ void Actor::update(lua_State* L, float delta)
     lua_settop(L, top); // pop the uservalue and userdata
 
     if (m_graphics)
-        m_graphics->update(L, delta);
+        m_graphics->update(delta);
+
+    if (m_collider)
+        m_collider->update(delta);
 }
 
 void Actor::render(IRenderer* renderer)
@@ -39,16 +42,17 @@ void Actor::render(IRenderer* renderer)
         return;
 
     renderer->pushModelTransform(m_transform);
-    // NOTE: the following is potentially unnecessary, but correct if we are unsure of type;
-    // we could iterate over a vector of components this way
-    if (GraphicsComponent* graphics = dynamic_cast<GraphicsComponent*>(m_graphics.get()))
-        graphics->render(renderer);
+    if (m_graphics)
+        m_graphics->render(renderer);
     // TODO: render children?
     renderer->popModelTransform();
 }
 
 bool Actor::mouseEvent(lua_State* L, bool down)//MouseEvent& event)
 {
+    // TODO: should we reject if we are invisible, or have no graphics?
+    // NOTE: if we keep testMouse, we can handle this there... or combine
+
     bool handled = false;
     int top = lua_gettop(L);
 
@@ -70,6 +74,30 @@ bool Actor::mouseEvent(lua_State* L, bool down)//MouseEvent& event)
     return handled;
 }
 
+bool Actor::testMouse(float x, float y)
+{
+    //if (!m_graphics)
+    //    return false;
+
+    //return m_graphics->testMouse(x, y);
+
+    float left = m_transform.getX();
+    float bottom = m_transform.getY();
+    float width = m_transform.getW();
+    float height = m_transform.getH();
+    float right = left + width;
+    float top = bottom + height;
+    return (x >= left && x < right && y >= bottom && y < top);
+}
+
+bool Actor::testCollision(float x, float y)
+{
+    if (!m_collider)
+        return false;
+
+    return m_collider->testCollision(x, y);
+}
+
 void Actor::refAdded(lua_State* L, int index)
 {
     // Add userdata to the registry while it is ref'd by engine
@@ -79,7 +107,7 @@ void Actor::refAdded(lua_State* L, int index)
         //printf("Actor(%p) added to registry\n", this);
         lua_pushlightuserdata(L, this);
         lua_pushvalue(L, index); // push the Actor userdata
-        lua_settable(L, LUA_REGISTRYINDEX);
+        lua_rawset(L, LUA_REGISTRYINDEX);
     }
 }
 
@@ -91,13 +119,13 @@ void Actor::refRemoved(lua_State* L)
         //printf("Actor(%p) removed from registry\n", this);
         lua_pushlightuserdata(L, this);
         lua_pushnil(L);
-        lua_settable(L, LUA_REGISTRYINDEX);
+        lua_rawset(L, LUA_REGISTRYINDEX);
     }
 }
 
-// ==========================================================================================
+// =============================================================================
 // Lua library functions
-// ==========================================================================================
+// =============================================================================
 
 int Actor::actor_init(lua_State* L)
 {
@@ -121,24 +149,24 @@ int Actor::actor_init(lua_State* L)
     lua_pushstring(L, "__index");
     lua_pushvalue(L, -2); // push copy of function library
     lua_pushcclosure(L, actor_index, 1);
-    lua_settable(L, -4); // metatable.__index = getter method
+    lua_rawset(L, -4); // metatable.__index = getter method
 
     // Writes go to C function with function library as closure
     // NOTE: this will pop the function library leaving the metatable on top
     lua_pushstring(L, "__newindex");
     lua_insert(L, -2); // swap "__newindex" and function table
     lua_pushcclosure(L, actor_newindex, 1);
-    lua_settable(L, -3); // metatable.__newindex = setter method
+    lua_rawset(L, -3); // metatable.__newindex = setter method
 
     // Make sure to call destructor when the Actor is GC'd
     lua_pushstring(L, "__gc");
     lua_pushcfunction(L, actor_delete);
-    lua_settable(L, -3); // meta.__gc = actor_gcNum
+    lua_rawset(L, -3); // meta.__gc = actor_gcNum
 
     // Prevent metatable from being accessed through Lua
     lua_pushstring(L, "__metatable");
     lua_pushstring(L, "private");
-    lua_settable(L, -3);
+    lua_rawset(L, -3);
 
     // TODO: maybe better to just store functions globally? Like createActor instead
     // Push new table to hold global functions
@@ -147,7 +175,7 @@ int Actor::actor_init(lua_State* L)
     // TODO: add utility functions
     lua_pushstring(L, "create");
     lua_pushcfunction(L, actor_create);
-    lua_settable(L, -3);
+    lua_rawset(L, -3);
 
     // Assign global function table to global variable
     lua_setglobal(L, "Actor");
@@ -162,7 +190,7 @@ int Actor::actor_create(lua_State* L)
 
     // Create Actor userdata and construct Actor object in the allocated memory
     // NOTE: consider using a shared_ptr here instead of the Actor object directly
-    Actor* actor = static_cast<Actor*>(lua_newuserdata(L, sizeof(Actor)));
+    Actor* actor = reinterpret_cast<Actor*>(lua_newuserdata(L, sizeof(Actor)));
     new(actor) Actor(); // call the constructor on the already allocated block of memory
 
     //printf("created Actor(%p)\n", actor);
@@ -180,16 +208,19 @@ int Actor::actor_create(lua_State* L)
     if (lua_istable(L, 1))
     {
         lua_rawgeti(L, 1, 1); // should return LUA_TNUMBER
-        float red = lua_tonumber(L, -1);
+        float r = lua_tonumber(L, -1);
         lua_rawgeti(L, 1, 2);
-        float green = lua_tonumber(L, -1);
+        float g = lua_tonumber(L, -1);
         lua_rawgeti(L, 1, 3);
-        float blue = lua_tonumber(L, -1);
+        float b = lua_tonumber(L, -1);
         lua_pop(L, 3);
-        actor->setGraphics(new GraphicsComponent(red, green, blue));
+        actor->m_graphics = IGraphicsPtr(new SpriteGraphics(r, g, b));
     }
     else
-        actor->setGraphics(new GraphicsComponent());
+        actor->m_graphics = IGraphicsPtr(new SpriteGraphics());
+
+    if (lua_isboolean(L, 2) && lua_toboolean(L, 2))
+        actor->m_collider = IColliderPtr(new SpriteCollider(actor));
 
     // NOTE: do not add Actor to registry until it is hooked into C++ (Canvas)
 
@@ -198,7 +229,7 @@ int Actor::actor_create(lua_State* L)
 
 int Actor::actor_delete(lua_State* L)
 {
-    Actor* actor = static_cast<Actor*>(luaL_checkudata(L, 1, "Actor"));
+    Actor* actor = reinterpret_cast<Actor*>(luaL_checkudata(L, 1, "Actor"));
     //printf("deleting Actor(%p)\n", actor);
     actor->~Actor(); // manually call destructor before Lua calls free()
 
@@ -265,7 +296,7 @@ int Actor::actor_newindex(lua_State* L)
 int Actor::actor_getPosition(lua_State* L)
 {
     // Validate function arguments
-    Actor* actor = static_cast<Actor*>(luaL_checkudata(L, 1, "Actor"));
+    Actor* actor = reinterpret_cast<Actor*>(luaL_checkudata(L, 1, "Actor"));
 
     lua_pushnumber(L, actor->m_transform.getX());
     lua_pushnumber(L, actor->m_transform.getY());
@@ -277,7 +308,7 @@ int Actor::actor_getPosition(lua_State* L)
 int Actor::actor_setPosition(lua_State* L)
 {
     // Validate function arguments
-    Actor* actor = static_cast<Actor*>(luaL_checkudata(L, 1, "Actor"));
+    Actor* actor = reinterpret_cast<Actor*>(luaL_checkudata(L, 1, "Actor"));
     float x = static_cast<float>(luaL_checknumber(L, 2));
     float y = static_cast<float>(luaL_checknumber(L, 3));
 
@@ -290,7 +321,7 @@ int Actor::actor_setPosition(lua_State* L)
 int Actor::actor_setScale(lua_State* L)
 {
     // Validate function arguments
-    Actor* actor = static_cast<Actor*>(luaL_checkudata(L, 1, "Actor"));
+    Actor* actor = reinterpret_cast<Actor*>(luaL_checkudata(L, 1, "Actor"));
     float w = static_cast<float>(luaL_checknumber(L, 2));
     float h = static_cast<float>(luaL_checknumber(L, 3));
 
@@ -303,8 +334,9 @@ int Actor::actor_setScale(lua_State* L)
 int Actor::actor_setColor(lua_State* L)
 {
     // Validate function arguments
-    Actor* actor = static_cast<Actor*>(luaL_checkudata(L, 1, "Actor"));
+    Actor* actor = reinterpret_cast<Actor*>(luaL_checkudata(L, 1, "Actor"));
     luaL_checktype(L, 2, LUA_TTABLE);
+    // TODO: needs better validation
 
     if (lua_istable(L, 2))
     {
@@ -316,8 +348,8 @@ int Actor::actor_setColor(lua_State* L)
         float blue = lua_tonumber(L, -1);
         lua_pop(L, 3);
 
-        if (GraphicsComponent* graphics = dynamic_cast<GraphicsComponent*>(actor->m_graphics.get()))
-            graphics->setColor(red, green, blue);
+        if (actor->m_graphics)
+            actor->m_graphics->setColor(red, green, blue);
     }
 
     return 0;
@@ -326,7 +358,7 @@ int Actor::actor_setColor(lua_State* L)
 int Actor::actor_setVisible(lua_State* L)
 {
     // Validate function arguments
-    Actor* actor = static_cast<Actor*>(luaL_checkudata(L, 1, "Actor"));
+    Actor* actor = reinterpret_cast<Actor*>(luaL_checkudata(L, 1, "Actor"));
     luaL_argcheck(L, lua_isboolean(L, 2), 2, "must be boolean (true to pause)\n");
 
     actor->m_visible = lua_toboolean(L, 2);
@@ -337,9 +369,9 @@ int Actor::actor_setVisible(lua_State* L)
 int Actor::actor_isVisible(lua_State* L)
 {
     // Validate function arguments
-    Actor* actor = static_cast<Actor*>(luaL_checkudata(L, 1, "Actor"));
+    Actor* actor = reinterpret_cast<Actor*>(luaL_checkudata(L, 1, "Actor"));
 
-    lua_pushboolean(L, actor->m_visible);
+    lua_pushboolean(L, actor->m_graphics && actor->m_visible);
 
     return 1;
 }

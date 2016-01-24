@@ -1,8 +1,9 @@
-#include <algorithm>
-#include <cmath>
-
 #include "Canvas.h"
 #include "Scene.h"
+#include "BasicCamera.h"
+
+#include <algorithm>
+#include <cmath>
 
 Canvas::~Canvas()
 {
@@ -45,6 +46,9 @@ void Canvas::update(lua_State *L, float delta)
     //if (m_paused)
     //    return;
 
+    // TODO: why does this even have an update? follow Actor? need lua_State?
+    m_camera->update(delta);
+
     // Recently added Actors should now be added to the end
     for (auto& actor : m_added)
     {
@@ -67,6 +71,7 @@ void Canvas::render(IRenderer *renderer)
         return;
 
     renderer->setViewport(m_bounds.l, m_bounds.b, m_bounds.r, m_bounds.t);
+    m_camera->preRender(renderer);
 
     // TODO: add alternate structure to iterate in sorted order/down quadtree
     // NOTE: rendering most recently added last (on top)
@@ -79,12 +84,14 @@ void Canvas::render(IRenderer *renderer)
 
         (*it)->render(renderer);
     }
+
+    m_camera->postRender(renderer);
 }
 
 bool Canvas::mouseEvent(lua_State *L, MouseEvent& event)
 {
-    // Don't allow capturing mouse events when Canvas is not visible
-    if (!m_visible)
+    // Don't allow capturing mouse events when Canvas is inactive
+    if (!m_visible || m_paused)
         return false;
 
     // Compute canvas bounds and reject if click is outside canvas
@@ -95,9 +102,10 @@ bool Canvas::mouseEvent(lua_State *L, MouseEvent& event)
     if (event.x < left || event.x >= right || event.y < bottom || event.y >= top)
         return false;
 
-    // Convert click into local coordinates
-    int clickX = event.x - left;
-    int clickY = event.y - bottom;
+    // Convert click into world coordinates
+    // TODO: map a ray/point from camera->world space
+    float x = m_camera->cameraToWorldX(event.x, left, right);
+    float y = m_camera->cameraToWorldY(event.y, bottom, top);
 
     // NOTE: iterate in reverse order of rendering
     auto end = m_actors.rend();
@@ -107,15 +115,9 @@ bool Canvas::mouseEvent(lua_State *L, MouseEvent& event)
         if ((*it)->m_canvas != this)
             continue;
 
-        // Compute actor bounds and reject if click is outside actor
-        // TODO: make this more robust; hook into gfx component
-        int left = floor((*it)->m_transform.getX());
-        int bottom = floor((*it)->m_transform.getY());
-        int width = floor((*it)->m_transform.getW());
-        int height = floor((*it)->m_transform.getH());
-        int right = left + width;
-        int top = bottom + height;
-        if (clickX < left || clickX >= right || clickY < bottom || clickY >= top)
+        // Query if click is inside Actor; could be combined with mouseEvent??
+        // TODO: Actor should convert ray/point from world->object space
+        if (!(*it)->testMouse(x, y))
             continue;
 
         // TODO: try next actor down, or absorb the click?
@@ -127,9 +129,9 @@ bool Canvas::mouseEvent(lua_State *L, MouseEvent& event)
     return false;
 }
 
-// ==========================================================================================
+// =============================================================================
 // Lua library functions
-// ==========================================================================================
+// =============================================================================
 
 int Canvas::canvas_init(lua_State *L)
 {
@@ -142,6 +144,7 @@ int Canvas::canvas_init(lua_State *L)
         {"addActor", canvas_addActor},
         {"removeActor", canvas_removeActor},
         {"clear", canvas_clear},
+        {"getCollision", canvas_getCollision},
         {"setPaused", canvas_setPaused},
         {"setVisible", canvas_setVisible},
         {nullptr, nullptr}
@@ -190,20 +193,21 @@ int Canvas::canvas_create(lua_State *L)
         }
     }
 
-    //Scene *scene = static_cast<Scene*>(lua_touserdata(state, lua_upvalueindex(1)));
+    //Scene *scene = reinterpret_cast<Scene*>(lua_touserdata(state, lua_upvalueindex(1)));
     // TODO: probably not best to get Scene off the registry this way; conflict if we have a Scene metatable
     lua_pushstring(L, "Scene");
     lua_gettable(L, LUA_REGISTRYINDEX);
-    Scene *scene = static_cast<Scene*>(lua_touserdata(L, -1));
+    Scene *scene = reinterpret_cast<Scene*>(lua_touserdata(L, -1));
     luaL_argcheck(L, scene != nullptr, 1, "invalid Scene\n");
 
     // Create Actor userdata and construct Actor object in the allocated memory
-    Canvas *canvas = static_cast<Canvas*>(lua_newuserdata(L, sizeof(Canvas)));
+    Canvas *canvas = reinterpret_cast<Canvas*>(lua_newuserdata(L, sizeof(Canvas)));
     new(canvas) Canvas(); // call the constructor on the already allocated block of memory
     canvas->m_bounds.l = bounds[0];
     canvas->m_bounds.b = bounds[1];
     canvas->m_bounds.r = bounds[2];
     canvas->m_bounds.t = bounds[3];
+    canvas->m_camera = ICameraPtr(new BasicCamera());
 
     //printf("created Canvas(%p)\n", canvas);
 
@@ -224,9 +228,8 @@ int Canvas::canvas_create(lua_State *L)
 
 int Canvas::canvas_delete(lua_State *L)
 {
-    Canvas *canvas = static_cast<Canvas*>(luaL_checkudata(L, 1, "Canvas"));
+    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, "Canvas"));
     //printf("deleting Canvas(%p)\n", canvas);
-    // TODO: should we clear/update the Canvas before deleting?
 
     // Mark each Actor in primary list for removal
     for (auto& actor : canvas->m_actors)
@@ -244,8 +247,8 @@ int Canvas::canvas_delete(lua_State *L)
 int Canvas::canvas_addActor(lua_State *L)
 {
     // Validate function arguments
-    Canvas *canvas = static_cast<Canvas*>(luaL_checkudata(L, 1, "Canvas"));
-    Actor *actor = static_cast<Actor*>(luaL_checkudata(L, 2, "Actor"));
+    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, "Canvas"));
+    Actor *actor = reinterpret_cast<Actor*>(luaL_checkudata(L, 2, "Actor"));
 
     // Don't allow adding an Actor that already belongs to another Canvas
     // NOTE: while we could implicitly remove, might be better to throw an error
@@ -272,8 +275,8 @@ int Canvas::canvas_addActor(lua_State *L)
 int Canvas::canvas_removeActor(lua_State *L)
 {
     // Validate function arguments
-    Canvas *canvas = static_cast<Canvas*>(luaL_checkudata(L, 1, "Canvas"));
-    Actor *actor = static_cast<Actor*>(luaL_checkudata(L, 2, "Actor"));
+    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, "Canvas"));
+    Actor *actor = reinterpret_cast<Actor*>(luaL_checkudata(L, 2, "Actor"));
 
     // Actor must belong to this Canvas before we can remove it obviously...
     luaL_argcheck(L, (actor->m_canvas == canvas), 2, "doesn't belong to this Canvas\n");
@@ -288,27 +291,68 @@ int Canvas::canvas_removeActor(lua_State *L)
 int Canvas::canvas_clear(lua_State* L)
 {
     // Validate function arguments
-    Canvas *canvas = static_cast<Canvas*>(luaL_checkudata(L, 1, "Canvas"));
+    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, "Canvas"));
 
     // Mark each Actor belonging to primary list for removal
-    auto& actors = canvas->m_actors;
-    for (auto end = actors.end(), it = actors.begin(); it != end; ++it)
-        if ((*it)->m_canvas == canvas)
-            (*it)->m_canvas = nullptr;
+    for (auto& actor : canvas->m_actors)
+        if (actor->m_canvas == canvas)
+            actor->m_canvas = nullptr;
 
     // Mark each actor belonging to pending list for removal
-    auto& added = canvas->m_added;
-    for (auto end = added.end(), it = added.begin(); it != end; ++it)
-        if ((*it)->m_canvas == canvas)
-            (*it)->m_canvas = nullptr;
+    for (auto& actor : canvas->m_added)
+        if (actor->m_canvas == canvas)
+            actor->m_canvas = nullptr;
 
     return 0;
+}
+
+int Canvas::canvas_getCollision(lua_State* L)
+{
+    // Validate function arguments
+    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, "Canvas"));
+    float x = static_cast<float>(luaL_checknumber(L, 2));
+    float y = static_cast<float>(luaL_checknumber(L, 3));
+
+    // TODO: possibly want to return a list of collisions
+    for (auto& actor : canvas->m_actors)
+    {
+        // Always skip if marked for removal
+        if (actor->m_canvas != canvas)
+            continue;
+
+        if (actor->testCollision(x, y))
+        {
+            // Push Actor userdata on the stack
+            lua_pushlightuserdata(L, actor);
+            lua_rawget(L, LUA_REGISTRYINDEX);
+            return 1;
+        }
+    }
+
+    // TODO: added this for bomberman; not sure if we want this behavior
+    for (auto& actor : canvas->m_added)
+    {
+        // Always skip if marked for removal
+        if (actor->m_canvas != canvas)
+            continue;
+
+        if (actor->testCollision(x, y))
+        {
+            // Push Actor userdata on the stack
+            lua_pushlightuserdata(L, actor);
+            lua_rawget(L, LUA_REGISTRYINDEX);
+            return 1;
+        }
+    }
+
+    lua_pushnil(L);
+    return 1;
 }
 
 int Canvas::canvas_setPaused(lua_State *L)
 {
     // Validate function arguments
-    Canvas *canvas = static_cast<Canvas*>(luaL_checkudata(L, 1, "Canvas"));
+    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, "Canvas"));
     luaL_argcheck(L, lua_isboolean(L, 2), 2, "must be boolean (true to pause)\n");
 
     canvas->m_paused = lua_toboolean(L, 2);
@@ -319,7 +363,7 @@ int Canvas::canvas_setPaused(lua_State *L)
 int Canvas::canvas_setVisible(lua_State *L)
 {
     // Validate function arguments
-    Canvas *canvas = static_cast<Canvas*>(luaL_checkudata(L, 1, "Canvas"));
+    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, "Canvas"));
     luaL_argcheck(L, lua_isboolean(L, 2), 2, "must be boolean (true for visible)\n");
 
     canvas->m_visible = lua_toboolean(L, 2);

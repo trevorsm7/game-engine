@@ -41,9 +41,6 @@ void Scene::load(const char *filename)
     // Execute specified script
     if (luaL_dofile(m_state, filename) != 0)
         printf("%s\n", lua_tostring(m_state, -1));
-
-    // NOTE: manually run GC to see loose objects from load script freed
-    lua_gc(m_state, LUA_GCCOLLECT, 0);
 }
 
 void Scene::addCanvas(Canvas *canvas)
@@ -59,6 +56,9 @@ void Scene::update(float delta)
     auto end = m_canvases.end();
     for (auto it = m_canvases.begin(); it != end; ++it)
         (*it)->update(m_state, delta);
+
+    // TODO: should we manually tell Lua to step, or wait for auto-collect?
+    lua_gc(m_state, LUA_GCSTEP, 0);
 }
 
 void Scene::render(IRenderer* renderer)
@@ -149,7 +149,7 @@ int Scene::scene_quit(lua_State *L)
 {
     lua_pushstring(L, "Scene");
     lua_gettable(L, LUA_REGISTRYINDEX);
-    Scene *scene = static_cast<Scene*>(lua_touserdata(L, -1));
+    Scene *scene = reinterpret_cast<Scene*>(lua_touserdata(L, -1));
     luaL_argcheck(L, scene != nullptr, 1, "invalid Scene\n");
 
     if (scene->m_quitCallback)

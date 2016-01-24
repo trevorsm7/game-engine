@@ -11,17 +11,18 @@ void GlfwRenderer::init()
 
     // TODO: quick hack to get minimum viable GL display working
 
-    const char *vertexShader =
+    const char* vertexShader =
     "#version 410\n"
-    "uniform vec2 u_screen;\n"
-    "uniform vec2 u_offset;\n"
-    "uniform vec2 u_scale;\n"
+    "uniform vec2 u_cameraScale;\n"
+    "uniform vec2 u_cameraOffset;\n"
+    "uniform vec2 u_modelScale;\n"
+    "uniform vec2 u_modelOffset;\n"
     "layout(location = 0) in vec2 a_vertex;\n"
     "void main() {\n"
-    "gl_Position = vec4((a_vertex * u_scale + u_offset) * 2 / u_screen - vec2(1, 1), 0.0, 1.0);\n"
+    "gl_Position = vec4((a_vertex * u_modelScale + u_modelOffset - u_cameraOffset) * 2 / u_cameraScale - vec2(1, 1), 0.0, 1.0);\n"
     "}\n";
 
-    const char *fragmentShader =
+    const char* fragmentShader =
     "#version 410\n"
     "uniform vec3 u_color;\n"
     "out vec4 f_color;\n"
@@ -54,10 +55,11 @@ void GlfwRenderer::init()
 
     glUseProgram(program);
 
-    m_uScreen = glGetUniformLocation(program, "u_screen");
-    m_uOffset = glGetUniformLocation(program, "u_offset");
-    m_uScale = glGetUniformLocation(program, "u_scale");
-    m_uColor = glGetUniformLocation(program, "u_color");
+    m_modelScale = glGetUniformLocation(program, "u_modelScale");
+    m_modelOffset = glGetUniformLocation(program, "u_modelOffset");
+    m_cameraScale = glGetUniformLocation(program, "u_cameraScale");
+    m_cameraOffset = glGetUniformLocation(program, "u_cameraOffset");
+    m_color = glGetUniformLocation(program, "u_color");
 
     // TODO: import some real mesh loading code
 
@@ -96,7 +98,7 @@ void GlfwRenderer::init()
     glBindVertexArray(0);
 }
 
-GLuint GlfwRenderer::loadShader(const char *shaderCode, GLenum shaderType)
+GLuint GlfwRenderer::loadShader(const char* shaderCode, GLenum shaderType)
 {
     // Compile the shader file
     GLuint shader = glCreateShader(shaderType);
@@ -155,8 +157,6 @@ void GlfwRenderer::setViewport(int left, int bottom, int right, int top)
     if (top <= 0)
         top = windowHeight + top;
 
-    glUniform2f(m_uScreen, right - left, top - bottom);
-
     // NOTE: on high DPI displays, GLFW uses a larger framebuffer
     // TODO: should be more robust than just scaling on int fraction of width?
     int frameWidth;
@@ -167,13 +167,19 @@ void GlfwRenderer::setViewport(int left, int bottom, int right, int top)
 
 void GlfwRenderer::pushModelTransform(Transform& transform)
 {
-    glUniform2f(m_uOffset, transform.getX(), transform.getY());
-    glUniform2f(m_uScale, transform.getW(), transform.getH());
+    glUniform2f(m_modelOffset, transform.getX(), transform.getY());
+    glUniform2f(m_modelScale, transform.getW(), transform.getH());
+}
+
+void GlfwRenderer::pushCameraTransform(Transform& transform)
+{
+    glUniform2f(m_cameraOffset, transform.getX(), transform.getY());
+    glUniform2f(m_cameraScale, transform.getW(), transform.getH());
 }
 
 void GlfwRenderer::setColor(float red, float green, float blue)
 {
-    glUniform3f(m_uColor, red, green, blue);
+    glUniform3f(m_color, red, green, blue);
 }
 
 void GlfwRenderer::drawSprite()
@@ -185,6 +191,11 @@ void GlfwRenderer::drawSprite()
 }
 
 void GlfwRenderer::popModelTransform()
+{
+    // TODO: do we need a transform stack?
+}
+
+void GlfwRenderer::popCameraTransform()
 {
 
 }

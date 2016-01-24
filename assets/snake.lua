@@ -3,24 +3,13 @@ local green = {0, 1, 0}
 local blue = {0, 0, 1}
 local gold = {1, 1, 0}
 
--- simple collision detection method over all objects added to list
-local bodies = {}
-local function getCollision(x, y)
-    for i, body in ipairs(bodies) do
-        local bx, by = body:getPosition()
-        if body:isVisible() and bx == x and by == y then
-            return body
-        end
-    end
-end
-
 -- get a random position guranteed to be empty
-local function getEmptySpace()
+local function getEmptySpace(canvas)
     local x, y
     repeat
-        x = math.random(0, 19) * 32
-        y = math.random(0, 14) * 32
-    until not getCollision(x, y)
+        x = math.random(0, 19)
+        y = math.random(0, 14)
+    until not canvas:getCollision(x, y)
     return x, y
 end
 
@@ -29,12 +18,11 @@ local function newApple(canvas)
     local defaultColor = green
     local defaultScore = 2
 
-    local apple = Actor.create()
-    table.insert(bodies, apple)
+    local apple = Actor.create(defaultColor, true)
     canvas:addActor(apple)
-    apple:setColor(defaultColor)
-    apple:setPosition(getEmptySpace())
-    apple:setScale(31, 31)
+    --apple:setColor(defaultColor)
+    apple:setPosition(getEmptySpace(canvas))
+    apple:setScale(0.95, 0.95)
     apple.food = true
     apple.score = defaultScore
 
@@ -54,7 +42,7 @@ local function newApple(canvas)
         end
 
         -- then move the apple to a new space
-        self:setPosition(getEmptySpace())
+        self:setPosition(getEmptySpace(canvas))
     end
 
     -- godmode: eat apples by clicking on them
@@ -82,10 +70,9 @@ local function newSnake(canvas, name, pos, dir, color)
     snake.dir = dir
 
     local function newBody()
-        local body = Actor.create(color)
-        table.insert(bodies, body)
+        local body = Actor.create(color, true)
         canvas:addActor(body)
-        body:setScale(31, 31)
+        body:setScale(0.95, 0.95)
         return body
     end
 
@@ -125,17 +112,17 @@ local function newSnake(canvas, name, pos, dir, color)
 
         -- get the new head position
         local dx, dy = self.head:getPosition()
-        dx = dx + self.dir[1] * 32
-        dy = dy + self.dir[2] * 32
+        dx = dx + self.dir[1]
+        dy = dy + self.dir[2]
 
         -- see if we run off the screen
-        if dx < 0 or dy < 0 or dx >= 640 or dy >= 480 then
+        if dx < 0 or dy < 0 or dx >= 20 or dy >= 15 then
             self:die()
             return
         end
 
         -- see if we collide with a body or with food
-        hit = getCollision(dx, dy)
+        hit = canvas:getCollision(dx, dy)
         if hit then
             if hit.food then
                 snake.length = snake.length + hit.score
@@ -150,9 +137,6 @@ local function newSnake(canvas, name, pos, dir, color)
         -- either create a new head or recycle a tail from the queue
         local head
         if (self.curLength < self.length) then
-            --head = Actor.create(color)
-            --table.insert(bodies, head)
-            --canvas:addActor(head)
             head = newBody()
             head.food = false
             self.curLength = self.curLength + 1
@@ -179,13 +163,13 @@ end
 
 local function resetGame(game)
     game:clear()
-    bodies = {}
 
     god = Actor.create()
     game:addActor(god)
     god:setVisible(false)
-    god:setScale(640, 480)
+    god:setScale(20, 15)
     god.score = 0
+
     function god:mouse(down)
         if down and not self.dead then
             io.write("God is dead! Score: ", self.score, "\n")
@@ -195,13 +179,13 @@ local function resetGame(game)
         return true
     end
 
-    local player1 = newSnake(game, "Red", {32, 224}, {1, 0}, red)
+    local player1 = newSnake(game, "Red", {1, 7}, {1, 0}, red)
     registerKey("key_a", player1:moveFactory{-1, 0})
     registerKey("key_d", player1:moveFactory{1, 0})
     registerKey("key_s", player1:moveFactory{0, -1})
     registerKey("key_w", player1:moveFactory{0, 1})
 
-    local player2 = newSnake(game, "Blue", {576, 224}, {-1, 0}, blue)
+    local player2 = newSnake(game, "Blue", {18, 7}, {-1, 0}, blue)
     registerKey("key_left", player2:moveFactory{-1, 0})
     registerKey("key_right", player2:moveFactory{1, 0})
     registerKey("key_down", player2:moveFactory{0, -1})
