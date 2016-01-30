@@ -32,10 +32,9 @@ public:
     void render(IRenderer* renderer);
     bool mouseEvent(lua_State* L, MouseEvent& event);
 
-//private:
-    void syncActors(lua_State* L);
+    static int canvas_init(lua_State* L);
 
-    static int canvas_init(lua_State* L); // this at least should be public?
+private:
     static int canvas_create(lua_State* L);
     static int canvas_delete(lua_State* L);
     static int canvas_addActor(lua_State* L);

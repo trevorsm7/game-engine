@@ -23,6 +23,9 @@ local function newFire(canvas, x, y)
     fire.time = 1
 
     function fire:update(delta)
+        local canvas = self:getCanvas()
+        if not canvas then return end
+
         self.time = self.time - delta
 
         if self.time > 0 then
@@ -47,6 +50,9 @@ local function newBomb(canvas, x, y)
     bomb.time = 2
 
     function bomb:update(delta)
+        local canvas = self:getCanvas()
+        if not canvas then return end
+
         self.time = self.time - delta
 
         if self.time <= 0 then
@@ -111,6 +117,9 @@ local function newBreakable(canvas, x, y)
     breakable:setScale(0.95, 0.95)
 
     function breakable:burn()
+        local canvas = self:getCanvas()
+        if not canvas then return false end
+
         canvas:removeActor(self)
         return true
     end
@@ -127,6 +136,9 @@ local function newNerd(canvas)--, x, y)
     nerd.moveWait = 0
 
     function nerd:burn()
+        local canvas = self:getCanvas()
+        if not canvas then return false end
+
         print("Aieee!")
         self.dead = true
         canvas:removeActor(self)
@@ -134,6 +146,9 @@ local function newNerd(canvas)--, x, y)
     end
 
     function nerd:update(delta)
+        local canvas = self:getCanvas()
+        if not canvas then return end
+
         if self.moveWait > delta then
             self.moveWait = self.moveWait - delta
             return
@@ -170,6 +185,9 @@ local function newPlayer(canvas, x, y)
     player.moveWait = 0
 
     function player:burn()
+        local canvas = self:getCanvas()
+        if not canvas then return false end
+
         print("Ouch!")
         self.dead = true
         canvas:removeActor(self)
@@ -196,6 +214,9 @@ local function newPlayer(canvas, x, y)
     end
 
     function player:move()
+        local canvas = self:getCanvas()
+        if not canvas then return end
+
         if self.moveWait <= 0 then
             local x, y = self:getPosition()
             local dir = self.dirList[1] or {0, 0}
@@ -254,7 +275,7 @@ for y = 1, 13 do
     newWall(game, 19, y)
 end
 for x = 2, 17, 3 do
-    for y = 2, 11, 3 do
+    for y = 2, 12, 2 do
         newWall(game, x, y)
     end
 end

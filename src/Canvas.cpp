@@ -233,11 +233,21 @@ int Canvas::canvas_delete(lua_State *L)
 
     // Mark each Actor in primary list for removal
     for (auto& actor : canvas->m_actors)
+    {
+        if (actor->m_canvas == canvas)
+            actor->m_canvas = nullptr;
+
         actor->refRemoved(L);
+    }
 
     // Mark each actor in pending list for removal
     for (auto& actor : canvas->m_added)
+    {
+        if (actor->m_canvas == canvas)
+            actor->m_canvas = nullptr;
+
         actor->refRemoved(L);
+    }
 
     canvas->~Canvas(); // manually call destructor before Lua calls free()
 
@@ -248,11 +258,11 @@ int Canvas::canvas_addActor(lua_State *L)
 {
     // Validate function arguments
     Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, "Canvas"));
-    Actor *actor = reinterpret_cast<Actor*>(luaL_checkudata(L, 2, "Actor"));
+    Actor *actor = reinterpret_cast<Actor*>(luaL_checkudata(L, 2, Actor::METATABLE));
 
     // Don't allow adding an Actor that already belongs to another Canvas
     // NOTE: while we could implicitly remove, might be better to throw an error
-    luaL_argcheck(L, (actor->m_canvas == nullptr), 2, "already belongs to a Canvas\n");
+    //luaL_argcheck(L, (actor->m_canvas == nullptr), 2, "already belongs to a Canvas\n");
 
     // Check if Actor already added (a previous removal was still pending)
     // NOTE: this will prevent duplicates and faulty ref counts
@@ -276,16 +286,18 @@ int Canvas::canvas_removeActor(lua_State *L)
 {
     // Validate function arguments
     Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, "Canvas"));
-    Actor *actor = reinterpret_cast<Actor*>(luaL_checkudata(L, 2, "Actor"));
+    Actor *actor = reinterpret_cast<Actor*>(luaL_checkudata(L, 2, Actor::METATABLE));
 
     // Actor must belong to this Canvas before we can remove it obviously...
-    luaL_argcheck(L, (actor->m_canvas == canvas), 2, "doesn't belong to this Canvas\n");
+    //luaL_argcheck(L, (actor->m_canvas == canvas), 2, "doesn't belong to this Canvas\n");
+    bool isOwner = (actor->m_canvas == canvas);
 
     // Mark Actor for later removal (after we're done iterating)
-    // NOTE: can't touch ref count or registry until then!
-    actor->m_canvas = nullptr;
+    if (isOwner)
+        actor->m_canvas = nullptr;
 
-    return 0;
+    lua_pushboolean(L, isOwner);
+    return 1;
 }
 
 int Canvas::canvas_clear(lua_State* L)
@@ -329,7 +341,7 @@ int Canvas::canvas_getCollision(lua_State* L)
         }
     }
 
-    // TODO: added this for bomberman; not sure if we want this behavior
+    // NOTE: newly added Actors SHOULD be eligible for collision
     for (auto& actor : canvas->m_added)
     {
         // Always skip if marked for removal

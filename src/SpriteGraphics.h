@@ -5,22 +5,45 @@
 
 class SpriteGraphics : public IGraphics
 {
+    Actor* m_actor;
     struct {float r, g, b;} m_color;
+    bool m_visible;
 
 public:
-    SpriteGraphics(): m_color({1.f, 1.f, 1.f}) {}
-    SpriteGraphics(float red, float green, float blue): m_color({red, green, blue}) {}
+    SpriteGraphics(Actor* actor): m_actor(actor), m_color({1.f, 1.f, 1.f}), m_visible(true) {}
     virtual ~SpriteGraphics() {}
 
     void update(float delta) override {}
 
     void render(IRenderer* renderer) override
     {
+        if (!m_visible)
+            return;
+
         renderer->setColor(m_color.r, m_color.g, m_color.b);
         renderer->drawSprite();
     }
 
+    bool testBounds(float x, float y) override
+    {
+        // TODO: shouldn't be able to click invisible sprite...
+        // but we should make an IGraphics impl for invisible triggers
+        //if (!m_visible)
+        //    return false;
+
+        Transform& transform = m_actor->getTransform();
+        float left = transform.getX();
+        float bottom = transform.getY();
+        float right = left + transform.getW();
+        float top = bottom + transform.getH();
+        return (x >= left && x < right && y >= bottom && y < top);
+    }
+
     void setColor(float r, float g, float b) override {m_color = {r, g, b};}
+
+    void setVisible(bool visible) override {m_visible = visible;}
+
+    bool isVisible() override {return m_visible;}
 };
 
 #endif

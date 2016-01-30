@@ -27,6 +27,9 @@ local function newApple(canvas)
     apple.score = defaultScore
 
     function apple:eaten()
+        local canvas = self:getCanvas()
+        if not canvas then return end
+
         -- every so often, add an extra apple to the game CHAOS
         if math.random() < 0.1 then
             newApple(canvas, green)
@@ -69,17 +72,16 @@ local function newSnake(canvas, name, pos, dir, color)
     snake.oldDir = {0, 0} -- this forces fwd movement on 1st move
     snake.dir = dir
 
-    local function newBody()
+    local function newBody(canvas, x, y)
         local body = Actor.create(color, true)
         canvas:addActor(body)
+        body:setPosition(x, y)
         body:setScale(0.95, 0.95)
         return body
     end
 
     -- give the snake one initial segment
-    snake.head = newBody()
-    snake.head:setPosition(pos[1], pos[2])
-    snake.head.food = false
+    snake.head = newBody(canvas, pos[1], pos[2])
     snake.tail = snake.head
     snake.curLength = 1
 
@@ -101,6 +103,9 @@ local function newSnake(canvas, name, pos, dir, color)
     -- put most of the snake logic in the update function
     -- NOTE: takes the canvas reference as a closure
     function snake:update(delta)
+        local canvas = self:getCanvas()
+        if not canvas then return end
+
         -- first check if we're dead; if so, do nothing
         if self.dead then return end
 
@@ -137,8 +142,7 @@ local function newSnake(canvas, name, pos, dir, color)
         -- either create a new head or recycle a tail from the queue
         local head
         if (self.curLength < self.length) then
-            head = newBody()
-            head.food = false
+            head = newBody(canvas, dx, dy)
             self.curLength = self.curLength + 1
         else
             if self.head == self.tail then
@@ -146,13 +150,12 @@ local function newSnake(canvas, name, pos, dir, color)
                 return
             end
             head = self.tail
-            head.food = false
+            head:setPosition(dx, dy)
             self.tail = head.next
             head.next = nil
         end
 
         -- make the new head the current head of the snake
-        head:setPosition(dx, dy)
         self.oldDir = self.dir
         self.head.next = head
         self.head = head

@@ -14,6 +14,8 @@ public:
 
     virtual bool testCollision(float x, float y) = 0;
     //virtual bool testCollision(Actor* actor) = 0;
+
+    virtual void setCollidable(bool collidable) = 0;
 };
 
 #endif

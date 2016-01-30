@@ -6,24 +6,29 @@
 
 class SpriteCollider : public ICollider
 {
-    // TODO: hold reference to IGraphics or Actor?
-    // NOTE: at minimum, need Transform...
-    Actor* m_actor; // weak_ptr could be handy
+    Actor* m_actor;
+    bool m_collidable;
 
 public:
-    SpriteCollider(Actor* actor): m_actor(actor) {}
+    SpriteCollider(Actor* actor): m_actor(actor), m_collidable(true) {}
     virtual ~SpriteCollider() {}
 
     void update(float delta) override {}
 
     bool testCollision(float x, float y) override
     {
-        float l = m_actor->m_transform.getX();
-        float b = m_actor->m_transform.getY();
-        float r = l + m_actor->m_transform.getW();
-        float t = b + m_actor->m_transform.getH();
-        return x >= l && y >= b && x < r && y < t;
+        if (!m_collidable)
+            return false;
+
+        Transform& transform = m_actor->getTransform();
+        float left = transform.getX();
+        float bottom = transform.getY();
+        float right = left + transform.getW();
+        float top = bottom + transform.getH();
+        return (x >= left && x < right && y >= bottom && y < top);
     }
+
+    void setCollidable(bool collidable) override {m_collidable = collidable;}
 };
 
 #endif
