@@ -31,6 +31,7 @@ public:
     void update(lua_State* L, float delta);
     void render(IRenderer* renderer);
     bool mouseEvent(lua_State* L, MouseEvent& event);
+    void resize(lua_State* L, int width, int height);
 
     static int canvas_init(lua_State* L);
 
@@ -40,6 +41,7 @@ private:
     static int canvas_addActor(lua_State* L);
     static int canvas_removeActor(lua_State* L);
     static int canvas_clear(lua_State* L);
+    static int canvas_setCenter(lua_State* L);
     static int canvas_getCollision(lua_State* L);
     static int canvas_setPaused(lua_State* L);
     static int canvas_setVisible(lua_State* L);

@@ -12,14 +12,35 @@ local function newPlayer(canvas, x, y)
     local player = Actor.create(rouge, true)
     canvas:addActor(player)
     player:setPosition(x, y)
+    canvas:setCenter(x + 0.5, y + 0.5)
     player.player = true
     player.stepTime = 1
 
-    -- generate a callback function to move the player in a direction
-    function player:moveFactory(dir)
-        return function(down)
-            if down then self:move(dir) end
+    function player:update(delta)
+        local canvas = self:getCanvas()
+        if canvas then
+            local x, y = self:getPosition()
+            canvas:setCenter(x + 0.5, y + 0.5)
+            --canvas:setVisible(true) -- hack to hide flicker in first frame
         end
+    end
+
+    -- generate a callback function to move the player in a direction
+    function player:keyDown(method, arg)
+        return function(down)
+            if down then method(self, arg) end
+        end
+    end
+
+    function player:idle()
+        local canvas = self:getCanvas()
+        if not canvas then return end
+
+        gameTime = gameTime + self.stepTime
+    end
+
+    function player:attack(target)
+        print("Player attacks!")
     end
 
     function player:move(dir)
@@ -28,13 +49,14 @@ local function newPlayer(canvas, x, y)
 
         local x, y = self:getPosition()
         x = x + dir[1]; y = y + dir[2]
-        local hit = canvas:getCollision(x + 0.5, y + 0.5)
+        --local hit = canvas:getCollision(x + 0.5, y + 0.5)
+        local hit = canvas:getCollision(x, y)
 
         if not hit then
             self:setPosition(x, y)
             gameTime = gameTime + self.stepTime
         elseif hit.enemy then
-            hit:attack(self)
+            self:attack(hit)
             gameTime = gameTime + self.stepTime
         elseif hit.interact then
             gameTime = gameTime + hit:interact(self)
@@ -61,6 +83,10 @@ local function newNerd(canvas, x, y)
         return 0
     end
 
+    function nerd:attack(target)
+        print("Nerd attacks!")
+    end
+
     function nerd:update(delta)
         local canvas = self:getCanvas()
         if not canvas then return end
@@ -75,12 +101,14 @@ local function newNerd(canvas, x, y)
             local px, py = player:getPosition()
             local dx = px - x; local dy = py - y
 
+            --local horzOpen = not canvas:getCollision(x + sign(dx) + 0.5, y + 0.5)
+            --local vertOpen = not canvas:getCollision(x + 0.5, y + sign(dy) + 0.5)
             local horzOpen = not canvas:getCollision(x + sign(dx), y)
             local vertOpen = not canvas:getCollision(x, y + sign(dy))
 
             -- no intelligent pathfinding for the moment
             if self.stepTime <= timeLeft then
-                if ((math.abs(dx) == 1 and dy == 0) or (math.abs(dy) == 0 and dx == 0)) then
+                if ((math.abs(dx) == 1 and dy == 0) or (math.abs(dy) == 1 and dx == 0)) then
                     self.time = self.time + self.stepTime
                     self:attack(player)
                 elseif (math.abs(dx) >= math.abs(dy) or not vertOpen) and horzOpen then
@@ -125,11 +153,12 @@ local function newDoor(canvas, x, y)
         if canvas then
             if self.open then
                 self:setScale(1, 1)
+                self:setCollidable(true)
                 self.open = false
                 return 1 -- time to close door
             else
-                --canvas:removeActor(self)
                 self:setScale(0.1, 1)
+                self:setCollidable(false)
                 self.open = true
                 return 1 -- time to open door
             end
@@ -143,13 +172,15 @@ end
 -- set a fresh random seed when we start up
 math.randomseed(os.time())
 
-game = Canvas.create{0, 0, 0, 0}
+game = Canvas.create({20, 20}, false, {0, 0, 0, 0})
+--game:setVisible(false) -- hack to hide flicker in first frame
 
 player = newPlayer(game, 1, 1)
-registerKey("key_left", player:moveFactory{-1, 0})
-registerKey("key_right", player:moveFactory{1, 0})
-registerKey("key_down", player:moveFactory{0, -1})
-registerKey("key_up", player:moveFactory{0, 1})
+registerKey("key_left", player:keyDown(player.move, {-1, 0}))
+registerKey("key_right", player:keyDown(player.move, {1, 0}))
+registerKey("key_down", player:keyDown(player.move, {0, -1}))
+registerKey("key_up", player:keyDown(player.move, {0, 1}))
+registerKey("key_space", player:keyDown(player.idle))
 
 newWall(game, 0, 0, 6, 1)
 newWall(game, 0, 5, 6, 1)

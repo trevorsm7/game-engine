@@ -202,7 +202,7 @@ end
 math.randomseed(os.time())
 
 -- create and populate our game canvas
-local game = Canvas.create{0, 0, 0, 0}
+local game = Canvas.create({20, 15}, true, {0, 0, 0, 0})
 resetGame(game)
 
 registerKey("key_space", function (down)

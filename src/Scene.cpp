@@ -27,9 +27,6 @@ void Scene::load(const char *filename)
     lua_pushcfunction(m_state, scene_registerKey);
     lua_setglobal(m_state, "registerKey");
 
-    lua_pushcfunction(m_state, scene_registerResize);
-    lua_setglobal(m_state, "registerResize");
-
     lua_pushcfunction(m_state, scene_quit);
     lua_setglobal(m_state, "quit");
 
@@ -105,18 +102,10 @@ bool Scene::keyEvent(KeyEvent& event)
 
 void Scene::resize(int width, int height)
 {
-    int top = lua_gettop(m_state);
-
-    lua_pushstring(m_state, "callback_resize");
-    if (lua_rawget(m_state, LUA_REGISTRYINDEX) == LUA_TFUNCTION)
-    {
-        lua_pushinteger(m_state, width);
-        lua_pushinteger(m_state, height);
-        if (lua_pcall(m_state, 2, 0, 0) != 0)
-            printf("%s\n", lua_tostring(m_state, -1));
-    }
-
-    lua_settop(m_state, top);
+    // order of resize dispatch doesn't really matter; choose bottom to top
+    auto end = m_canvases.end();
+    for (auto it = m_canvases.begin(); it != end; ++it)
+        (*it)->resize(m_state, width, height);
 }
 
 int Scene::scene_registerKey(lua_State *L)
@@ -128,18 +117,6 @@ int Scene::scene_registerKey(lua_State *L)
 
     lua_pushvalue(L, 1);
     lua_pushvalue(L, 2);
-    lua_rawset(L, LUA_REGISTRYINDEX);
-
-    return 0;
-}
-
-int Scene::scene_registerResize(lua_State *L)
-{
-    // Validate input
-    luaL_argcheck(L, lua_isfunction(L, 1), 1, "Key callback must be function\n");
-
-    lua_pushstring(L, "callback_resize");
-    lua_pushvalue(L, 1);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     return 0;

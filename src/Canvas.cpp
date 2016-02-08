@@ -49,6 +49,8 @@ void Canvas::update(lua_State *L, float delta)
     // TODO: why does this even have an update? follow Actor? need lua_State?
     m_camera->update(delta);
 
+    // TODO: consider adding a Lua callback to Canvas
+
     // Recently added Actors should now be added to the end
     for (auto& actor : m_added)
     {
@@ -129,6 +131,15 @@ bool Canvas::mouseEvent(lua_State *L, MouseEvent& event)
     return false;
 }
 
+void Canvas::resize(lua_State* L, int width, int height)
+{
+    int l = m_bounds.l < 0 ? width + m_bounds.l : m_bounds.l;
+    int b = m_bounds.b < 0 ? height + m_bounds.b : m_bounds.b;
+    int r = m_bounds.r <= 0 ? width + m_bounds.r : m_bounds.r;
+    int t = m_bounds.t <= 0 ? height + m_bounds.t : m_bounds.t;
+    m_camera->resize(r - l, t - b);
+}
+
 // =============================================================================
 // Lua library functions
 // =============================================================================
@@ -144,6 +155,7 @@ int Canvas::canvas_init(lua_State *L)
         {"addActor", canvas_addActor},
         {"removeActor", canvas_removeActor},
         {"clear", canvas_clear},
+        {"setCenter", canvas_setCenter},
         {"getCollision", canvas_getCollision},
         {"setPaused", canvas_setPaused},
         {"setVisible", canvas_setVisible},
@@ -182,12 +194,24 @@ int Canvas::canvas_init(lua_State *L)
 int Canvas::canvas_create(lua_State *L)
 {
     // Validate arguments
-    int bounds[4] = {0, 0, 0, 0};
+    float w = 20.f, h = 15.f;
     if (lua_istable(L, 1))
+    {
+        lua_rawgeti(L, 1, 1);
+        w = static_cast<float>(luaL_checknumber(L, -1));
+        lua_rawgeti(L, 1, 2);
+        h = static_cast<float>(luaL_checknumber(L, -1));
+        lua_pop(L, 2);
+    }
+
+    bool fixed = lua_isboolean(L, 2) && lua_toboolean(L, 2);
+
+    int bounds[4] = {0, 0, 0, 0};
+    if (lua_istable(L, 3))
     {
         for (int i = 0; i < 4; ++i)
         {
-            lua_rawgeti(L, 1, i + 1);
+            lua_rawgeti(L, 3, i + 1);
             bounds[i] = static_cast<int>(luaL_checkinteger(L, -1));
             lua_pop(L, 1);
         }
@@ -207,7 +231,7 @@ int Canvas::canvas_create(lua_State *L)
     canvas->m_bounds.b = bounds[1];
     canvas->m_bounds.r = bounds[2];
     canvas->m_bounds.t = bounds[3];
-    canvas->m_camera = ICameraPtr(new BasicCamera());
+    canvas->m_camera = ICameraPtr(new BasicCamera(w, h, fixed));
 
     //printf("created Canvas(%p)\n", canvas);
 
@@ -314,6 +338,19 @@ int Canvas::canvas_clear(lua_State* L)
     for (auto& actor : canvas->m_added)
         if (actor->m_canvas == canvas)
             actor->m_canvas = nullptr;
+
+    return 0;
+}
+
+int Canvas::canvas_setCenter(lua_State* L)
+{
+    // Validate function arguments
+    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, "Canvas"));
+    float x = static_cast<float>(luaL_checknumber(L, 2));
+    float y = static_cast<float>(luaL_checknumber(L, 3));
+
+    if (canvas->m_camera)
+        canvas->m_camera->setCenter(x, y);
 
     return 0;
 }

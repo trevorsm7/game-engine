@@ -34,7 +34,6 @@ public:
     void addCanvas(Canvas *canvas);
 
     static int scene_registerKey(lua_State *L);
-    static int scene_registerResize(lua_State *L);
     static int scene_quit(lua_State *L);
 };
 
