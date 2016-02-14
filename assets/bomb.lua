@@ -260,11 +260,11 @@ math.randomseed(os.time())
 local game = Canvas.create({20, 15}, true, {0, 0, 0, 0})
 
 local player = newPlayer(game, 1, 1)
-registerKey("key_left", player:moveFactory{-1, 0})
-registerKey("key_right", player:moveFactory{1, 0})
-registerKey("key_down", player:moveFactory{0, -1})
-registerKey("key_up", player:moveFactory{0, 1})
-registerKey("key_space", player:bombFactory())
+registerControl("left", player:moveFactory{-1, 0})
+registerControl("right", player:moveFactory{1, 0})
+registerControl("down", player:moveFactory{0, -1})
+registerControl("up", player:moveFactory{0, 1})
+registerControl("action", player:bombFactory())
 
 for x = 0, 19 do
     newWall(game, x, 0)

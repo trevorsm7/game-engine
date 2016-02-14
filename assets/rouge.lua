@@ -176,11 +176,11 @@ game = Canvas.create({20, 20}, false, {0, 0, 0, 0})
 --game:setVisible(false) -- hack to hide flicker in first frame
 
 player = newPlayer(game, 1, 1)
-registerKey("key_left", player:keyDown(player.move, {-1, 0}))
-registerKey("key_right", player:keyDown(player.move, {1, 0}))
-registerKey("key_down", player:keyDown(player.move, {0, -1}))
-registerKey("key_up", player:keyDown(player.move, {0, 1}))
-registerKey("key_space", player:keyDown(player.idle))
+registerControl("left", player:keyDown(player.move, {-1, 0}))
+registerControl("right", player:keyDown(player.move, {1, 0}))
+registerControl("down", player:keyDown(player.move, {0, -1}))
+registerControl("up", player:keyDown(player.move, {0, 1}))
+registerControl("action", player:keyDown(player.idle))
 
 newWall(game, 0, 0, 6, 1)
 newWall(game, 0, 5, 6, 1)

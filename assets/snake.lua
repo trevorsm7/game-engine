@@ -183,16 +183,16 @@ local function resetGame(game)
     end
 
     local player1 = newSnake(game, "Red", {1, 7}, {1, 0}, red)
-    registerKey("key_a", player1:moveFactory{-1, 0})
-    registerKey("key_d", player1:moveFactory{1, 0})
-    registerKey("key_s", player1:moveFactory{0, -1})
-    registerKey("key_w", player1:moveFactory{0, 1})
+    registerControl("a", player1:moveFactory{-1, 0})
+    registerControl("d", player1:moveFactory{1, 0})
+    registerControl("s", player1:moveFactory{0, -1})
+    registerControl("w", player1:moveFactory{0, 1})
 
     local player2 = newSnake(game, "Blue", {18, 7}, {-1, 0}, blue)
-    registerKey("key_left", player2:moveFactory{-1, 0})
-    registerKey("key_right", player2:moveFactory{1, 0})
-    registerKey("key_down", player2:moveFactory{0, -1})
-    registerKey("key_up", player2:moveFactory{0, 1})
+    registerControl("left", player2:moveFactory{-1, 0})
+    registerControl("right", player2:moveFactory{1, 0})
+    registerControl("down", player2:moveFactory{0, -1})
+    registerControl("up", player2:moveFactory{0, 1})
 
     newApple(game)
     newApple(game)
@@ -205,7 +205,7 @@ math.randomseed(os.time())
 local game = Canvas.create({20, 15}, true, {0, 0, 0, 0})
 resetGame(game)
 
-registerKey("key_space", function (down)
+registerControl("action", function (down)
     if down then
         resetGame(game)
     end

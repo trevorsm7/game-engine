@@ -8,10 +8,6 @@
 
 GlfwInstance::~GlfwInstance()
 {
-    // NOTE: glfw should destroy window automatically in glfwTerminate
-    //if (m_window)
-    //    glfwDestroyWindow(m_window);
-
     glfwTerminate();
 }
 
@@ -35,75 +31,6 @@ void GlfwInstance::run(const char* script)
 
 bool GlfwInstance::init(const char* script)
 {
-    // Populate keymap with int to string associations
-    // TODO: more keys to add
-    // NOTE: the compiler knows the size of the array in the for loop;
-    // no need to manually track the size or use a sentinel
-    static const struct {const int key; const char* const name;} keymap[] =
-    {
-        // Map GLFW keys to internal string names
-        {GLFW_KEY_SPACE, KeyEvent::key_space},
-        {GLFW_KEY_APOSTROPHE, KeyEvent::key_apostrophe},
-        {GLFW_KEY_COMMA, KeyEvent::key_comma},
-        {GLFW_KEY_MINUS, KeyEvent::key_minus},
-        {GLFW_KEY_PERIOD, KeyEvent::key_period},
-        {GLFW_KEY_SLASH, KeyEvent::key_slash},
-        {GLFW_KEY_0, KeyEvent::key_0},
-        {GLFW_KEY_1, KeyEvent::key_1},
-        {GLFW_KEY_2, KeyEvent::key_2},
-        {GLFW_KEY_3, KeyEvent::key_3},
-        {GLFW_KEY_4, KeyEvent::key_4},
-        {GLFW_KEY_5, KeyEvent::key_5},
-        {GLFW_KEY_6, KeyEvent::key_6},
-        {GLFW_KEY_7, KeyEvent::key_7},
-        {GLFW_KEY_8, KeyEvent::key_8},
-        {GLFW_KEY_9, KeyEvent::key_9},
-        {GLFW_KEY_SEMICOLON, KeyEvent::key_semicolon},
-        {GLFW_KEY_EQUAL, KeyEvent::key_equal},
-        {GLFW_KEY_A, KeyEvent::key_a},
-        {GLFW_KEY_B, KeyEvent::key_b},
-        {GLFW_KEY_C, KeyEvent::key_c},
-        {GLFW_KEY_D, KeyEvent::key_d},
-        {GLFW_KEY_E, KeyEvent::key_e},
-        {GLFW_KEY_F, KeyEvent::key_f},
-        {GLFW_KEY_G, KeyEvent::key_g},
-        {GLFW_KEY_H, KeyEvent::key_h},
-        {GLFW_KEY_I, KeyEvent::key_i},
-        {GLFW_KEY_J, KeyEvent::key_j},
-        {GLFW_KEY_K, KeyEvent::key_k},
-        {GLFW_KEY_L, KeyEvent::key_l},
-        {GLFW_KEY_M, KeyEvent::key_m},
-        {GLFW_KEY_N, KeyEvent::key_n},
-        {GLFW_KEY_O, KeyEvent::key_o},
-        {GLFW_KEY_P, KeyEvent::key_p},
-        {GLFW_KEY_Q, KeyEvent::key_q},
-        {GLFW_KEY_R, KeyEvent::key_r},
-        {GLFW_KEY_S, KeyEvent::key_s},
-        {GLFW_KEY_T, KeyEvent::key_t},
-        {GLFW_KEY_U, KeyEvent::key_u},
-        {GLFW_KEY_V, KeyEvent::key_v},
-        {GLFW_KEY_W, KeyEvent::key_w},
-        {GLFW_KEY_X, KeyEvent::key_x},
-        {GLFW_KEY_Y, KeyEvent::key_y},
-        {GLFW_KEY_Z, KeyEvent::key_z},
-        {GLFW_KEY_LEFT_BRACKET, KeyEvent::key_leftbracket},
-        {GLFW_KEY_BACKSLASH, KeyEvent::key_backslash},
-        {GLFW_KEY_RIGHT_BRACKET, KeyEvent::key_rightbracket},
-        {GLFW_KEY_GRAVE_ACCENT, KeyEvent::key_grave},
-        {GLFW_KEY_ESCAPE, KeyEvent::key_escape},
-        {GLFW_KEY_ENTER, KeyEvent::key_enter},
-        {GLFW_KEY_TAB, KeyEvent::key_tab},
-        {GLFW_KEY_BACKSPACE, KeyEvent::key_backspace},
-        {GLFW_KEY_INSERT, KeyEvent::key_insert},
-        {GLFW_KEY_DELETE, KeyEvent::key_delete},
-        {GLFW_KEY_RIGHT, KeyEvent::key_right},
-        {GLFW_KEY_LEFT, KeyEvent::key_left},
-        {GLFW_KEY_UP, KeyEvent::key_up},
-        {GLFW_KEY_DOWN, KeyEvent::key_down},
-    };
-    for (auto map : keymap)
-        m_keymap[map.key] = map.name;
-
     // Init GLFW
     glfwSetErrorCallback(callback_error);
     if (!glfwInit())
@@ -135,6 +62,35 @@ bool GlfwInstance::init(const char* script)
     // ...current implementation doesn't take effect until end of game loop
     m_scene = ScenePtr(new Scene());
     m_scene->setQuitCallback([&]{glfwSetWindowShouldClose(m_window, GL_TRUE);});
+    m_scene->setRegisterControlCallback([&](const char* action)->bool
+    {
+        static const struct {const int key; const char* const name;} keymap[] =
+        {
+            // Map GLFW keys to internal string names
+            {GLFW_KEY_SPACE, "action"},
+            {GLFW_KEY_W, "w"},
+            {GLFW_KEY_A, "a"},
+            {GLFW_KEY_S, "s"},
+            {GLFW_KEY_D, "d"},
+            {GLFW_KEY_ESCAPE, "quit"},
+            {GLFW_KEY_RIGHT, "right"},
+            {GLFW_KEY_LEFT, "left"},
+            {GLFW_KEY_UP, "up"},
+            {GLFW_KEY_DOWN, "down"},
+        };
+
+        // TODO: replace with a mechanism for default bindings and loading/saving custom bindings
+        for (auto map : keymap)
+        {
+            if (strcmp(action, map.name) == 0)
+            {
+                m_keymap[map.key] = map.name;
+                return true;
+            }
+        }
+
+        return false;
+    });
     m_scene->load(script);
 
     // Send an initial resize notification to scene
@@ -169,6 +125,53 @@ bool GlfwInstance::update(double elapsedTime)
     // Try to process events first
     glfwPollEvents();
 
+    // NOTE: joystick functions not affected by glfwPollEvents
+    static int wasPresent = 0;
+    int present = glfwJoystickPresent(GLFW_JOYSTICK_1);
+    if (present != wasPresent)
+    {
+        const char* name = glfwGetJoystickName(GLFW_JOYSTICK_1);
+        printf("%s: %sconnected\n", name, present ? "" : "dis");
+        wasPresent = present;
+    }
+
+    if (present)
+    {
+        int nAxes, nButtons;
+        const float* axes = glfwGetJoystickAxes(GLFW_JOYSTICK_1, &nAxes);
+        const unsigned char* buttons = glfwGetJoystickButtons(GLFW_JOYSTICK_1, &nButtons);
+        static char up = 0, right = 0, down = 0, left = 0, space = 0;
+        if (buttons[14] != up)
+        {
+            callback_key(m_window, GLFW_KEY_UP, 0, buttons[14] ? GLFW_PRESS : GLFW_RELEASE, 0);
+            //callback_key(m_window, GLFW_KEY_W, 0, buttons[14] ? GLFW_PRESS : GLFW_RELEASE, 0);
+            up = buttons[14];
+        }
+        if (buttons[15] != right)
+        {
+            callback_key(m_window, GLFW_KEY_RIGHT, 0, buttons[15] ? GLFW_PRESS : GLFW_RELEASE, 0);
+            //callback_key(m_window, GLFW_KEY_D, 0, buttons[15] ? GLFW_PRESS : GLFW_RELEASE, 0);
+            right = buttons[15];
+        }
+        if (buttons[16] != down)
+        {
+            callback_key(m_window, GLFW_KEY_DOWN, 0, buttons[16] ? GLFW_PRESS : GLFW_RELEASE, 0);
+            //callback_key(m_window, GLFW_KEY_S, 0, buttons[16] ? GLFW_PRESS : GLFW_RELEASE, 0);
+            down = buttons[16];
+        }
+        if (buttons[17] != left)
+        {
+            callback_key(m_window, GLFW_KEY_LEFT, 0, buttons[17] ? GLFW_PRESS : GLFW_RELEASE, 0);
+            //callback_key(m_window, GLFW_KEY_A, 0, buttons[17] ? GLFW_PRESS : GLFW_RELEASE, 0);
+            left = buttons[17];
+        }
+        if (buttons[1] != space)
+        {
+            callback_key(m_window, GLFW_KEY_SPACE, 0, buttons[1] ? GLFW_PRESS : GLFW_RELEASE, 0);
+            space = buttons[1];
+        }
+    }
+
     // Send elapsed time down to game objects
     m_scene->update(elapsedTime);
 
@@ -202,11 +205,11 @@ void GlfwInstance::callback_key(GLFWwindow* window, int key, int scancode, int a
             auto keyIt = instance->m_keymap.find(key);
             if (keyIt != instance->m_keymap.end())
             {
-                KeyEvent event;
+                ControlEvent event;
                 event.name = keyIt->second;
                 event.down = (action == GLFW_PRESS);
 
-                if (instance->m_scene->keyEvent(event))
+                if (instance->m_scene->controlEvent(event))
                     return;
             }
         }
