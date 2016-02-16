@@ -1,4 +1,3 @@
-#include "DebugRenderer.h"
 #include "GlfwInstance.h"
 #include "Scene.h"
 
@@ -6,47 +5,27 @@
 #include <string>
 #include <unistd.h>
 
-void debugMain(const char* script)
-{
-    DebugRenderer renderer;
-
-    Scene scene;
-    scene.load(script);
-    for (int i = 0; i < 5; ++i)
-    {
-        scene.update(1.f);
-        scene.render(&renderer);
-    }
-}
-
 bool findFile(const char* name, std::string& fullpath)
 {
-    static const char* paths[] = {"./", "../assets/", "./assets/"};
+    static const char* paths[] = {"./", "../assets/", "./assets/", "../scripts/", "./scripts/"};
     for (const char* path : paths)
     {
-        fullpath = std::string(path) + name;
-        if (access(fullpath.c_str(), R_OK) == 0)
+        auto temp = std::string(path) + name;
+        if (access(temp.c_str(), R_OK) == 0)
+        {
+            fullpath = temp;
             return true;
+        }
     }
     return false;
 }
 
 int main(int argc, char *argv[])
 {
-    const char* script = "test.lua";
-    bool debug = false;
+    const char* script = "snake.lua";
 
     if (argc > 1)
-    {
-        if (strcmp(argv[1], "-debug") == 0)
-        {
-            debug = true;
-            if (argc > 2)
-                script = argv[2];
-        }
-        else
-            script = argv[1];
-    }
+        script = argv[1];
 
     std::string fullpath;
     if (!findFile(script, fullpath))
@@ -56,10 +35,7 @@ int main(int argc, char *argv[])
     }
     printf("Loading script %s\n", fullpath.c_str());
 
-    if (debug)
-        debugMain(fullpath.c_str());
-    else
-        GlfwInstance::run(fullpath.c_str());
+    GlfwInstance::run(fullpath.c_str());
 
     return 0;
 }

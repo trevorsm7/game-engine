@@ -9,7 +9,7 @@ local yellow = {1, 1, 0}
 local gameTime = 0
 
 local function newPlayer(canvas, x, y)
-    local player = Actor.create(rouge, true)
+    local player = Actor.create{color=rouge, sprite="square.tga", collider=true}
     canvas:addActor(player)
     player:setPosition(x, y)
     canvas:setCenter(x + 0.5, y + 0.5)
@@ -67,7 +67,7 @@ local function newPlayer(canvas, x, y)
 end
 
 local function newNerd(canvas, x, y)
-    local nerd = Actor.create(yellow, true)
+    local nerd = Actor.create{color=yellow, sprite="square.tga", collider=true}
     canvas:addActor(nerd)
     nerd:setPosition(x, y)
     nerd.enemy = true
@@ -134,7 +134,7 @@ local function newNerd(canvas, x, y)
 end
 
 local function newWall(canvas, x, y, w, h)
-    local wall = Actor.create(white, true)
+    local wall = Actor.create{sprite="square.tga", collider=true}
     canvas:addActor(wall)
     wall:setPosition(x, y)
     wall:setScale(w, h)
@@ -143,7 +143,7 @@ local function newWall(canvas, x, y, w, h)
 end
 
 local function newDoor(canvas, x, y)
-    local door = Actor.create(grey, true)
+    local door = Actor.create{sprite="door.tga", collider=true}
     canvas:addActor(door)
     door:setPosition(x, y)
     door.open = false

@@ -2,6 +2,7 @@
 #define __GLFWINSTANCE_H__
 
 #include "IRenderer.h"
+#include "ResourceManager.h"
 #include "Scene.h"
 
 #include <map>
@@ -15,6 +16,7 @@ class GlfwInstance
     typedef std::unique_ptr<IRenderer> IRendererPtr;
     typedef std::unique_ptr<Scene> ScenePtr;
 
+    ResourceManager m_resources;
     IRendererPtr m_renderer;
     ScenePtr m_scene;
     GLFWwindow* m_window;

@@ -16,10 +16,9 @@ local function getEmptySpace(canvas)
 end
 
 local function newFire(canvas, x, y)
-    local fire = Actor.create(yellow) -- not collideable
+    local fire = Actor.create{color=yellow, sprite="round.tga", collider=false}
     canvas:addActor(fire)
     fire:setPosition(x, y)
-    fire:setScale(0.95, 0.95)
     fire.time = 1
 
     function fire:update(delta)
@@ -43,10 +42,9 @@ local function newFire(canvas, x, y)
 end
 
 local function newBomb(canvas, x, y)
-    local bomb = Actor.create(red, true)
+    local bomb = Actor.create{color=red, sprite="round.tga", collider=true}
     canvas:addActor(bomb)
     bomb:setPosition(x, y)
-    bomb:setScale(0.95, 0.95)
     bomb.time = 2
 
     function bomb:update(delta)
@@ -100,10 +98,9 @@ local function newBomb(canvas, x, y)
 end
 
 local function newWall(canvas, x, y)
-    local wall = Actor.create(white, true)
+    local wall = Actor.create{color=white, sprite="square.tga", collider=true}
     canvas:addActor(wall)
     wall:setPosition(x, y)
-    wall:setScale(0.95, 0.95)
 
     function wall:burn()
         return false
@@ -111,10 +108,9 @@ local function newWall(canvas, x, y)
 end
 
 local function newBreakable(canvas, x, y)
-    local breakable = Actor.create(grey, true)
+    local breakable = Actor.create{color=grey, sprite="square.tga", collider=true}
     canvas:addActor(breakable)
     breakable:setPosition(x, y)
-    breakable:setScale(0.95, 0.95)
 
     function breakable:burn()
         local canvas = self:getCanvas()
@@ -127,10 +123,9 @@ end
 
 local function newNerd(canvas)--, x, y)
     local x, y = getEmptySpace(canvas)
-    local nerd = Actor.create(green, true)
+    local nerd = Actor.create{color=red, sprite="square.tga", collider=true}
     canvas:addActor(nerd)
     nerd:setPosition(x, y)
-    nerd:setScale(0.95, 0.95)
     nerd.dirList = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}
     nerd.dir = math.random(1, 4)
     nerd.moveWait = 0
@@ -176,10 +171,9 @@ local function newNerd(canvas)--, x, y)
 end
 
 local function newPlayer(canvas, x, y)
-    local player = Actor.create(blue, true)
+    local player = Actor.create{color=blue, sprite="square.tga", collider=true}
     canvas:addActor(player)
     player:setPosition(x, y)
-    player:setScale(0.95, 0.95)
     player.player = true
     player.dirList = {}
     player.moveWait = 0

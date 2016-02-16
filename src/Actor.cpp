@@ -205,21 +205,42 @@ int Actor::actor_create(lua_State* L)
 
     // Create the Actor object
     // TODO: configure Actor based on function arguments
-    actor->m_graphics = IGraphicsPtr(new SpriteGraphics(actor));
+    SpriteGraphics* graphics = new SpriteGraphics(actor);
+    actor->m_graphics = IGraphicsPtr(graphics);
     if (lua_istable(L, 1))
     {
-        lua_rawgeti(L, 1, 1); // should return LUA_TNUMBER
-        float r = lua_tonumber(L, -1);
-        lua_rawgeti(L, 1, 2);
-        float g = lua_tonumber(L, -1);
-        lua_rawgeti(L, 1, 3);
-        float b = lua_tonumber(L, -1);
-        lua_pop(L, 3);
-        actor->m_graphics->setColor(r, g, b);
-    }
+        int top = lua_gettop(L);
 
-    if (lua_isboolean(L, 2) && lua_toboolean(L, 2))
-        actor->m_collider = IColliderPtr(new SpriteCollider(actor));
+        lua_pushliteral(L, "color");
+        if (lua_rawget(L, 1) == LUA_TTABLE)
+        {
+            lua_rawgeti(L, -1, 1); // should return LUA_TNUMBER
+            lua_rawgeti(L, -2, 2);
+            lua_rawgeti(L, -3, 3);
+            float r = lua_tonumber(L, -3);
+            float g = lua_tonumber(L, -2);
+            float b = lua_tonumber(L, -1);
+            lua_pop(L, 3);
+            //actor->m_graphics->setColor(r, g, b);
+            graphics->setColor(r, g, b);
+        }
+
+        // TODO: if we're using SpriteGraphics, we should require a sprite
+        lua_pushliteral(L, "sprite");
+        if (lua_rawget(L, 1) == LUA_TSTRING)
+        {
+            graphics->setFilename(lua_tostring(L, -1));
+        }
+
+        lua_pushliteral(L, "collider");
+        if (lua_rawget(L, 1) == LUA_TBOOLEAN)
+        {
+            if (lua_toboolean(L, -1))
+                actor->m_collider = IColliderPtr(new SpriteCollider(actor));
+        }
+
+        lua_settop(L, top);
+    }
 
     // NOTE: do not add Actor to registry until it is hooked into C++ (Canvas)
 

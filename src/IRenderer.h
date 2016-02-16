@@ -3,6 +3,8 @@
 
 #include "Transform.h"
 
+#include <string>
+
 class IRenderer
 {
 public:
@@ -15,9 +17,9 @@ public:
     virtual void setViewport(int left, int bottom, int right, int top) = 0;
     virtual void pushModelTransform(Transform& transform) = 0;
     virtual void pushCameraTransform(Transform& transform) = 0;
-    
+
     virtual void setColor(float red, float green, float blue) = 0;
-    virtual void drawSprite() = 0;
+    virtual void drawSprite(const std::string& name) = 0;
 
     virtual void popModelTransform() = 0;
     virtual void popCameraTransform() = 0;

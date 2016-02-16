@@ -3,15 +3,18 @@
 
 #include "IGraphics.h"
 
+#include <string>
+
 class SpriteGraphics : public IGraphics
 {
     Actor* m_actor;
+    std::string m_filename;
     struct {float r, g, b;} m_color;
     bool m_visible;
 
 public:
     SpriteGraphics(Actor* actor): m_actor(actor), m_color({1.f, 1.f, 1.f}), m_visible(true) {}
-    virtual ~SpriteGraphics() {}
+    ~SpriteGraphics() override {}
 
     void update(float delta) override {}
 
@@ -21,7 +24,7 @@ public:
             return;
 
         renderer->setColor(m_color.r, m_color.g, m_color.b);
-        renderer->drawSprite();
+        renderer->drawSprite(m_filename);
     }
 
     bool testBounds(float x, float y) override
@@ -40,6 +43,7 @@ public:
     }
 
     void setColor(float r, float g, float b) override {m_color = {r, g, b};}
+    void setFilename(const char* filename) {m_filename = filename;}
 
     void setVisible(bool visible) override {m_visible = visible;}
 

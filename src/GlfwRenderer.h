@@ -2,6 +2,7 @@
 #define __GLFWRENDERER_H__
 
 #include "IRenderer.h"
+#include "ResourceManager.h"
 
 #include <vector>
 
@@ -11,7 +12,9 @@
 class GlfwRenderer : public IRenderer
 {
     GLFWwindow* m_window;
+    ResourceManager& m_resources;
     GLuint m_spriteVAO;
+    GLuint m_missingTexture;
     GLint m_modelScale;
     GLint m_modelOffset;
     GLint m_cameraScale;
@@ -21,8 +24,8 @@ class GlfwRenderer : public IRenderer
     //std::vector<Matrix4> m_viewStack;
 
 public:
-    GlfwRenderer(GLFWwindow* window): m_window(window) {}
-    ~GlfwRenderer() override {}
+    GlfwRenderer(GLFWwindow* window, ResourceManager& resources): m_window(window), m_resources(resources) {}
+    ~GlfwRenderer() override {glDeleteTextures(1, &m_missingTexture);} // TODO: cleanup other stuff
 
     void init() override;
     void preRender() override;
@@ -33,7 +36,7 @@ public:
     void pushCameraTransform(Transform& transform) override;
 
     void setColor(float red, float green, float blue) override;
-    void drawSprite() override;
+    void drawSprite(const std::string& name) override;
 
     void popModelTransform() override;
     void popCameraTransform() override;

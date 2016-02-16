@@ -1,4 +1,5 @@
 #include "GlfwRenderer.h"
+#include "GlfwTexture.h"
 
 #include <iostream>
 
@@ -18,16 +19,21 @@ void GlfwRenderer::init()
     "uniform vec2 u_modelScale;\n"
     "uniform vec2 u_modelOffset;\n"
     "layout(location = 0) in vec2 a_vertex;\n"
+    //"layout(location = 1) in vec2 a_texCoord;\n"
+    "out vec2 v_texCoord;\n"
     "void main() {\n"
+    "v_texCoord = a_vertex;\n"
     "gl_Position = vec4((a_vertex * u_modelScale + u_modelOffset - u_cameraOffset) * 2 / u_cameraScale - vec2(1, 1), 0.0, 1.0);\n"
     "}\n";
 
     const char* fragmentShader =
     "#version 410\n"
     "uniform vec3 u_color;\n"
+    "uniform sampler2D u_texture;\n"
+    "in vec2 v_texCoord;\n"
     "out vec4 f_color;\n"
     "void main() {\n"
-    "f_color = vec4(u_color, 1.0);\n"
+    "f_color = vec4(u_color * texture(u_texture, v_texCoord).rgb, 1.0);\n"
     "}\n";
 
     GLuint program = glCreateProgram();
@@ -60,10 +66,11 @@ void GlfwRenderer::init()
     m_cameraScale = glGetUniformLocation(program, "u_cameraScale");
     m_cameraOffset = glGetUniformLocation(program, "u_cameraOffset");
     m_color = glGetUniformLocation(program, "u_color");
+    glUniform1i(glGetUniformLocation(program, "u_texture"), 0);
 
     // TODO: import some real mesh loading code
 
-    struct Vertex {float x, y;} vertices[4] =
+    struct {float x, y;} vertices[4] =
     {
         {0.f, 0.f},
         {1.f, 0.f},
@@ -96,6 +103,19 @@ void GlfwRenderer::init()
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
     glBindVertexArray(0);
+
+    // Generate a checkered pattern for missing textures
+    struct {uint8_t b, g, r;} __attribute__((__packed__)) checkered[16];
+    for (int i = 0; i < 16; ++i)
+    {
+        // Alternate coloring evens or odds each row
+        if (i % 2 != (i >> 2) % 2)
+            checkered[i] = {255, 0, 255};
+        else
+            checkered[i] = {0, 0, 0};
+    }
+
+    m_missingTexture = GlfwTexture::createTexture(4, 4, checkered, GL_RGB, GL_BGR, GL_UNSIGNED_BYTE, false);
 }
 
 GLuint GlfwRenderer::loadShader(const char* shaderCode, GLenum shaderType)
@@ -130,6 +150,7 @@ GLuint GlfwRenderer::loadShader(const char* shaderCode, GLenum shaderType)
 
 void GlfwRenderer::preRender()
 {
+    // TODO: if we clear, we should do it once per frame, not per canvas?
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
@@ -182,8 +203,21 @@ void GlfwRenderer::setColor(float red, float green, float blue)
     glUniform3f(m_color, red, green, blue);
 }
 
-void GlfwRenderer::drawSprite()
+
+void GlfwRenderer::drawSprite(const std::string& name)
 {
+    std::shared_ptr<GlfwTexture> texture;
+
+    // Get texture resource
+    IResourcePtr resource = m_resources.getResource(name);
+    texture = std::dynamic_pointer_cast<GlfwTexture>(resource);
+
+    // Bind the texture resource
+    if (texture)
+        texture->bind();
+    else
+        glBindTexture(GL_TEXTURE_2D, m_missingTexture);
+
     // Bind arrays and send draw command
     glBindVertexArray(m_spriteVAO);
     glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_INT, 0);

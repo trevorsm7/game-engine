@@ -1,6 +1,6 @@
 #include "GlfwInstance.h"
 #include "GlfwRenderer.h"
-#include "DebugRenderer.h"
+#include "GlfwTexture.h"
 #include "Event.h"
 
 #include <cmath>
@@ -55,6 +55,9 @@ bool GlfwInstance::init(const char* script)
         return false;
     }
     glfwSetWindowUserPointer(m_window, this);
+
+    // Hook resource loaders into resource manager
+    m_resources.addLoader(GlfwTexture::tgaLoader, "tga");
 
     // NOTE: creating window first, then scene can change size if it wants
     // NOTE: should we be able to call quit() from load?
@@ -113,8 +116,7 @@ bool GlfwInstance::init(const char* script)
     // Force vsync on current context
     glfwSwapInterval(1);
 
-    //m_renderer = IRendererPtr(new DebugRenderer());
-    m_renderer = IRendererPtr(new GlfwRenderer(m_window));
+    m_renderer = IRendererPtr(new GlfwRenderer(m_window, m_resources));
     m_renderer->init();
 
     return true;

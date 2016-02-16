@@ -13,8 +13,8 @@ class BasicCamera : public ICamera
 
 public:
     BasicCamera(float w, float h, bool fixed): m_transform(0.f, 0.f, w, h),
-        m_width(w), m_height(h), m_center{w/2, h/2}, m_fixed() {}
-    virtual ~BasicCamera() {}
+        m_width(w), m_height(h), m_center{w/2, h/2}, m_fixed(fixed) {}
+    ~BasicCamera() override {}
 
     void update(float delta) override {}
     void resize(int width, int height) override;

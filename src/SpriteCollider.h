@@ -11,7 +11,7 @@ class SpriteCollider : public ICollider
 
 public:
     SpriteCollider(Actor* actor): m_actor(actor), m_collidable(true) {}
-    virtual ~SpriteCollider() {}
+    ~SpriteCollider() override {}
 
     void update(float delta) override {}
 
