@@ -19,7 +19,7 @@ public:
     virtual void pushCameraTransform(Transform& transform) = 0;
 
     virtual void setColor(float red, float green, float blue) = 0;
-    virtual void drawSprite(const std::string& name) = 0;
+    virtual void drawSprite(const std::string& name, float l, float b, float w, float h) = 0;
 
     virtual void popModelTransform() = 0;
     virtual void popCameraTransform() = 0;

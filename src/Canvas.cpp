@@ -12,12 +12,7 @@ Canvas::~Canvas()
 
 void Canvas::update(lua_State *L, float delta)
 {
-    // Discard updates for this Canvas if it is paused
-    // NOTE: currently also pauses removal and adding of Actors
-    if (m_paused)
-        return;
-
-    // Order of update dispatch doesn't really matter; choose bottom to top
+    // Always handle actor removal, even if we're paused
     auto tail = m_actors.begin();
     for (auto end = m_actors.end(), it = tail; it != end; ++it)
     {
@@ -32,24 +27,19 @@ void Canvas::update(lua_State *L, float delta)
         if (tail != it)
             *tail = *it;
         ++tail;
-
-        // NOTE: if we do not pause above, pause here to prevent updates
-        //if (!m_paused)
-        (*it)->update(L, delta);
     }
 
     // If any Actors were removed, clear the end of the list
     if (tail != m_actors.end())
         m_actors.erase(tail, m_actors.end());
 
-    // NOTE: if we do not pause above, pause here to prevent adds
-    //if (m_paused)
-    //    return;
+    // Skip the remainder of the update if we are paused
+    if (m_paused)
+        return;
 
-    // TODO: why does this even have an update? follow Actor? need lua_State?
-    m_camera->update(delta);
-
-    // TODO: consider adding a Lua callback to Canvas
+    // Order of update dispatch doesn't really matter; choose bottom to top
+    for (auto& actor : m_actors)
+        actor->update(L, delta);
 
     // Recently added Actors should now be added to the end
     for (auto& actor : m_added)
@@ -61,7 +51,15 @@ void Canvas::update(lua_State *L, float delta)
             continue;
         }
 
-        m_actors.push_back(actor);
+        // Find first actor in canvas with greater layer
+        auto it = m_actors.begin();
+        for (auto end = m_actors.end(); it != end; ++it)
+            if (actor->getLayer() < (*it)->getLayer())
+                break;
+
+        // Insert actor before before one with greater layer (insertion sort)
+        m_actors.insert(it, actor);
+        //m_actors.push_back(actor);
     }
     m_added.clear();
 }

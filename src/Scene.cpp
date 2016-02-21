@@ -5,7 +5,7 @@ void Scene::load(const char *filename)
     // TODO: C objects should be freed before closing Lua state
     // NOTE: might want to prevent Scene from being "loaded" more than once
     if (m_state)
-        lua_close(m_state);
+        return;
 
     m_state = luaL_newstate();
     luaL_openlibs(m_state);

@@ -18,11 +18,12 @@ void GlfwRenderer::init()
     "uniform vec2 u_cameraOffset;\n"
     "uniform vec2 u_modelScale;\n"
     "uniform vec2 u_modelOffset;\n"
+    "uniform vec2 u_textureScale;\n"
+    "uniform vec2 u_textureOffset;\n"
     "layout(location = 0) in vec2 a_vertex;\n"
-    //"layout(location = 1) in vec2 a_texCoord;\n"
     "out vec2 v_texCoord;\n"
     "void main() {\n"
-    "v_texCoord = a_vertex;\n"
+    "v_texCoord = a_vertex * u_textureScale + u_textureOffset;\n"
     "gl_Position = vec4((a_vertex * u_modelScale + u_modelOffset - u_cameraOffset) * 2 / u_cameraScale - vec2(1, 1), 0.0, 1.0);\n"
     "}\n";
 
@@ -65,6 +66,8 @@ void GlfwRenderer::init()
     m_modelOffset = glGetUniformLocation(program, "u_modelOffset");
     m_cameraScale = glGetUniformLocation(program, "u_cameraScale");
     m_cameraOffset = glGetUniformLocation(program, "u_cameraOffset");
+    m_textureScale = glGetUniformLocation(program, "u_textureScale");
+    m_textureOffset = glGetUniformLocation(program, "u_textureOffset");
     m_color = glGetUniformLocation(program, "u_color");
     glUniform1i(glGetUniformLocation(program, "u_texture"), 0);
 
@@ -203,8 +206,7 @@ void GlfwRenderer::setColor(float red, float green, float blue)
     glUniform3f(m_color, red, green, blue);
 }
 
-
-void GlfwRenderer::drawSprite(const std::string& name)
+void GlfwRenderer::drawSprite(const std::string& name, float l, float b, float w, float h)
 {
     std::shared_ptr<GlfwTexture> texture;
 
@@ -217,6 +219,9 @@ void GlfwRenderer::drawSprite(const std::string& name)
         texture->bind();
     else
         glBindTexture(GL_TEXTURE_2D, m_missingTexture);
+
+    glUniform2f(m_textureOffset, l, b);
+    glUniform2f(m_textureScale, w, h);
 
     // Bind arrays and send draw command
     glBindVertexArray(m_spriteVAO);

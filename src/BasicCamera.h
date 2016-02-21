@@ -16,7 +16,6 @@ public:
         m_width(w), m_height(h), m_center{w/2, h/2}, m_fixed(fixed) {}
     ~BasicCamera() override {}
 
-    void update(float delta) override {}
     void resize(int width, int height) override;
 
     void preRender(IRenderer* renderer) override;

@@ -19,6 +19,8 @@ class GlfwRenderer : public IRenderer
     GLint m_modelOffset;
     GLint m_cameraScale;
     GLint m_cameraOffset;
+    GLint m_textureScale;
+    GLint m_textureOffset;
     GLint m_color;
     //std::vector<Matrix4> m_modelStack;
     //std::vector<Matrix4> m_viewStack;
@@ -36,7 +38,7 @@ public:
     void pushCameraTransform(Transform& transform) override;
 
     void setColor(float red, float green, float blue) override;
-    void drawSprite(const std::string& name) override;
+    void drawSprite(const std::string& name, float l, float b, float w, float h) override;
 
     void popModelTransform() override;
     void popCameraTransform() override;

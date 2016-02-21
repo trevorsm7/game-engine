@@ -211,6 +211,8 @@ int Actor::actor_create(lua_State* L)
     {
         int top = lua_gettop(L);
 
+        // TODO: try and refactor this procedure for getting params
+        // TODO: what about looping of given params instead of checking all?
         lua_pushliteral(L, "color");
         if (lua_rawget(L, 1) == LUA_TTABLE)
         {
@@ -224,13 +226,35 @@ int Actor::actor_create(lua_State* L)
             //actor->m_graphics->setColor(r, g, b);
             graphics->setColor(r, g, b);
         }
+        lua_pop(L, 1);
 
         // TODO: if we're using SpriteGraphics, we should require a sprite
+        // or, create the graphics component here...
         lua_pushliteral(L, "sprite");
         if (lua_rawget(L, 1) == LUA_TSTRING)
         {
             graphics->setFilename(lua_tostring(L, -1));
         }
+        lua_pop(L, 1);
+
+        lua_pushliteral(L, "imgRepeat");
+        if (lua_rawget(L, 1) == LUA_TTABLE)
+        {
+            lua_rawgeti(L, -1, 1);
+            lua_rawgeti(L, -2, 2);
+            float x = lua_tonumber(L, -2);
+            float y = lua_tonumber(L, -1);
+            lua_pop(L, 2);
+            graphics->setRepeat(x, y);
+        }
+        lua_pop(L, 1);
+
+        lua_pushliteral(L, "layer");
+        if (lua_rawget(L, 1) == LUA_TNUMBER)
+        {
+            actor->setLayer(lua_tointeger(L, -1));
+        }
+        lua_pop(L, 1);
 
         lua_pushliteral(L, "collider");
         if (lua_rawget(L, 1) == LUA_TBOOLEAN)
@@ -238,6 +262,7 @@ int Actor::actor_create(lua_State* L)
             if (lua_toboolean(L, -1))
                 actor->m_collider = IColliderPtr(new SpriteCollider(actor));
         }
+        lua_pop(L, 1);
 
         lua_settop(L, top);
     }

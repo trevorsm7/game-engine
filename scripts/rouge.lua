@@ -1,5 +1,6 @@
 local white = {1, 1, 1}
 local grey = {0.6, 0.6, 0.6}
+local darkGrey = {0.3, 0.3, 0.3}
 local rouge = {1, 0, 0}
 local green = {0, 1, 0}
 local blue = {0, 0, 1}
@@ -134,12 +135,21 @@ local function newNerd(canvas, x, y)
 end
 
 local function newWall(canvas, x, y, w, h)
-    local wall = Actor.create{sprite="square.tga", collider=true}
+    local wall = Actor.create{sprite="square.tga", imgRepeat={w, h}, collider=true}
     canvas:addActor(wall)
     wall:setPosition(x, y)
     wall:setScale(w, h)
 
     return wall
+end
+
+local function newFloor(canvas, x, y, w, h)
+    local floor = Actor.create{sprite="square.tga", layer=-1, color=darkGrey, imgRepeat={w, h}}
+    canvas:addActor(floor)
+    floor:setPosition(x, y)
+    floor:setScale(w, h)
+
+    return floor
 end
 
 local function newDoor(canvas, x, y)
@@ -182,6 +192,7 @@ registerControl("down", player:keyDown(player.move, {0, -1}))
 registerControl("up", player:keyDown(player.move, {0, 1}))
 registerControl("action", player:keyDown(player.idle))
 
+newFloor(game, 1, 1, 4, 4)
 newWall(game, 0, 0, 6, 1)
 newWall(game, 0, 5, 6, 1)
 newWall(game, 0, 1, 1, 4)

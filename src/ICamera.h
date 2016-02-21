@@ -9,7 +9,6 @@ class ICamera
 public:
     virtual ~ICamera() {}
 
-    virtual void update(float delta) = 0;
     virtual void resize(int width, int height) = 0;
 
     virtual void preRender(IRenderer* renderer) = 0;

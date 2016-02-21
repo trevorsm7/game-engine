@@ -24,17 +24,21 @@ private:
     Transform m_transform;
     IGraphicsPtr m_graphics;
     IColliderPtr m_collider;
+    int m_layer; // TODO: probably want to move this to graphics later
     int m_refCount;
 
 public:
-    Actor(): m_canvas(nullptr), m_refCount(0) {}
+    Actor(): m_canvas(nullptr), m_layer(0), m_refCount(0) {}
     ~Actor() {}
 
     Transform& getTransform() {return m_transform;}
 
+    void setLayer(int layer) {m_layer = layer;}
+    int getLayer() {return m_layer;}
+
     void update(lua_State* L, float delta);
     void render(IRenderer* renderer);
-    bool mouseEvent(lua_State* L, bool down);//MouseEvent& event);
+    bool mouseEvent(lua_State* L, bool down);
 
     bool testMouse(float x, float y);
     bool testCollision(float x, float y);
