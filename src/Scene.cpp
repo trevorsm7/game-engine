@@ -1,11 +1,9 @@
 #include "Scene.h"
 
-void Scene::load(const char *filename)
+bool Scene::load(const char *filename)
 {
-    // TODO: C objects should be freed before closing Lua state
-    // NOTE: might want to prevent Scene from being "loaded" more than once
     if (m_state)
-        return;
+        return false;
 
     m_state = luaL_newstate();
     luaL_openlibs(m_state);
@@ -37,7 +35,12 @@ void Scene::load(const char *filename)
 
     // Execute specified script
     if (luaL_dofile(m_state, filename) != 0)
-        printf("%s\n", lua_tostring(m_state, -1));
+    {
+        fprintf(stderr, "%s\n", lua_tostring(m_state, -1));
+        return false;
+    }
+
+    return true;
 }
 
 void Scene::addCanvas(Canvas *canvas)

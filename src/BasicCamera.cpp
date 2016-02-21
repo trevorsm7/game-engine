@@ -47,13 +47,13 @@ void BasicCamera::setCenter(float x, float y)
     m_transform.setY(y - m_transform.getH() * 0.5f);
 }
 
-float BasicCamera::cameraToWorldX(int x, int l, int r)
+float BasicCamera::cameraToWorldX(int x, int l, int r) const
 {
     float fraction = float(x - l) / float(r - l);
     return fraction * m_transform.getW() + m_transform.getX();
 }
 
-float BasicCamera::cameraToWorldY(int y, int b, int t)
+float BasicCamera::cameraToWorldY(int y, int b, int t) const
 {
     float fraction = float(y - b) / float(t - b);
     return fraction * m_transform.getH() + m_transform.getY();

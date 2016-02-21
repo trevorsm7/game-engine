@@ -4,6 +4,7 @@
 #include "IRenderer.h"
 #include "ResourceManager.h"
 #include "Scene.h"
+#include "GlfwGamepad.h"
 
 #include <map>
 #include <memory>
@@ -20,6 +21,7 @@ class GlfwInstance
     IRendererPtr m_renderer;
     ScenePtr m_scene;
     GLFWwindow* m_window;
+    std::vector<GlfwGamepad> m_gamepads;
     std::map<int, const char*> m_keymap;
 
 public:

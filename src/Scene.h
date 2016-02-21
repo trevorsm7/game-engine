@@ -25,7 +25,7 @@ public:
     Scene(): m_state(nullptr) {}
     ~Scene() {if (m_state) lua_close(m_state);}
 
-    void load(const char *filename);
+    bool load(const char *filename);
     void setQuitCallback(QuitCallback cb) {m_quitCallback = cb;}
     void setRegisterControlCallback(RegisterControlCallback cb) {m_registerControlCallback = cb;}
 

@@ -20,7 +20,6 @@ local function newApple(canvas)
 
     local apple = Actor.create{color=defaultColor, sprite="round.tga", collider=true}
     canvas:addActor(apple)
-    --apple:setColor(defaultColor)
     apple:setPosition(getEmptySpace(canvas))
     apple.food = true
     apple.score = defaultScore
@@ -99,7 +98,6 @@ local function newSnake(canvas, name, pos, dir, color)
     end
 
     -- put most of the snake logic in the update function
-    -- NOTE: takes the canvas reference as a closure
     function snake:update(delta)
         local canvas = self:getCanvas()
         if not canvas then return end
@@ -130,7 +128,6 @@ local function newSnake(canvas, name, pos, dir, color)
             if hit.food then
                 snake.length = snake.length + hit.score
                 hit:eaten()
-            --elseif hit ~= self.tail then
             else
                 self:die()
                 return
@@ -165,7 +162,7 @@ end
 local function resetGame(game)
     game:clear()
 
-    god = Actor.create{}
+    god = Actor.create{layer=-1}
     game:addActor(god)
     god:setVisible(false)
     god:setScale(20, 15)
@@ -203,6 +200,7 @@ math.randomseed(os.time())
 local game = Canvas.create({20, 15}, true)
 resetGame(game)
 
+-- create game menu
 local menu = Canvas.create({20, 15}, true)
 menu:setCenter(0, 0)
 menu:setVisible(false)
@@ -249,11 +247,3 @@ registerControl("quit", function (down)
         game:setPaused(true)
     end
 end)
-
---[[
-registerControl("action", function (down)
-    if down then
-        resetGame(game)
-    end
-end)
---]]

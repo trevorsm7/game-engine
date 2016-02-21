@@ -31,7 +31,7 @@ public:
         renderer->drawSprite(m_filename, 0.f, 0.f, m_repeat.x, m_repeat.y);
     }
 
-    bool testBounds(float x, float y) override
+    bool testBounds(float x, float y) const override
     {
         // TODO: shouldn't be able to click invisible sprite...
         // but we should make an IGraphics impl for invisible triggers
@@ -48,7 +48,7 @@ public:
 
     void setColor(float r, float g, float b) override {m_color = {r, g, b};}
     void setVisible(bool visible) override {m_visible = visible;}
-    bool isVisible() override {return m_visible;}
+    bool isVisible() const override {return m_visible;}
 };
 
 #endif

@@ -32,16 +32,17 @@ public:
     ~Actor() {}
 
     Transform& getTransform() {return m_transform;}
+    IGraphicsPtr& getGraphics() {return m_graphics;}
 
     void setLayer(int layer) {m_layer = layer;}
-    int getLayer() {return m_layer;}
+    int getLayer() const {return m_layer;}
 
     void update(lua_State* L, float delta);
     void render(IRenderer* renderer);
     bool mouseEvent(lua_State* L, bool down);
 
-    bool testMouse(float x, float y);
-    bool testCollision(float x, float y);
+    bool testMouse(float x, float y) const;
+    bool testCollision(float x, float y) const;
 
     void refAdded(lua_State* L, int index);
     void refRemoved(lua_State* L);
@@ -50,7 +51,6 @@ private:
     bool pcall(lua_State* L, const char* method, int in, int out);
 
 public:
-    // TODO: may want to move scripting stuff to another file/class
     static int actor_init(lua_State* L);
     static constexpr const char* const METATABLE = "Actor";
 

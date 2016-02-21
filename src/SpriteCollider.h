@@ -15,17 +15,24 @@ public:
 
     void update(float delta) override {}
 
-    bool testCollision(float x, float y) override
+    bool testCollision(float x, float y) const override
     {
         if (!m_collidable)
             return false;
 
-        Transform& transform = m_actor->getTransform();
+        if (!m_actor)
+            return false;
+        /*Transform& transform = m_actor->getTransform();
         float left = transform.getX();
         float bottom = transform.getY();
         float right = left + transform.getW();
         float top = bottom + transform.getH();
-        return (x >= left && x < right && y >= bottom && y < top);
+        return (x >= left && x < right && y >= bottom && y < top);*/
+        auto& graphics = m_actor->getGraphics();
+        if (graphics)
+            return graphics->testBounds(x, y);
+
+        return false;
     }
 
     void setCollidable(bool collidable) override {m_collidable = collidable;}

@@ -25,7 +25,7 @@ set(ALL_LIBS ${COCOA} ${IOKIT} ${CORE_VIDEO} ${OPENGL} ${GLFW} ${LUA})
 #file(COPY ${COPY_FILES} DESTINATION ${BUILD_DIR})
 
 # Create build rules (use flag -g for debug)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${BUILD_DIR})
 include_directories(${SOURCE_DIR} ${LIBRARY_DIR})
 add_executable(${TARGET_NAME} ${SOURCE_FILES})

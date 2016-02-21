@@ -16,8 +16,8 @@ public:
 
     virtual void setCenter(float x, float y) = 0;
 
-    virtual float cameraToWorldX(int x, int l, int r) = 0;
-    virtual float cameraToWorldY(int y, int b, int t) = 0;
+    virtual float cameraToWorldX(int x, int l, int r) const = 0;
+    virtual float cameraToWorldY(int y, int b, int t) const = 0;
 };
 
 #endif

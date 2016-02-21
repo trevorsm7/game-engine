@@ -10,7 +10,7 @@ local yellow = {1, 1, 0}
 local gameTime = 0
 
 local function newPlayer(canvas, x, y)
-    local player = Actor.create{color=rouge, sprite="square.tga", collider=true}
+    local player = Actor.create{sprite="hero.tga", collider=true}
     canvas:addActor(player)
     player:setPosition(x, y)
     canvas:setCenter(x + 0.5, y + 0.5)
@@ -68,7 +68,7 @@ local function newPlayer(canvas, x, y)
 end
 
 local function newNerd(canvas, x, y)
-    local nerd = Actor.create{color=yellow, sprite="square.tga", collider=true}
+    local nerd = Actor.create{sprite="nerd.tga", collider=true}
     canvas:addActor(nerd)
     nerd:setPosition(x, y)
     nerd.enemy = true

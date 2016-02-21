@@ -39,7 +39,7 @@ bool Actor::mouseEvent(lua_State* L, bool down)//MouseEvent& event)
     return handled;
 }
 
-bool Actor::testMouse(float x, float y)
+bool Actor::testMouse(float x, float y) const
 {
     if (!m_graphics)
         return false;
@@ -47,7 +47,7 @@ bool Actor::testMouse(float x, float y)
     return m_graphics->testBounds(x, y);
 }
 
-bool Actor::testCollision(float x, float y)
+bool Actor::testCollision(float x, float y) const
 {
     // NOTE: should invisible actors still be collidable? maybe
     if (!m_collider)

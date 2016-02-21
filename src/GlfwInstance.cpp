@@ -57,12 +57,10 @@ bool GlfwInstance::init(const char* script)
     glfwSetWindowUserPointer(m_window, this);
 
     // Hook resource loaders into resource manager
+    // TODO: may want to have consumers call the desired loader directly instead
     m_resources.addLoader(GlfwTexture::tgaLoader, "tga");
 
     // NOTE: creating window first, then scene can change size if it wants
-    // NOTE: should we be able to call quit() from load?
-    // NOTE: should quit bail immediately?
-    // ...current implementation doesn't take effect until end of game loop
     m_scene = ScenePtr(new Scene());
     m_scene->setQuitCallback([&]{glfwSetWindowShouldClose(m_window, GL_TRUE);});
     m_scene->setRegisterControlCallback([&](const char* action)->bool
@@ -94,7 +92,8 @@ bool GlfwInstance::init(const char* script)
 
         return false;
     });
-    m_scene->load(script);
+    if (!m_scene->load(script))
+        return false;
 
     // Send an initial resize notification to scene
     int width, height;
@@ -109,13 +108,29 @@ bool GlfwInstance::init(const char* script)
     glfwSetWindowSizeCallback(m_window, callback_window);
     //glfwSetFramebufferSizeCallback(m_window, resizeCallback);
 
-    // NOTE: should context handling move into GlfwRenderer?
-    // NOTE: this must be called before glfwSwapInterval
-    glfwMakeContextCurrent(m_window);
+    // Set up gamepads
+    //for (int i = GLFW_JOYSTICK_1; i <= GLFW_JOYSTICK_LAST; ++i)
+    //    m_gamepads.emplace_back(i);
+    m_gamepads.emplace_back(GLFW_JOYSTICK_1);
+    m_gamepads.emplace_back(GLFW_JOYSTICK_2);
+
+    // Assign some default button mappings (for PS4 controller)
+    GlfwGamepad& gamepad = m_gamepads[0];
+    gamepad.registerControl(1, "action");
+    gamepad.registerControl(14, "up");//"w");
+    gamepad.registerControl(15, "right");//"d");
+    gamepad.registerControl(16, "down");//"s");
+    gamepad.registerControl(17, "left");//"a");
+    //gamepad.registerControl(3, "up");
+    //gamepad.registerControl(2, "right");
+    //gamepad.registerControl(1, "down");
+    //gamepad.registerControl(0, "left");
 
     // Force vsync on current context
+    glfwMakeContextCurrent(m_window);
     glfwSwapInterval(1);
 
+    // Lastly, initialize Renderer
     m_renderer = IRendererPtr(new GlfwRenderer(m_window, m_resources));
     m_renderer->init();
 
@@ -127,52 +142,9 @@ bool GlfwInstance::update(double elapsedTime)
     // Try to process events first
     glfwPollEvents();
 
-    // NOTE: joystick functions not affected by glfwPollEvents
-    static int wasPresent = 0;
-    int present = glfwJoystickPresent(GLFW_JOYSTICK_1);
-    if (present != wasPresent)
-    {
-        const char* name = glfwGetJoystickName(GLFW_JOYSTICK_1);
-        printf("%s: %sconnected\n", name, present ? "" : "dis");
-        wasPresent = present;
-    }
-
-    if (present)
-    {
-        int nAxes, nButtons;
-        const float* axes = glfwGetJoystickAxes(GLFW_JOYSTICK_1, &nAxes);
-        const unsigned char* buttons = glfwGetJoystickButtons(GLFW_JOYSTICK_1, &nButtons);
-        static char up = 0, right = 0, down = 0, left = 0, space = 0;
-        if (buttons[14] != up)
-        {
-            callback_key(m_window, GLFW_KEY_UP, 0, buttons[14] ? GLFW_PRESS : GLFW_RELEASE, 0);
-            //callback_key(m_window, GLFW_KEY_W, 0, buttons[14] ? GLFW_PRESS : GLFW_RELEASE, 0);
-            up = buttons[14];
-        }
-        if (buttons[15] != right)
-        {
-            callback_key(m_window, GLFW_KEY_RIGHT, 0, buttons[15] ? GLFW_PRESS : GLFW_RELEASE, 0);
-            //callback_key(m_window, GLFW_KEY_D, 0, buttons[15] ? GLFW_PRESS : GLFW_RELEASE, 0);
-            right = buttons[15];
-        }
-        if (buttons[16] != down)
-        {
-            callback_key(m_window, GLFW_KEY_DOWN, 0, buttons[16] ? GLFW_PRESS : GLFW_RELEASE, 0);
-            //callback_key(m_window, GLFW_KEY_S, 0, buttons[16] ? GLFW_PRESS : GLFW_RELEASE, 0);
-            down = buttons[16];
-        }
-        if (buttons[17] != left)
-        {
-            callback_key(m_window, GLFW_KEY_LEFT, 0, buttons[17] ? GLFW_PRESS : GLFW_RELEASE, 0);
-            //callback_key(m_window, GLFW_KEY_A, 0, buttons[17] ? GLFW_PRESS : GLFW_RELEASE, 0);
-            left = buttons[17];
-        }
-        if (buttons[1] != space)
-        {
-            callback_key(m_window, GLFW_KEY_SPACE, 0, buttons[1] ? GLFW_PRESS : GLFW_RELEASE, 0);
-            space = buttons[1];
-        }
-    }
+    // Process gamepads (not handled by glfwPollEvents)
+    for (auto& gamepad : m_gamepads)
+        gamepad.update(m_scene.get());
 
     // Send elapsed time down to game objects
     m_scene->update(elapsedTime);
