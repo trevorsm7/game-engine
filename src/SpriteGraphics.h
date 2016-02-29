@@ -10,15 +10,13 @@ class SpriteGraphics : public IGraphics
     Actor* m_actor;
     std::string m_filename;
     struct {float r, g, b;} m_color;
-    struct {float x, y;} m_repeat;
     bool m_visible;
 
 public:
-    SpriteGraphics(Actor* actor): m_actor(actor), m_color{1.f, 1.f, 1.f}, m_repeat{1.f, 1.f}, m_visible(true) {}
+    SpriteGraphics(Actor* actor): m_actor(actor), m_color{1.f, 1.f, 1.f}, m_visible(true) {}
     ~SpriteGraphics() override {}
 
     void setFilename(const char* filename) {m_filename = filename;}
-    void setRepeat(float x, float y) {m_repeat = {x, y};}
 
     void update(float delta) override {}
 
@@ -28,7 +26,7 @@ public:
             return;
 
         renderer->setColor(m_color.r, m_color.g, m_color.b);
-        renderer->drawSprite(m_filename, 0.f, 0.f, m_repeat.x, m_repeat.y);
+        renderer->drawSprite(m_filename);
     }
 
     bool testBounds(float x, float y) const override

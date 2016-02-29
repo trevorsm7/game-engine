@@ -1,7 +1,6 @@
 Required libs:
 (can be installed locally in /lib)
-lua (lua.h lua.hpp lauxlib.h lualib.h luaconf.h)
-GLFW3 (GLFW/glfw3.h GLFW/glfw3native.h)
+lua, GLFW3, SDL2
 
 Command line build:
 mkdir build
@@ -10,5 +9,6 @@ cmake ..
 make
 
 Launch args:
-engine [script]
-[script] defaults to "snake.lua"
+engine [-sdl] [script]
+-sdl: Use SDL as window manager. Defaults to GLFW.
+script: Defaults to "snake.lua".

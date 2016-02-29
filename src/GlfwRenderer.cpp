@@ -3,7 +3,7 @@
 
 #include <iostream>
 
-void GlfwRenderer::init()
+bool GlfwRenderer::init()
 {
     //glDisable(GL_CULL_FACE);
     //glCullFace(GL_BACK);
@@ -58,6 +58,7 @@ void GlfwRenderer::init()
 
         // Exit with failure
         glDeleteProgram(program);
+        return false;
     }
 
     glUseProgram(program);
@@ -107,18 +108,7 @@ void GlfwRenderer::init()
 
     glBindVertexArray(0);
 
-    // Generate a checkered pattern for missing textures
-    struct {uint8_t b, g, r;} __attribute__((__packed__)) checkered[16];
-    for (int i = 0; i < 16; ++i)
-    {
-        // Alternate coloring evens or odds each row
-        if (i % 2 != (i >> 2) % 2)
-            checkered[i] = {255, 0, 255};
-        else
-            checkered[i] = {0, 0, 0};
-    }
-
-    m_missingTexture = GlfwTexture::createTexture(4, 4, checkered, GL_RGB, GL_BGR, GL_UNSIGNED_BYTE, false);
+    return true;
 }
 
 GLuint GlfwRenderer::loadShader(const char* shaderCode, GLenum shaderType)
@@ -153,7 +143,9 @@ GLuint GlfwRenderer::loadShader(const char* shaderCode, GLenum shaderType)
 
 void GlfwRenderer::preRender()
 {
-    // TODO: if we clear, we should do it once per frame, not per canvas?
+    int width, height;
+    glfwGetFramebufferSize(m_window, &width, &height);
+    glViewport(0, 0, width, height);
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
@@ -166,6 +158,7 @@ void GlfwRenderer::postRender()
 void GlfwRenderer::setViewport(int left, int bottom, int right, int top)
 {
     // TODO: probably want to save value in addition to just setting it;
+    // TODO: we also should probably return early if we know the viewport won't be changed
     // viewport can be changed, for example, if doing a shadow mapping pass
 
     int windowWidth, windowHeight;
@@ -206,22 +199,17 @@ void GlfwRenderer::setColor(float red, float green, float blue)
     glUniform3f(m_color, red, green, blue);
 }
 
-void GlfwRenderer::drawSprite(const std::string& name, float l, float b, float w, float h)
+void GlfwRenderer::drawSprite(const std::string& name)
 {
-    std::shared_ptr<GlfwTexture> texture;
-
     // Get texture resource
-    IResourcePtr resource = m_resources.getResource(name);
-    texture = std::dynamic_pointer_cast<GlfwTexture>(resource);
+    GlfwTexturePtr texture = GlfwTexture::loadTexture(m_resources, name);
+    if (!texture)
+        return; // TODO: we should at least have a placeholder instead of null; assert here?
 
     // Bind the texture resource
-    if (texture)
-        texture->bind();
-    else
-        glBindTexture(GL_TEXTURE_2D, m_missingTexture);
-
-    glUniform2f(m_textureOffset, l, b);
-    glUniform2f(m_textureScale, w, h);
+    texture->bind();
+    glUniform2f(m_textureOffset, 0.f, 0.f);
+    glUniform2f(m_textureScale, 1.f, 1.f);
 
     // Bind arrays and send draw command
     glBindVertexArray(m_spriteVAO);

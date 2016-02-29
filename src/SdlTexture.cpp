@@ -1,14 +1,18 @@
-#include "GlfwTexture.h"
+#include "SdlTexture.h"
 
-#include <fstream>
-#include <cstdio>
+SdlTexture::~SdlTexture()
+{
+    if (m_texture)
+        SDL_DestroyTexture(m_texture);
+}
 
-GlfwTexturePtr GlfwTexture::loadTexture(ResourceManager& manager, std::string filename)
+// TODO: this is essentially identical to the coresponding function in GlfwTexture; refactor!
+SdlTexturePtr SdlTexture::loadTexture(ResourceManager& manager, SDL_Renderer* renderer, std::string filename)
 {
     // Return the resource if it is cached
     // TODO: should we check for special case where resource is loaded, but not as a GlfwTexture?
     IResourcePtr resource = manager.getResource(filename);
-    GlfwTexturePtr texture = std::dynamic_pointer_cast<GlfwTexture>(resource);
+    SdlTexturePtr texture = std::dynamic_pointer_cast<SdlTexture>(resource);
     if (texture)
         return texture;
 
@@ -21,14 +25,14 @@ GlfwTexturePtr GlfwTexture::loadTexture(ResourceManager& manager, std::string fi
     // Load the raw file data into memory
     std::vector<char> data;
     if (!manager.loadRawData(filename, data))
-        return getPlaceholder();
+        return getPlaceholder(renderer);
 
     // Pass the raw data to the loader
-    texture = loadTGA(data);
+    texture = loadTGA(renderer, data);
     if (!texture)
     {
         fprintf(stderr, "Malformed data in file \"%s\"\n", filename.c_str());
-        return getPlaceholder();
+        return getPlaceholder(renderer);
     }
 
     // Cache the resource and return it
@@ -36,30 +40,20 @@ GlfwTexturePtr GlfwTexture::loadTexture(ResourceManager& manager, std::string fi
     return texture;
 }
 
-GLuint GlfwTexture::createTexture(GLsizei width, GLsizei height, const GLvoid* data, GLenum channels, GLenum order, GLenum format, bool useMipmap)
+SDL_Texture* SdlTexture::createTexture(SDL_Renderer* renderer, int width, int height, const void* data, int pitch, uint32_t format)
 {
-    GLuint texture;
-
-    // Buffer image data
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, channels, width, height, 0, order, format, data);
-
-    // Set wrapping parameters
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-    // Set filtering parameters
-    if (useMipmap)
+    SDL_Texture* texture = SDL_CreateTexture(renderer, format, SDL_TEXTUREACCESS_STATIC, width, height);
+    if (!texture)
     {
-        glGenerateMipmap(GL_TEXTURE_2D);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        fprintf(stderr, "Failed create texture: %s\n", SDL_GetError());
+        return nullptr;
     }
-    else
+
+    if (SDL_UpdateTexture(texture, nullptr, data, pitch))
     {
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        fprintf(stderr, "Failed update texture: %s\n", SDL_GetError());
+        SDL_DestroyTexture(texture);
+        return nullptr;
     }
 
     return texture;
@@ -110,9 +104,10 @@ typedef uint8_t TGAData8;
 }
 __attribute__((__packed__));*/
 
-GlfwTexturePtr GlfwTexture::loadTGA(std::vector<char>& data)
+// TODO: this is also very similar to the same function in GlfwTexture; refactor?
+SdlTexturePtr SdlTexture::loadTGA(SDL_Renderer* renderer, std::vector<char>& data)
 {
-    GlfwTexturePtr ptr;
+    SdlTexturePtr ptr;
 
     // Fail if file is smaller than header size
     if (data.size() < sizeof(TGAHeader))
@@ -123,37 +118,30 @@ GlfwTexturePtr GlfwTexture::loadTGA(std::vector<char>& data)
 
     // Parse TGA header
     TGAHeader* header = reinterpret_cast<TGAHeader*>(data.data());
-    GLsizei width = header->imageSpec.imageWidth;
-    GLsizei height = header->imageSpec.imageHeight;
-    GLsizei size = width * height;
+    int width = header->imageSpec.imageWidth;
+    int height = header->imageSpec.imageHeight;
 
     // Validate binary format
-    GLenum channels, order, format;
-    if (header->imageSpec.pixelDepth == 8 && header->imageType == 3)
+    int bytesPerPixel;
+    uint32_t format;
+    if (header->imageSpec.pixelDepth == 16 && header->imageType == 2)
     {
-        channels = GL_RED;
-        order = GL_RED;
-        format = GL_UNSIGNED_BYTE;
-    }
-    else if (header->imageSpec.pixelDepth == 16 && header->imageType == 2)
-    {
-        size *= 2; // 2 bytes per pixel
-        channels = GL_RGB;
-        order = GL_BGRA;
-        format = GL_UNSIGNED_SHORT_1_5_5_5_REV;
+        bytesPerPixel = 2;
+        format = SDL_PIXELFORMAT_BGRA5551;
     }
     else if (header->imageSpec.pixelDepth == 24 && header->imageType == 2)
     {
-        size *= 3; // 3 bytes per pixel
-        channels = GL_RGB;
-        order = GL_BGR;
-        format = GL_UNSIGNED_BYTE;
+        bytesPerPixel = 3;
+        format = SDL_PIXELFORMAT_BGR24;
     }
     else
     {
         fprintf(stderr, "Unsupported TGA format\n");
         return ptr;
     }
+
+    int pitch = width * bytesPerPixel;
+    int size = height * pitch;
 
     // Fail if file is smaller than data size
     if (data.size() < sizeof(TGAHeader) + size)
@@ -162,34 +150,49 @@ GlfwTexturePtr GlfwTexture::loadTGA(std::vector<char>& data)
         return ptr;
     }
 
-    // Create an OpenGL texture with the data and return GlfwTexture ptr
-    // NOTE: we probably don't want to use mipmapping with sprites?
-    GLuint texture = createTexture(width, height, &data[sizeof(TGAHeader)], channels, order, format, false);
-    ptr = GlfwTexturePtr(new GlfwTexture(texture));
+    char* pixels = &data[sizeof(TGAHeader)];
+
+    // Swap rows between top and bottom to invert row order
+    auto temp = std::unique_ptr<char[]>(new char [pitch]);
+    for (int i = 0; i < height / 2; ++i)
+    {
+        char* low = &pixels[pitch * i];
+        char* high = &pixels[pitch * (height - i - 1)];
+        memcpy(temp.get(), low, pitch);
+        memcpy(low, high, pitch);
+        memcpy(high, temp.get(), pitch);
+    }
+
+    // Create an SDL texture with the data and return
+    SDL_Texture* texture = createTexture(renderer, width, height, pixels, pitch, format);
+    ptr = SdlTexturePtr(new SdlTexture(texture));
     return ptr;
 }
 
-GlfwTexturePtr GlfwTexture::m_placeholder;
+SdlTexturePtr SdlTexture::m_placeholder;
 
-GlfwTexturePtr GlfwTexture::getPlaceholder()
+SdlTexturePtr SdlTexture::getPlaceholder(SDL_Renderer* renderer)
 {
     // TODO: need to block here if we want to support multi-threaded access
     if (m_placeholder)
         return m_placeholder;
 
     // Generate a checkered pattern for missing textures
-    struct {uint8_t b, g, r;} __attribute__((__packed__)) checkered[16];
-    for (int i = 0; i < 16; ++i)
+    const int width = 4, height = 4, size = width * height;
+    struct {uint8_t b, g, r;} __attribute__((__packed__)) checkered[size];
+    for (int i = 0; i < size; ++i)
     {
         // Alternate coloring evens or odds each row
-        if (i % 2 != (i >> 2) % 2)
+        if (i % 2 != (i / width) % 2)
             checkered[i] = {255, 255, 255};
         else
             checkered[i] = {0, 0, 0};
     }
 
     // Create a texture with the data and return it
-    GLuint texture = createTexture(4, 4, checkered, GL_RGB, GL_BGR, GL_UNSIGNED_BYTE, false);
-    m_placeholder = GlfwTexturePtr(new GlfwTexture(texture));
+    const int pitch = width * 3;
+    const uint32_t format = SDL_PIXELFORMAT_BGR24;
+    SDL_Texture* texture = createTexture(renderer, width, height, checkered, pitch, format);
+    m_placeholder = SdlTexturePtr(new SdlTexture(texture));
     return m_placeholder;
 }

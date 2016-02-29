@@ -16,9 +16,10 @@ find_library(COCOA Cocoa)
 find_library(IOKIT IOKit)
 find_library(CORE_VIDEO CoreVideo)
 find_library(OPENGL OpenGL)
+find_library(SDL SDL2)
 find_library(GLFW glfw3 PATHS ${LIBRARY_DIR})
 find_library(LUA lua PATHS ${LIBRARY_DIR})
-set(ALL_LIBS ${COCOA} ${IOKIT} ${CORE_VIDEO} ${OPENGL} ${GLFW} ${LUA})
+set(ALL_LIBS ${COCOA} ${IOKIT} ${CORE_VIDEO} ${OPENGL} ${SDL} ${GLFW} ${LUA})
 
 # Copy assets to build folder
 #file(GLOB COPY_FILES ${ASSETS_DIR}/*.lua)

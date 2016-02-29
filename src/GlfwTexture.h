@@ -2,9 +2,13 @@
 #define __GLFWTEXTURE_H__
 
 #include "IResource.h"
+#include "ResourceManager.h"
 
 #define GLFW_INCLUDE_GLCOREARB
 #include "GLFW/glfw3.h"
+
+class GlfwTexture;
+typedef std::shared_ptr<GlfwTexture> GlfwTexturePtr;
 
 class GlfwTexture : public IResource
 {
@@ -20,9 +24,17 @@ public:
 
     void bind() {glBindTexture(GL_TEXTURE_2D, m_texture);}
 
-    // TODO: consider reworking createTexture as an IResourcePtr loader
+    static GlfwTexturePtr loadTexture(ResourceManager& manager, std::string filename);
+
+// TODO: check access rights on these functions
+protected:
     static GLuint createTexture(GLsizei width, GLsizei height, const GLvoid* data, GLenum channels, GLenum order, GLenum format, bool useMipmap);
-    static IResourcePtr tgaLoader(std::string filename);
+
+private:
+    static GlfwTexturePtr loadTGA(std::vector<char>& data);
+
+    static GlfwTexturePtr getPlaceholder();
+    static GlfwTexturePtr m_placeholder;
 };
 
 #endif

@@ -237,18 +237,6 @@ int Actor::actor_create(lua_State* L)
         }
         lua_pop(L, 1);
 
-        lua_pushliteral(L, "imgRepeat");
-        if (lua_rawget(L, 1) == LUA_TTABLE)
-        {
-            lua_rawgeti(L, -1, 1);
-            lua_rawgeti(L, -2, 2);
-            float x = lua_tonumber(L, -2);
-            float y = lua_tonumber(L, -1);
-            lua_pop(L, 2);
-            graphics->setRepeat(x, y);
-        }
-        lua_pop(L, 1);
-
         lua_pushliteral(L, "layer");
         if (lua_rawget(L, 1) == LUA_TNUMBER)
         {

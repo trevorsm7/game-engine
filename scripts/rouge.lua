@@ -135,7 +135,7 @@ local function newNerd(canvas, x, y)
 end
 
 local function newWall(canvas, x, y, w, h)
-    local wall = Actor.create{sprite="square.tga", imgRepeat={w, h}, collider=true}
+    local wall = Actor.create{sprite="square.tga", collider=true}
     canvas:addActor(wall)
     wall:setPosition(x, y)
     wall:setScale(w, h)
@@ -144,7 +144,7 @@ local function newWall(canvas, x, y, w, h)
 end
 
 local function newFloor(canvas, x, y, w, h)
-    local floor = Actor.create{sprite="square.tga", layer=-1, color=darkGrey, imgRepeat={w, h}}
+    local floor = Actor.create{sprite="square.tga", layer=-1, color=darkGrey}
     canvas:addActor(floor)
     floor:setPosition(x, y)
     floor:setScale(w, h)

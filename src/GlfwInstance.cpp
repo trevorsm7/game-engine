@@ -56,10 +56,6 @@ bool GlfwInstance::init(const char* script)
     }
     glfwSetWindowUserPointer(m_window, this);
 
-    // Hook resource loaders into resource manager
-    // TODO: may want to have consumers call the desired loader directly instead
-    m_resources.addLoader(GlfwTexture::tgaLoader, "tga");
-
     // NOTE: creating window first, then scene can change size if it wants
     m_scene = ScenePtr(new Scene());
     m_scene->setQuitCallback([&]{glfwSetWindowShouldClose(m_window, GL_TRUE);});
@@ -132,7 +128,8 @@ bool GlfwInstance::init(const char* script)
 
     // Lastly, initialize Renderer
     m_renderer = IRendererPtr(new GlfwRenderer(m_window, m_resources));
-    m_renderer->init();
+    if (!m_renderer->init())
+        return false;
 
     return true;
 }
@@ -217,12 +214,8 @@ void GlfwInstance::callback_mouse_button(GLFWwindow* window, int button, int act
             event.w = width;
             event.h = height;
             event.down = (action == GLFW_PRESS);
-            //printf("mouse %s at (%d, %d)\n", event.down ? "down" : "up", event.x, event.y);
 
             instance->m_scene->mouseEvent(event);
-            // NOTE: do we want a return value for this?
-            //if (instance->m_scene->keyEvent(event))
-            //    return;
         }
     }
 }

@@ -14,7 +14,6 @@ class GlfwRenderer : public IRenderer
     GLFWwindow* m_window;
     ResourceManager& m_resources;
     GLuint m_spriteVAO;
-    GLuint m_missingTexture;
     GLint m_modelScale;
     GLint m_modelOffset;
     GLint m_cameraScale;
@@ -27,9 +26,9 @@ class GlfwRenderer : public IRenderer
 
 public:
     GlfwRenderer(GLFWwindow* window, ResourceManager& resources): m_window(window), m_resources(resources) {}
-    ~GlfwRenderer() override {glDeleteTextures(1, &m_missingTexture);} // TODO: cleanup other stuff
+    ~GlfwRenderer() override {} // TODO: cleanup buffers
 
-    void init() override;
+    bool init() override;
     void preRender() override;
     void postRender() override;
 
@@ -38,7 +37,7 @@ public:
     void pushCameraTransform(Transform& transform) override;
 
     void setColor(float red, float green, float blue) override;
-    void drawSprite(const std::string& name, float l, float b, float w, float h) override;
+    void drawSprite(const std::string& name) override;
 
     void popModelTransform() override;
     void popCameraTransform() override;
