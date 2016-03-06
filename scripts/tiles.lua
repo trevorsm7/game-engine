@@ -1,4 +1,4 @@
-game = Canvas.create({20, 20}, false, {0, 0, 0, 0})
+game = Canvas.create({20, 20}, false)
 
 tiles = Actor.create{tiles="tiles.tga"}
 game:addActor(tiles)

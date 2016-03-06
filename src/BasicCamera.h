@@ -23,8 +23,7 @@ public:
 
     void setCenter(float x, float y) override;
 
-    float cameraToWorldX(int x, int l, int r) const override;
-    float cameraToWorldY(int y, int b, int t) const override;
+    void mouseToWorld(const MouseEvent& event, float& x, float& y) const override;
 };
 
 #endif

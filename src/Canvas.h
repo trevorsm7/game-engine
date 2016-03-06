@@ -21,11 +21,10 @@ class Canvas
     std::vector<Actor*> m_added;
     ICameraPtr m_camera;
     Scene* m_scene;
-    struct {int l, b, r, t;} m_bounds;
     bool m_paused, m_visible;
 
 public:
-    Canvas(): m_scene(nullptr), m_bounds{0, 0, 0, 0}, m_paused(false), m_visible(true) {}
+    Canvas(): m_scene(nullptr), m_paused(false), m_visible(true) {}
     ~Canvas();
 
     void update(lua_State* L, float delta);

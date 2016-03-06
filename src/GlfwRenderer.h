@@ -32,7 +32,6 @@ public:
     void preRender() override;
     void postRender() override;
 
-    void setViewport(int left, int bottom, int right, int top) override;
     void pushModelTransform(Transform& transform) override;
     void pushCameraTransform(Transform& transform) override;
 

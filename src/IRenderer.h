@@ -29,7 +29,6 @@ public:
     virtual void preRender() = 0;
     virtual void postRender() = 0;
 
-    virtual void setViewport(int left, int bottom, int right, int top) = 0;
     virtual void pushModelTransform(Transform& transform) = 0;
     virtual void pushCameraTransform(Transform& transform) = 0;
 

@@ -182,7 +182,7 @@ end
 -- set a fresh random seed when we start up
 math.randomseed(os.time())
 
-game = Canvas.create({20, 20}, false, {0, 0, 0, 0})
+game = Canvas.create({20, 20}, false)
 --game:setVisible(false) -- hack to hide flicker in first frame
 
 player = newPlayer(game, 1, 1)

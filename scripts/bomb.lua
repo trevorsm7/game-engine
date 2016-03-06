@@ -251,7 +251,7 @@ end
 -- set a fresh random seed when we start up
 math.randomseed(os.time())
 
-local game = Canvas.create({20, 15}, true, {0, 0, 0, 0})
+local game = Canvas.create({20, 15}, true)
 
 local player = newPlayer(game, 1, 1)
 registerControl("left", player:moveFactory{-1, 0})

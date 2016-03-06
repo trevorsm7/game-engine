@@ -155,33 +155,6 @@ void GlfwRenderer::postRender()
     glfwSwapBuffers(m_window);
 }
 
-void GlfwRenderer::setViewport(int left, int bottom, int right, int top)
-{
-    // TODO: probably want to save value in addition to just setting it;
-    // TODO: we also should probably return early if we know the viewport won't be changed
-    // viewport can be changed, for example, if doing a shadow mapping pass
-
-    int windowWidth, windowHeight;
-    glfwGetWindowSize(m_window, &windowWidth, &windowHeight);
-
-    //left = (left < 0) ? (windowWidth + left) : left;
-    if (left < 0)
-        left = windowWidth + left;
-    if (bottom < 0)
-        bottom = windowHeight + bottom;
-    if (right <= 0)
-        right = windowWidth + right;
-    if (top <= 0)
-        top = windowHeight + top;
-
-    // NOTE: on high DPI displays, GLFW uses a larger framebuffer
-    // TODO: should be more robust than just scaling on int fraction of width?
-    int frameWidth;
-    glfwGetFramebufferSize(m_window, &frameWidth, nullptr);
-    int scale = frameWidth / windowWidth;
-    glViewport(left * scale, bottom * scale, (right - left) * scale, (top - bottom) * scale);
-}
-
 void GlfwRenderer::pushModelTransform(Transform& transform)
 {
     glUniform2f(m_modelOffset, transform.getX(), transform.getY());

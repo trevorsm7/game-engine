@@ -70,7 +70,6 @@ void Canvas::render(IRenderer *renderer)
     if (!m_visible)
         return;
 
-    renderer->setViewport(m_bounds.l, m_bounds.b, m_bounds.r, m_bounds.t);
     m_camera->preRender(renderer);
 
     // TODO: add alternate structure to iterate in sorted order/down quadtree
@@ -94,18 +93,10 @@ bool Canvas::mouseEvent(lua_State *L, MouseEvent& event)
     if (!m_visible || m_paused)
         return false;
 
-    // Compute canvas bounds and reject if click is outside canvas
-    int left = m_bounds.l < 0 ? event.w + m_bounds.l : m_bounds.l;
-    int bottom = m_bounds.b < 0 ? event.h + m_bounds.b : m_bounds.b;
-    int right = m_bounds.r <= 0 ? event.w + m_bounds.r : m_bounds.r;
-    int top = m_bounds.t <= 0 ? event.h + m_bounds.t : m_bounds.t;
-    if (event.x < left || event.x >= right || event.y < bottom || event.y >= top)
-        return false;
-
     // Convert click into world coordinates
     // TODO: map a ray/point from camera->world space
-    float x = m_camera->cameraToWorldX(event.x, left, right);
-    float y = m_camera->cameraToWorldY(event.y, bottom, top);
+    float x, y;
+    m_camera->mouseToWorld(event, x, y);
 
     // NOTE: iterate in reverse order of rendering
     auto end = m_actors.rend();
@@ -131,11 +122,7 @@ bool Canvas::mouseEvent(lua_State *L, MouseEvent& event)
 
 void Canvas::resize(lua_State* L, int width, int height)
 {
-    int l = m_bounds.l < 0 ? width + m_bounds.l : m_bounds.l;
-    int b = m_bounds.b < 0 ? height + m_bounds.b : m_bounds.b;
-    int r = m_bounds.r <= 0 ? width + m_bounds.r : m_bounds.r;
-    int t = m_bounds.t <= 0 ? height + m_bounds.t : m_bounds.t;
-    m_camera->resize(r - l, t - b);
+    m_camera->resize(width, height);
 }
 
 // =============================================================================
@@ -204,17 +191,6 @@ int Canvas::canvas_create(lua_State *L)
 
     bool fixed = lua_isboolean(L, 2) && lua_toboolean(L, 2);
 
-    int bounds[4] = {0, 0, 0, 0};
-    if (lua_istable(L, 3))
-    {
-        for (int i = 0; i < 4; ++i)
-        {
-            lua_rawgeti(L, 3, i + 1);
-            bounds[i] = static_cast<int>(luaL_checkinteger(L, -1));
-            lua_pop(L, 1);
-        }
-    }
-
     //Scene *scene = reinterpret_cast<Scene*>(lua_touserdata(state, lua_upvalueindex(1)));
     // TODO: probably not best to get Scene off the registry this way; conflict if we have a Scene metatable
     lua_pushstring(L, "Scene");
@@ -225,10 +201,6 @@ int Canvas::canvas_create(lua_State *L)
     // Create Actor userdata and construct Actor object in the allocated memory
     Canvas *canvas = reinterpret_cast<Canvas*>(lua_newuserdata(L, sizeof(Canvas)));
     new(canvas) Canvas(); // call the constructor on the already allocated block of memory
-    canvas->m_bounds.l = bounds[0];
-    canvas->m_bounds.b = bounds[1];
-    canvas->m_bounds.r = bounds[2];
-    canvas->m_bounds.t = bounds[3];
     canvas->m_camera = ICameraPtr(new BasicCamera(w, h, fixed));
 
     //printf("created Canvas(%p)\n", canvas);

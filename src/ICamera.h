@@ -3,6 +3,7 @@
 
 #include "Transform.h"
 #include "IRenderer.h"
+#include "Event.h"
 
 class ICamera
 {
@@ -16,8 +17,7 @@ public:
 
     virtual void setCenter(float x, float y) = 0;
 
-    virtual float cameraToWorldX(int x, int l, int r) const = 0;
-    virtual float cameraToWorldY(int y, int b, int t) const = 0;
+    virtual void mouseToWorld(const MouseEvent& event, float& x, float& y) const = 0;
 };
 
 #endif
