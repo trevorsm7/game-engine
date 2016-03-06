@@ -37,9 +37,9 @@ bool SdlInstance::init(const char* script)
 {
     //SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Testing", "Hello world", nullptr);
 
-    if (SDL_Init(SDL_INIT_VIDEO) < 0)
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) < 0)
     {
-        fprintf(stderr, "Failed to init SDL video: %s\n", SDL_GetError());
+        fprintf(stderr, "Failed to init SDL: %s\n", SDL_GetError());
         return false;
     }
 
@@ -124,6 +124,10 @@ bool SdlInstance::update(double elapsedTime)
             return false;
         case SDL_KEYDOWN:
         case SDL_KEYUP:
+            // Ignore key repeats
+            if (e.key.repeat)
+                break;
+            // Provide default behavior if key not handled by game
             if (!handleKeyEvent(e.key))
                 if (e.key.keysym.sym == SDLK_ESCAPE && e.key.state == SDL_PRESSED)
                     return false;
@@ -137,6 +141,48 @@ bool SdlInstance::update(double elapsedTime)
         case SDL_MOUSEBUTTONDOWN:
         case SDL_MOUSEBUTTONUP:
             handleMouseButtonEvent(e.button);
+            break;
+        case SDL_CONTROLLERDEVICEADDED:
+            //SDL_NumJoysticks()
+            //SDL_IsGameController(e.cdevice.which)
+            {
+                SDL_GameController* controller = SDL_GameControllerOpen(e.cdevice.which);
+                if (!controller)
+                {
+                    printf("Failed to acquire controller: %s\n", SDL_GetError());
+                    break;
+                }
+                const char* name = SDL_GameControllerName(controller);
+                //const char* name = SDL_GameControllerNameForIndex(e.cdevice.which);
+                if (name)
+                    printf("%s (%d) added\n", name, e.cdevice.which);
+                else
+                    printf("Nameless controller %d added\n", e.cdevice.which);
+            }
+            break;
+        case SDL_CONTROLLERDEVICEREMOVED:
+            {
+                SDL_GameController* controller = SDL_GameControllerFromInstanceID(e.cdevice.which);
+                if (!controller)
+                {
+                    printf("Controller instance %d removed; failed: %s\n", e.cdevice.which, SDL_GetError());
+                    break;
+                }
+                const char* name = SDL_GameControllerName(controller);
+                if (name)
+                    printf("%s (%d) removed\n", name, e.cdevice.which);
+                else
+                    printf("Controller instance %d removed, no name\n", e.cdevice.which);
+                SDL_GameControllerClose(controller);
+            }
+            break;
+        //SDL_CONTROLLERDEVICEREMAPPED
+        case SDL_CONTROLLERBUTTONDOWN:
+        case SDL_CONTROLLERBUTTONUP:
+            handleGamepadButtonEvent(e.cbutton);
+            break;
+        case SDL_CONTROLLERAXISMOTION:
+            handleGamepadAxisEvent(e.caxis);
             break;
         case SDL_WINDOWEVENT:
             //if (SDL_GetWindowFromID(e.window.windowID) != m_window)
@@ -216,6 +262,9 @@ bool SdlInstance::handleKeyEvent(SDL_KeyboardEvent& e)
         break;
     }
 
+    if (!event.name)
+        return false;
+
     return m_scene->controlEvent(event);
 }
 
@@ -239,5 +288,106 @@ bool SdlInstance::handleMouseButtonEvent(SDL_MouseButtonEvent& e)
 
     // TODO: should mouse event return boolean?
     m_scene->mouseEvent(event);
+    return true;
+}
+
+bool SdlInstance::handleGamepadButtonEvent(SDL_ControllerButtonEvent& e)
+{
+    if (!m_scene)
+        return false;
+
+    ControlEvent event;
+    event.name = nullptr;
+    event.down = (e.state == SDL_PRESSED);
+
+    const char* name = "?";
+    switch (e.button)
+    {
+    case SDL_CONTROLLER_BUTTON_A:
+        name = "A";
+        event.name = "action";
+        break;
+    case SDL_CONTROLLER_BUTTON_B:
+        name = "B";
+        break;
+    case SDL_CONTROLLER_BUTTON_X:
+        name = "X";
+        break;
+    case SDL_CONTROLLER_BUTTON_Y:
+        name = "Y";
+        break;
+    case SDL_CONTROLLER_BUTTON_BACK:
+        name = "BACK";
+        break;
+    case SDL_CONTROLLER_BUTTON_GUIDE:
+        name = "GUIDE";
+        break;
+    case SDL_CONTROLLER_BUTTON_START:
+        name = "START";
+        break;
+    case SDL_CONTROLLER_BUTTON_LEFTSTICK:
+        name = "LEFTSTICK";
+        break;
+    case SDL_CONTROLLER_BUTTON_RIGHTSTICK:
+        name = "RIGHTSTICK";
+        break;
+    case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
+        name = "LEFTSHOULDER";
+        break;
+    case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
+        name = "RIGHTSHOULDER";
+        break;
+    case SDL_CONTROLLER_BUTTON_DPAD_UP:
+        name = "UP";
+        event.name = "up";
+        break;
+    case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
+        name = "DOWN";
+        event.name = "down";
+        break;
+    case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
+        name = "LEFT";
+        event.name = "left";
+        break;
+    case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
+        name = "RIGHT";
+        event.name = "right";
+        break;
+    }
+
+    //printf("Controller %d: %s %s\n", e.which, name, e.state == SDL_PRESSED ? "pressed" : "released");
+
+    if (!event.name)
+        return false;
+
+    return m_scene->controlEvent(event);
+}
+
+bool SdlInstance::handleGamepadAxisEvent(SDL_ControllerAxisEvent& e)
+{
+    const char* name = "?";
+    switch (e.axis)
+    {
+    case SDL_CONTROLLER_AXIS_LEFTX:
+        name = "LEFTX";
+        break;
+    case SDL_CONTROLLER_AXIS_LEFTY:
+        name = "LEFTY";
+        break;
+    case SDL_CONTROLLER_AXIS_RIGHTX:
+        name = "RIGHTX";
+        break;
+    case SDL_CONTROLLER_AXIS_RIGHTY:
+        name = "RIGHTY";
+        break;
+    case SDL_CONTROLLER_AXIS_TRIGGERLEFT:
+        name = "TRIGGERLEFT";
+        break;
+    case SDL_CONTROLLER_AXIS_TRIGGERRIGHT:
+        name = "TRIGGERRIGHT";
+        break;
+    }
+
+    //printf("Controller %d: %s %d\n", e.which, name, e.value);
     return true;
 }

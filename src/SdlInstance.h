@@ -32,6 +32,8 @@ private:
 
     bool handleKeyEvent(SDL_KeyboardEvent& e);
     bool handleMouseButtonEvent(SDL_MouseButtonEvent& e);
+    bool handleGamepadButtonEvent(SDL_ControllerButtonEvent& e);
+    bool handleGamepadAxisEvent(SDL_ControllerAxisEvent& e);
 };
 
 #endif

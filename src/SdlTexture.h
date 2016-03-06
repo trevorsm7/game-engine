@@ -12,12 +12,17 @@ typedef std::shared_ptr<SdlTexture> SdlTexturePtr;
 class SdlTexture : public IResource
 {
     SDL_Texture* m_texture;
+    int m_width, m_height;
+
+protected:
+    SdlTexture(SDL_Texture* texture, int width, int height): m_texture(texture), m_width(width), m_height(height) {}
 
 public:
-    SdlTexture(SDL_Texture* texture): m_texture(texture) {}
     ~SdlTexture() override;
 
     SDL_Texture* getPtr() {return m_texture;}
+    int getWidth() const {return m_width;}
+    int getHeight() const {return m_height;}
 
     static SdlTexturePtr loadTexture(ResourceManager& manager, SDL_Renderer* renderer, std::string filename);
 

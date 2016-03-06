@@ -25,14 +25,20 @@ SdlTexturePtr SdlTexture::loadTexture(ResourceManager& manager, SDL_Renderer* re
     // Load the raw file data into memory
     std::vector<char> data;
     if (!manager.loadRawData(filename, data))
-        return getPlaceholder(renderer);
+    {
+        texture = getPlaceholder(renderer);
+        manager.bindResource(filename, texture);
+        return texture;
+    }
 
     // Pass the raw data to the loader
     texture = loadTGA(renderer, data);
     if (!texture)
     {
         fprintf(stderr, "Malformed data in file \"%s\"\n", filename.c_str());
-        return getPlaceholder(renderer);
+        texture = getPlaceholder(renderer);
+        manager.bindResource(filename, texture);
+        return texture;
     }
 
     // Cache the resource and return it
@@ -165,7 +171,7 @@ SdlTexturePtr SdlTexture::loadTGA(SDL_Renderer* renderer, std::vector<char>& dat
 
     // Create an SDL texture with the data and return
     SDL_Texture* texture = createTexture(renderer, width, height, pixels, pitch, format);
-    ptr = SdlTexturePtr(new SdlTexture(texture));
+    ptr = SdlTexturePtr(new SdlTexture(texture, width, height));
     return ptr;
 }
 
@@ -193,6 +199,6 @@ SdlTexturePtr SdlTexture::getPlaceholder(SDL_Renderer* renderer)
     const int pitch = width * 3;
     const uint32_t format = SDL_PIXELFORMAT_BGR24;
     SDL_Texture* texture = createTexture(renderer, width, height, checkered, pitch, format);
-    m_placeholder = SdlTexturePtr(new SdlTexture(texture));
+    m_placeholder = SdlTexturePtr(new SdlTexture(texture, width, height));
     return m_placeholder;
 }

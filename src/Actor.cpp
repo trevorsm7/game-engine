@@ -2,6 +2,7 @@
 #include "Canvas.h"
 #include "SpriteGraphics.h"
 #include "SpriteCollider.h"
+#include "TiledGraphics.h"
 
 void Actor::update(lua_State* L, float delta)
 {
@@ -204,43 +205,32 @@ int Actor::actor_create(lua_State* L)
     lua_setuservalue(L, -2);
 
     // Create the Actor object
-    // TODO: configure Actor based on function arguments
-    SpriteGraphics* graphics = new SpriteGraphics(actor);
-    actor->m_graphics = IGraphicsPtr(graphics);
+    // TODO: try and refactor this procedure for getting params
+    // TODO: what about looping of given params instead of checking all?
     if (lua_istable(L, 1))
     {
         int top = lua_gettop(L);
 
-        // TODO: try and refactor this procedure for getting params
-        // TODO: what about looping of given params instead of checking all?
-        lua_pushliteral(L, "color");
-        if (lua_rawget(L, 1) == LUA_TTABLE)
-        {
-            lua_rawgeti(L, -1, 1); // should return LUA_TNUMBER
-            lua_rawgeti(L, -2, 2);
-            lua_rawgeti(L, -3, 3);
-            float r = lua_tonumber(L, -3);
-            float g = lua_tonumber(L, -2);
-            float b = lua_tonumber(L, -1);
-            lua_pop(L, 3);
-            //actor->m_graphics->setColor(r, g, b);
-            graphics->setColor(r, g, b);
-        }
-        lua_pop(L, 1);
-
-        // TODO: if we're using SpriteGraphics, we should require a sprite
-        // or, create the graphics component here...
         lua_pushliteral(L, "sprite");
         if (lua_rawget(L, 1) == LUA_TSTRING)
         {
+            SpriteGraphics* graphics = new SpriteGraphics(actor);
+            actor->m_graphics = IGraphicsPtr(graphics); // take responsibility for ptr
             graphics->setFilename(lua_tostring(L, -1));
         }
         lua_pop(L, 1);
 
-        lua_pushliteral(L, "layer");
-        if (lua_rawget(L, 1) == LUA_TNUMBER)
+        // TODO: make graphics components exclusive (or allow layering multiple?)
+        lua_pushliteral(L, "tiles");
+        if (lua_rawget(L, 1) == LUA_TSTRING)
         {
-            actor->setLayer(lua_tointeger(L, -1));
+            TiledGraphics* graphics = new TiledGraphics(actor);
+            actor->m_graphics = IGraphicsPtr(graphics); // take responsibility for ptr
+            TileIndex index = {2, 2, std::string(lua_tostring(L, -1))};
+            TileMap tiles = {4, 4, std::vector<int>({0, 0, 1, 1, 2, 2, 3, 3, 0, 1, 2, 3, 3, 2, 1, 0})};
+            graphics->setIndex(index);
+            graphics->setTiles(tiles);
+            printf("Created tiled graphics w/ %s\n", index.name.c_str());
         }
         lua_pop(L, 1);
 
@@ -249,6 +239,28 @@ int Actor::actor_create(lua_State* L)
         {
             if (lua_toboolean(L, -1))
                 actor->m_collider = IColliderPtr(new SpriteCollider(actor));
+        }
+        lua_pop(L, 1);
+
+        lua_pushliteral(L, "color");
+        if (lua_rawget(L, 1) == LUA_TTABLE && actor->m_graphics)
+        {
+            lua_rawgeti(L, -1, 1); // should return LUA_TNUMBER
+            lua_rawgeti(L, -2, 2);
+            lua_rawgeti(L, -3, 3);
+            float r = lua_tonumber(L, -3);
+            float g = lua_tonumber(L, -2);
+            float b = lua_tonumber(L, -1);
+            lua_pop(L, 3);
+
+            actor->m_graphics->setColor(r, g, b);
+        }
+        lua_pop(L, 1);
+
+        lua_pushliteral(L, "layer");
+        if (lua_rawget(L, 1) == LUA_TNUMBER)
+        {
+            actor->setLayer(lua_tointeger(L, -1));
         }
         lua_pop(L, 1);
 

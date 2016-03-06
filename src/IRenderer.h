@@ -4,6 +4,21 @@
 #include "Transform.h"
 
 #include <string>
+#include <vector>
+
+typedef struct
+{
+    int w, h;
+    std::string name;
+}
+TileIndex;
+
+typedef struct
+{
+    int w, h;
+    std::vector<int> tiles;
+}
+TileMap;
 
 class IRenderer
 {
@@ -20,6 +35,7 @@ public:
 
     virtual void setColor(float red, float green, float blue) = 0;
     virtual void drawSprite(const std::string& name) = 0;
+    virtual void drawTiles(const TileIndex& index, const TileMap& map) = 0;
 
     virtual void popModelTransform() = 0;
     virtual void popCameraTransform() = 0;

@@ -162,7 +162,8 @@ end
 local function resetGame(game)
     game:clear()
 
-    god = Actor.create{layer=-1}
+    -- NOTE: currently, we need a graphics component to receive mouse events
+    god = Actor.create{layer=-1, sprite="unused"}
     game:addActor(god)
     god:setVisible(false)
     god:setScale(20, 15)

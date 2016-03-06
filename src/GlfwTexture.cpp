@@ -21,14 +21,20 @@ GlfwTexturePtr GlfwTexture::loadTexture(ResourceManager& manager, std::string fi
     // Load the raw file data into memory
     std::vector<char> data;
     if (!manager.loadRawData(filename, data))
-        return getPlaceholder();
+    {
+        texture = getPlaceholder();
+        manager.bindResource(filename, texture);
+        return texture;
+    }
 
     // Pass the raw data to the loader
     texture = loadTGA(data);
     if (!texture)
     {
         fprintf(stderr, "Malformed data in file \"%s\"\n", filename.c_str());
-        return getPlaceholder();
+        texture = getPlaceholder();
+        manager.bindResource(filename, texture);
+        return texture;
     }
 
     // Cache the resource and return it
