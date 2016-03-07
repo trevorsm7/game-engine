@@ -75,13 +75,15 @@ void Scene::render(IRenderer* renderer)
         (*it)->render(renderer);
 }
 
-void Scene::mouseEvent(MouseEvent& event)
+bool Scene::mouseEvent(MouseEvent& event)
 {
     // dispatch events from top to bottom
     auto end = m_canvases.rend();
     for (auto it = m_canvases.rbegin(); it != end; ++it)
         if ((*it)->mouseEvent(m_state, event))
-            break; // stop dispatching an event when an Actor claims it
+            return true; // stop dispatching an event when an Actor claims it
+
+    return false;
 }
 
 bool Scene::controlEvent(ControlEvent& event)

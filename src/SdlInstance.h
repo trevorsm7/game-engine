@@ -17,7 +17,7 @@ class SdlInstance
     IRendererPtr m_renderer;
     ScenePtr m_scene;
     SDL_Window* m_window;
-    bool m_shouldQuit;
+    bool m_bQuit;
     //SDL_GLContext m_context; // void*
 
 public:
@@ -26,14 +26,19 @@ public:
     static void run(const char* script);
 
 private:
-    SdlInstance(): m_window(nullptr), m_shouldQuit(false) {}//, m_context(nullptr) {}
-    bool init(const char* script);
-    bool update(double elapsedTime);
+    SdlInstance(): m_window(nullptr), m_bQuit(false) {}//, m_context(nullptr) {}
 
-    bool handleKeyEvent(SDL_KeyboardEvent& e);
-    bool handleMouseButtonEvent(SDL_MouseButtonEvent& e);
-    bool handleGamepadButtonEvent(SDL_ControllerButtonEvent& e);
-    bool handleGamepadAxisEvent(SDL_ControllerAxisEvent& e);
+    bool init(const char* script);
+    void pollEvents();
+    void update(double elapsedTime);
+    void render();
+
+    bool isQuit() const {return m_bQuit;}
+
+    void handleKeyEvent(SDL_KeyboardEvent& e);
+    void handleMouseButtonEvent(SDL_MouseButtonEvent& e);
+    void handleGamepadButtonEvent(SDL_ControllerButtonEvent& e);
+    void handleGamepadAxisEvent(SDL_ControllerAxisEvent& e);
 };
 
 #endif

@@ -21,16 +21,21 @@ bool findFile(const char* name, std::string& fullpath)
     return false;
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
     const char* script = "snake.lua";
-    bool useSDL = false;
+    bool useSDL = true;
 
     for (int i = 1; i < argc; ++i)
     {
         if (strcmp(argv[i], "-sdl") == 0)
         {
             useSDL = true;
+            continue;
+        }
+        else if (strcmp(argv[i], "-glfw") == 0)
+        {
+            useSDL = false;
             continue;
         }
 

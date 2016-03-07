@@ -16,12 +16,15 @@ bool SdlRenderer::init()
 
 void SdlRenderer::preRender()
 {
+    //glClearColor(0.0, 0.0, 0.0, 1.0);
+    //glClear(GL_COLOR_BUFFER_BIT);
     SDL_RenderClear(m_renderer);
     SDL_GetRendererOutputSize(m_renderer, &m_width, &m_height);
 }
 
 void SdlRenderer::postRender()
 {
+    //SDL_GL_SwapWindow(m_window);
     SDL_RenderPresent(m_renderer);
 }
 

@@ -22,14 +22,33 @@ void SdlInstance::run(const char* script)
     if (!instance.init(script))
         return;
 
-    uint32_t lastTime = SDL_GetTicks();
-    uint32_t elapsedTime = 0;
-    while (instance.update(elapsedTime * 0.001))
+    //int32_t lastTime, currentTime, elapsedTime;
+    uint64_t lastTime, currentTime, elapsedTime;
+    double period = 1 / float(SDL_GetPerformanceFrequency());
+
+    // The first poll blocks for a relatively long time; get it out of the way before starting game loop
+    //lastTime = SDL_GetPerformanceCounter();
+    instance.pollEvents();
+    //printf("First poll: %f\n", (SDL_GetPerformanceCounter() - lastTime) * period);
+
+    lastTime = SDL_GetPerformanceCounter();
+    while (!instance.isQuit())
     {
-        // Compute time since last update
-        uint32_t currentTime = SDL_GetTicks();
+        // Render first; returns right after vsync
+        instance.render();
+
+        // We could improve the input latency by sleeping after vsync to push input/update closer to next vsync
+        //SDL_Delay(8);
+
+        // Process event queue
+        instance.pollEvents();
+
+        // Compute elapsed time since last update and pass to engine
+        // TODO: check for overflow
+        currentTime = SDL_GetPerformanceCounter();
         elapsedTime = currentTime - lastTime;
         lastTime = currentTime;
+        instance.update(elapsedTime * period);
     }
 }
 
@@ -41,6 +60,13 @@ bool SdlInstance::init(const char* script)
     {
         fprintf(stderr, "Failed to init SDL: %s\n", SDL_GetError());
         return false;
+    }
+
+    // Text input mode can be enabled by default and can cause significant latency issues; disable it
+    if (SDL_IsTextInputActive())
+    {
+        SDL_StopTextInput();
+        printf("Disabling text input mode: %s\n", SDL_IsTextInputActive() ? "failure" : "success");
     }
 
 #if 0
@@ -91,11 +117,11 @@ bool SdlInstance::init(const char* script)
 
     // NOTE: creating window first, then scene can change size if it wants
     m_scene = ScenePtr(new Scene());
-    m_scene->setQuitCallback([&] {m_shouldQuit = true;});
+    m_scene->setQuitCallback([&] {m_bQuit = true;});
     m_scene->setRegisterControlCallback([&](const char* action)->bool
     {
         // TODO: replace with a mechanism for default bindings and loading/saving custom bindings
-        printf("TODO: implement register control callback\n");
+        //printf("TODO: implement register control callback\n");
 
         return false;
     });
@@ -112,25 +138,19 @@ bool SdlInstance::init(const char* script)
     return true;
 }
 
-bool SdlInstance::update(double elapsedTime)
+void SdlInstance::pollEvents()
 {
-    // Poll for events
     SDL_Event e;
     while (SDL_PollEvent(&e) != 0)
     {
         switch (e.type)
         {
         case SDL_QUIT:
-            return false;
+            m_bQuit = true;
+            return;
         case SDL_KEYDOWN:
         case SDL_KEYUP:
-            // Ignore key repeats
-            if (e.key.repeat)
-                break;
-            // Provide default behavior if key not handled by game
-            if (!handleKeyEvent(e.key))
-                if (e.key.keysym.sym == SDLK_ESCAPE && e.key.state == SDL_PRESSED)
-                    return false;
+            handleKeyEvent(e.key);
             break;
         case SDL_MOUSEMOTION:
             //if (SDL_GetRelativeMouseMode() == SDL_TRUE)
@@ -199,31 +219,31 @@ bool SdlInstance::update(double elapsedTime)
             }
             break;
         }
-
-        if (m_shouldQuit)
-            return false;
     }
+}
+
+void SdlInstance::update(double elapsedTime)
+{
+    if (isQuit())
+        return;
 
     // Send elapsed time down to game objects
     m_scene->update(elapsedTime);
+}
 
-    // Render last after input and updates
-#if 0
-    // Render display
-    glClearColor(0.3, 0.3, 0.3, 1.0);
-    glClear(GL_COLOR_BUFFER_BIT);
-    SDL_GL_SwapWindow(m_window);
-#else
+void SdlInstance::render()
+{
     m_renderer->preRender();
     m_scene->render(m_renderer.get());
     m_renderer->postRender();
-#endif
-
-    return !m_shouldQuit;
 }
 
-bool SdlInstance::handleKeyEvent(SDL_KeyboardEvent& e)
+void SdlInstance::handleKeyEvent(SDL_KeyboardEvent& e)
 {
+    // Ignore key repeats
+    if (e.repeat)
+        return;
+
     ControlEvent event;
     event.name = nullptr;
     event.down = (e.state == SDL_PRESSED);
@@ -262,40 +282,37 @@ bool SdlInstance::handleKeyEvent(SDL_KeyboardEvent& e)
         break;
     }
 
-    if (!event.name)
-        return false;
+    // If we found a mapping, send control to game
+    if (event.name && m_scene->controlEvent(event))
+        return;
 
-    return m_scene->controlEvent(event);
+    // Provide default behavior if key not handled by game
+    if (e.keysym.sym == SDLK_ESCAPE && e.state == SDL_PRESSED)
+        m_bQuit = true;
 }
 
-bool SdlInstance::handleMouseButtonEvent(SDL_MouseButtonEvent& e)
+void SdlInstance::handleMouseButtonEvent(SDL_MouseButtonEvent& e)
 {
-    if (!m_scene)
-        return false;
-
+    // TODO: add support for more than one mouse button
     if (e.button != SDL_BUTTON_LEFT)
-        return false;
+        return;
 
     int width, height;
     SDL_GetWindowSize(m_window, &width, &height);
 
+    // Map mouse click to event structure
     MouseEvent event;
     event.x = e.x;
-    event.y = height - e.y - 1;
+    event.y = height - e.y - 1; // move origin to lower-left
     event.w = width;
     event.h = height;
     event.down = (e.state == SDL_PRESSED);
 
-    // TODO: should mouse event return boolean?
     m_scene->mouseEvent(event);
-    return true;
 }
 
-bool SdlInstance::handleGamepadButtonEvent(SDL_ControllerButtonEvent& e)
+void SdlInstance::handleGamepadButtonEvent(SDL_ControllerButtonEvent& e)
 {
-    if (!m_scene)
-        return false;
-
     ControlEvent event;
     event.name = nullptr;
     event.down = (e.state == SDL_PRESSED);
@@ -358,12 +375,12 @@ bool SdlInstance::handleGamepadButtonEvent(SDL_ControllerButtonEvent& e)
     //printf("Controller %d: %s %s\n", e.which, name, e.state == SDL_PRESSED ? "pressed" : "released");
 
     if (!event.name)
-        return false;
+        return;
 
-    return m_scene->controlEvent(event);
+    m_scene->controlEvent(event);
 }
 
-bool SdlInstance::handleGamepadAxisEvent(SDL_ControllerAxisEvent& e)
+void SdlInstance::handleGamepadAxisEvent(SDL_ControllerAxisEvent& e)
 {
     const char* name = "?";
     switch (e.axis)
@@ -389,5 +406,4 @@ bool SdlInstance::handleGamepadAxisEvent(SDL_ControllerAxisEvent& e)
     }
 
     //printf("Controller %d: %s %d\n", e.which, name, e.value);
-    return true;
 }

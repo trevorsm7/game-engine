@@ -18,14 +18,26 @@ void GlfwInstance::run(const char* script)
     if (!instance.init(script))
         return;
 
+    // The first event poll will take extra time; get it out of the way early
+    instance.pollEvents();
+
     double lastTime = glfwGetTime();
-    double elapsedTime = 0.; // first update has zero elapsed time
-    while (instance.update(elapsedTime))
+    while (!instance.isQuit())
     {
-        // Compute time since last update
-        double currentTime = glfwGetTime();
-        elapsedTime = currentTime - lastTime;
+        // Render first; returns right after vsync
+        instance.render();
+
+        // We could improve the input latency by sleeping after vsync to push input/update closer to next vsync
+
+        // Process event queue
+        instance.pollEvents();
+
+        // Compute elapsed time since last update and pass to engine
+        // TODO: check for overflow
+        const double currentTime = glfwGetTime();
+        const double elapsedTime = currentTime - lastTime;
         lastTime = currentTime;
+        instance.update(elapsedTime);
     };
 }
 
@@ -134,7 +146,7 @@ bool GlfwInstance::init(const char* script)
     return true;
 }
 
-bool GlfwInstance::update(double elapsedTime)
+void GlfwInstance::pollEvents()
 {
     // Try to process events first
     glfwPollEvents();
@@ -142,18 +154,22 @@ bool GlfwInstance::update(double elapsedTime)
     // Process gamepads (not handled by glfwPollEvents)
     for (auto& gamepad : m_gamepads)
         gamepad.update(m_scene.get());
+}
+
+void GlfwInstance::update(double elapsedTime)
+{
+    if (isQuit())
+        return;
 
     // Send elapsed time down to game objects
     m_scene->update(elapsedTime);
+}
 
-    // Render last after input and updates
+void GlfwInstance::render()
+{
     m_renderer->preRender();
     m_scene->render(m_renderer.get());
     m_renderer->postRender();
-
-    // TODO: support loading/saving Scenes from script
-
-    return !glfwWindowShouldClose(m_window);
 }
 
 void GlfwInstance::callback_error(int error, const char* description)

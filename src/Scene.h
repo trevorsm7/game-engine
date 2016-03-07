@@ -31,7 +31,7 @@ public:
 
     void update(float delta);
     void render(IRenderer* renderer);
-    void mouseEvent(MouseEvent& event);
+    bool mouseEvent(MouseEvent& event);
     bool controlEvent(ControlEvent& event);
     void resize(int width, int height);
 

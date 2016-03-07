@@ -22,10 +22,11 @@ class Canvas
     ICameraPtr m_camera;
     Scene* m_scene;
     bool m_paused, m_visible;
+    bool m_actorRemoved;
 
 public:
-    Canvas(): m_scene(nullptr), m_paused(false), m_visible(true) {}
-    ~Canvas();
+    Canvas(): m_scene(nullptr), m_paused(false), m_visible(true), m_actorRemoved(false) {}
+    ~Canvas() {}
 
     void update(lua_State* L, float delta);
     void render(IRenderer* renderer);

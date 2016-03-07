@@ -31,8 +31,13 @@ public:
 
 private:
     GlfwInstance(): m_window(nullptr) {}
+
     bool init(const char *script);
-    bool update(double elapsedTime);
+    void pollEvents();
+    void update(double elapsedTime);
+    void render();
+
+    bool isQuit() const {return glfwWindowShouldClose(m_window);}
 
     static void callback_error(int error, const char* description);
     static void callback_key(GLFWwindow* window, int key, int scancode, int action, int mods);

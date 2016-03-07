@@ -5,33 +5,35 @@
 #include <algorithm>
 #include <cmath>
 
-Canvas::~Canvas()
-{
-    // NOTE: Lua-related cleanup should be done in canvas_delete instead!
-}
-
 void Canvas::update(lua_State *L, float delta)
 {
-    // Always handle actor removal, even if we're paused
-    auto tail = m_actors.begin();
-    for (auto end = m_actors.end(), it = tail; it != end; ++it)
+    if (m_actorRemoved)
     {
-        // Remove actor if it is marked for delete, then skip
-        if ((*it)->m_canvas != this)
+        // TODO: should we iterate through the add queue as well?
+        // Iterate through Actors to find any marked for delete
+        auto tail = m_actors.begin();
+        for (auto end = m_actors.end(), it = tail; it != end; ++it)
         {
-            (*it)->refRemoved(L);
-            continue;
+            // Remove actor if it is marked for delete, then skip
+            if ((*it)->m_canvas != this)
+            {
+                (*it)->refRemoved(L);
+                continue;
+            }
+
+            // Shift elements back if we have empty space from removals
+            if (tail != it)
+                *tail = *it;
+            ++tail;
         }
 
-        // Shift elements back if we have empty space from removals
-        if (tail != it)
-            *tail = *it;
-        ++tail;
-    }
+        // If any Actors were removed, clear the end of the list
+        // NOTE: since removed Actors can be in the added queue as well, this won't always be true
+        if (tail != m_actors.end())
+            m_actors.erase(tail, m_actors.end());
 
-    // If any Actors were removed, clear the end of the list
-    if (tail != m_actors.end())
-        m_actors.erase(tail, m_actors.end());
+        m_actorRemoved = false;
+    }
 
     // Skip the remainder of the update if we are paused
     if (m_paused)
@@ -288,7 +290,10 @@ int Canvas::canvas_removeActor(lua_State *L)
 
     // Mark Actor for later removal (after we're done iterating)
     if (isOwner)
+    {
+        canvas->m_actorRemoved = true;
         actor->m_canvas = nullptr;
+    }
 
     lua_pushboolean(L, isOwner);
     return 1;
@@ -308,6 +313,9 @@ int Canvas::canvas_clear(lua_State* L)
     for (auto& actor : canvas->m_added)
         if (actor->m_canvas == canvas)
             actor->m_canvas = nullptr;
+
+    // Notify Canvas that Actors are marked for removal
+    canvas->m_actorRemoved = true;
 
     return 0;
 }
