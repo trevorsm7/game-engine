@@ -157,6 +157,7 @@ void GlfwRenderer::postRender()
 
 void GlfwRenderer::pushModelTransform(Transform& transform)
 {
+    m_model = transform;
     glUniform2f(m_modelOffset, transform.getX(), transform.getY());
     glUniform2f(m_modelScale, transform.getW(), transform.getH());
 }
@@ -187,6 +188,55 @@ void GlfwRenderer::drawSprite(const std::string& name)
     // Bind arrays and send draw command
     glBindVertexArray(m_spriteVAO);
     glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
+}
+
+void GlfwRenderer::drawTiles(const TileIndex& index, const TileMap& tiles)
+{
+    // Get texture resource
+    GlfwTexturePtr texture = GlfwTexture::loadTexture(m_resources, index.name);
+    if (!texture)
+        return; // TODO: we should at least have a placeholder instead of null; assert here?
+
+    // Bind the texture and the sprite vao
+    texture->bind();
+    glBindVertexArray(m_spriteVAO);
+
+    // Compute and set texture size of one tile
+    const float tileW = 1.f / index.w;
+    const float tileH = 1.f / index.h;
+    glUniform2f(m_textureScale, tileW, tileH);
+
+    // Compute and set model size of one tile
+    const float modelW = m_model.getW() / tiles.w;
+    const float modelH = m_model.getH() / tiles.h;
+    glUniform2f(m_modelScale, modelW, modelH);
+
+    const float originY = m_model.getY() + m_model.getH() - modelH;
+
+    // Iterate over tile (x, y) indices
+    int i = 0;
+    for (int y = 0; y < tiles.h; ++y)
+    {
+        for (int x = 0; x < tiles.w; ++x)
+        {
+            const int tile = tiles.tiles[i++];//y * tiles.w + x];
+
+            // Index tiles from top-left
+            const float tileX = (tile % index.w) * tileW;
+            const float tileY = 1.f - ((tile / index.w) + 1) * tileH;
+            glUniform2f(m_textureOffset, tileX, tileY);
+
+            // Draw tilemap from top-left
+            const float modelX = m_model.getX() + x * modelW;
+            const float modelY = originY - y * modelH;
+            glUniform2f(m_modelOffset, modelX, modelY);
+
+            // Draw the tile
+            glDrawElements(GL_TRIANGLE_STRIP, 4, GL_UNSIGNED_INT, 0);
+        }
+    }
+
     glBindVertexArray(0);
 }
 
