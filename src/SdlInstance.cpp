@@ -116,7 +116,7 @@ bool SdlInstance::init(const char* script)
         return false;
 
     // NOTE: creating window first, then scene can change size if it wants
-    m_scene = ScenePtr(new Scene());
+    m_scene = ScenePtr(new Scene(m_resources));
     m_scene->setQuitCallback([&] {m_bQuit = true;});
     m_scene->setRegisterControlCallback([&](const char* action)->bool
     {

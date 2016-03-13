@@ -5,6 +5,14 @@
 #include <algorithm>
 #include <cmath>
 
+ResourceManager* Canvas::getResourceManager()
+{
+    if (m_scene)
+        return &m_scene->getResourceManager();
+
+    return nullptr;
+}
+
 void Canvas::update(lua_State *L, float delta)
 {
     if (m_actorRemoved)

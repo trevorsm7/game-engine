@@ -38,7 +38,7 @@ public:
 
     void setColor(float red, float green, float blue) override;
     void drawSprite(const std::string& name) override;
-    void drawTiles(const TileIndex& index, const TileMap& tiles) override;
+    void drawTiles(const std::string& name) override;
 
     void popModelTransform() override;
     void popCameraTransform() override;

@@ -4,6 +4,7 @@
 #include "IRenderer.h"
 #include "Canvas.h"
 #include "Event.h"
+#include "ResourceManager.h"
 
 #include <vector>
 #include <memory>
@@ -16,18 +17,21 @@ class Scene
     typedef std::function<void (void)> QuitCallback;
     typedef std::function<bool (const char*)> RegisterControlCallback;
 
+    ResourceManager& m_resources;
     std::vector<Canvas*> m_canvases;
     lua_State *m_state;
     QuitCallback m_quitCallback;
     RegisterControlCallback m_registerControlCallback;
 
 public:
-    Scene(): m_state(nullptr) {}
+    Scene(ResourceManager& resources): m_resources(resources), m_state(nullptr) {}
     ~Scene() {if (m_state) lua_close(m_state);}
 
     bool load(const char *filename);
     void setQuitCallback(QuitCallback cb) {m_quitCallback = cb;}
     void setRegisterControlCallback(RegisterControlCallback cb) {m_registerControlCallback = cb;}
+
+    ResourceManager& getResourceManager() {return m_resources;}
 
     void update(float delta);
     void render(IRenderer* renderer);

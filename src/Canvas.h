@@ -4,6 +4,7 @@
 #include "Actor.h"
 #include "Event.h"
 #include "ICamera.h"
+#include "ResourceManager.h"
 
 #include <vector>
 #include <memory>
@@ -27,6 +28,8 @@ class Canvas
 public:
     Canvas(): m_scene(nullptr), m_paused(false), m_visible(true), m_actorRemoved(false) {}
     ~Canvas() {}
+
+    ResourceManager* getResourceManager();
 
     void update(lua_State* L, float delta);
     void render(IRenderer* renderer);

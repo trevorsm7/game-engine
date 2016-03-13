@@ -1,5 +1,6 @@
 #include "GlfwRenderer.h"
 #include "GlfwTexture.h"
+#include "TileMap.h"
 
 #include <iostream>
 
@@ -191,10 +192,20 @@ void GlfwRenderer::drawSprite(const std::string& name)
     glBindVertexArray(0);
 }
 
-void GlfwRenderer::drawTiles(const TileIndex& index, const TileMap& tiles)
+void GlfwRenderer::drawTiles(const std::string& name)
 {
+    // Load the tile map
+    TileMapPtr tileMap = TileMap::loadTileMap(m_resources, name);
+    if (!tileMap)
+        return;
+
+    // Load the tile index
+    TileIndexPtr tileIndex = TileIndex::loadTileIndex(m_resources, tileMap->getIndexFile());
+    if (!tileIndex)
+        return;
+
     // Get texture resource
-    GlfwTexturePtr texture = GlfwTexture::loadTexture(m_resources, index.name);
+    GlfwTexturePtr texture = GlfwTexture::loadTexture(m_resources, tileIndex->getImageFile());
     if (!texture)
         return; // TODO: we should at least have a placeholder instead of null; assert here?
 
@@ -203,28 +214,28 @@ void GlfwRenderer::drawTiles(const TileIndex& index, const TileMap& tiles)
     glBindVertexArray(m_spriteVAO);
 
     // Compute and set texture size of one tile
-    const float tileW = 1.f / index.w;
-    const float tileH = 1.f / index.h;
+    const float tileW = 1.f / tileIndex->getCols();
+    const float tileH = 1.f / tileIndex->getRows();
     glUniform2f(m_textureScale, tileW, tileH);
 
     // Compute and set model size of one tile
-    const float modelW = m_model.getW() / tiles.w;
-    const float modelH = m_model.getH() / tiles.h;
+    const float modelW = m_model.getW() / tileMap->getCols();
+    const float modelH = m_model.getH() / tileMap->getRows();
     glUniform2f(m_modelScale, modelW, modelH);
 
     const float originY = m_model.getY() + m_model.getH() - modelH;
 
     // Iterate over tile (x, y) indices
     int i = 0;
-    for (int y = 0; y < tiles.h; ++y)
+    for (int y = 0; y < tileMap->getRows(); ++y)
     {
-        for (int x = 0; x < tiles.w; ++x)
+        for (int x = 0; x < tileMap->getCols(); ++x)
         {
-            const int tile = tiles.tiles[i++];//y * tiles.w + x];
+            const int tile = tileMap->getIndex(i++);
 
             // Index tiles from top-left
-            const float tileX = (tile % index.w) * tileW;
-            const float tileY = 1.f - ((tile / index.w) + 1) * tileH;
+            const float tileX = (tile % tileIndex->getCols()) * tileW;
+            const float tileY = 1.f - ((tile / tileIndex->getCols()) + 1) * tileH;
             glUniform2f(m_textureOffset, tileX, tileY);
 
             // Draw tilemap from top-left

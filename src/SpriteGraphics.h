@@ -14,10 +14,8 @@ class SpriteGraphics : public IGraphics
     bool m_visible;
 
 public:
-    SpriteGraphics(Actor* actor): m_actor(actor), m_color{1.f, 1.f, 1.f}, m_visible(true) {}
+    SpriteGraphics(Actor* actor, std::string filename): m_actor(actor), m_filename(filename), m_color{1.f, 1.f, 1.f}, m_visible(true) {}
     ~SpriteGraphics() override {}
-
-    void setFilename(const char* filename) {m_filename = filename;}
 
     void update(float delta) override {}
 
@@ -38,10 +36,10 @@ public:
         //    return false;
 
         Transform& transform = m_actor->getTransform();
-        float left = transform.getX();
-        float bottom = transform.getY();
-        float right = left + transform.getW();
-        float top = bottom + transform.getH();
+        const float left = transform.getX();
+        const float bottom = transform.getY();
+        const float right = left + transform.getW();
+        const float top = bottom + transform.getH();
         return (x >= left && x < right && y >= bottom && y < top);
     }
 

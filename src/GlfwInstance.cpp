@@ -69,7 +69,7 @@ bool GlfwInstance::init(const char* script)
     glfwSetWindowUserPointer(m_window, this);
 
     // NOTE: creating window first, then scene can change size if it wants
-    m_scene = ScenePtr(new Scene());
+    m_scene = ScenePtr(new Scene(m_resources));
     m_scene->setQuitCallback([&]{glfwSetWindowShouldClose(m_window, GL_TRUE);});
     m_scene->setRegisterControlCallback([&](const char* action)->bool
     {

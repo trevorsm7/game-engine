@@ -10,19 +10,14 @@
 class TiledGraphics : public IGraphics
 {
     Actor* m_actor;
-    TileIndex m_index;
-    TileMap m_tiles;
+    std::string m_tilemap;
     //std::vector<struct {char r, g, b;}> m_colors;
     // matching collision mask in TiledCollider??
     bool m_visible;
 
 public:
-    TiledGraphics(Actor* actor): m_actor(actor), m_visible(true) {}
+    TiledGraphics(Actor* actor, std::string tilemap): m_actor(actor), m_tilemap(tilemap), m_visible(true) {}
     ~TiledGraphics() override {}
-
-    // TODO: these are gross
-    void setIndex(const TileIndex& index) {m_index = index;}
-    void setTiles(const TileMap& tiles) {m_tiles = tiles;}
 
     void update(float delta) override {}
 
@@ -32,7 +27,7 @@ public:
             return;
 
         renderer->setColor(1.f, 1.f, 1.f);
-        renderer->drawTiles(m_index, m_tiles);
+        renderer->drawTiles(m_tilemap);
     }
 
     // TODO: should this behavior be different from SpriteGraphics?
@@ -44,10 +39,10 @@ public:
         //    return false;
 
         Transform& transform = m_actor->getTransform();
-        float left = transform.getX();
-        float bottom = transform.getY();
-        float right = left + transform.getW();
-        float top = bottom + transform.getH();
+        const float left = transform.getX();
+        const float bottom = transform.getY();
+        const float right = left + transform.getW();
+        const float top = bottom + transform.getH();
         return (x >= left && x < right && y >= bottom && y < top);
     }
 

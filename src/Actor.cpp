@@ -3,6 +3,15 @@
 #include "SpriteGraphics.h"
 #include "SpriteCollider.h"
 #include "TiledGraphics.h"
+#include "TiledCollider.h"
+
+ResourceManager* Actor::getResourceManager()
+{
+    if (m_canvas)
+        return m_canvas->getResourceManager();
+
+    return nullptr;
+}
 
 void Actor::update(lua_State* L, float delta)
 {
@@ -214,9 +223,14 @@ int Actor::actor_create(lua_State* L)
         lua_pushliteral(L, "sprite");
         if (lua_rawget(L, 1) == LUA_TSTRING)
         {
-            SpriteGraphics* graphics = new SpriteGraphics(actor);
+            // TODO should log an error if the type is non-string and non-nil
+            SpriteGraphics* graphics = new SpriteGraphics(actor, lua_tostring(L, -1));
             actor->m_graphics = IGraphicsPtr(graphics); // take responsibility for ptr
-            graphics->setFilename(lua_tostring(L, -1));
+
+            lua_pushliteral(L, "collider");
+            if (lua_rawget(L, 1) == LUA_TBOOLEAN && lua_toboolean(L, -1))
+                actor->m_collider = IColliderPtr(new SpriteCollider(actor));
+            lua_pop(L, 1);
         }
         lua_pop(L, 1);
 
@@ -224,21 +238,14 @@ int Actor::actor_create(lua_State* L)
         lua_pushliteral(L, "tiles");
         if (lua_rawget(L, 1) == LUA_TSTRING)
         {
-            TiledGraphics* graphics = new TiledGraphics(actor);
+            const char* tileMap = lua_tostring(L, -1);
+            TiledGraphics* graphics = new TiledGraphics(actor, tileMap);
             actor->m_graphics = IGraphicsPtr(graphics); // take responsibility for ptr
-            TileIndex index = {2, 2, std::string(lua_tostring(L, -1))};
-            TileMap tiles = {4, 4, std::vector<int>({0, 0, 1, 1, 2, 2, 3, 3, 0, 1, 2, 3, 3, 2, 1, 0})};
-            graphics->setIndex(index);
-            graphics->setTiles(tiles);
-            printf("Created tiled graphics w/ %s\n", index.name.c_str());
-        }
-        lua_pop(L, 1);
 
-        lua_pushliteral(L, "collider");
-        if (lua_rawget(L, 1) == LUA_TBOOLEAN)
-        {
-            if (lua_toboolean(L, -1))
-                actor->m_collider = IColliderPtr(new SpriteCollider(actor));
+            lua_pushliteral(L, "collider");
+            if (lua_rawget(L, 1) == LUA_TBOOLEAN && lua_toboolean(L, -1))
+                actor->m_collider = IColliderPtr(new TiledCollider(actor, tileMap));
+            lua_pop(L, 1);
         }
         lua_pop(L, 1);
 

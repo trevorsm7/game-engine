@@ -6,6 +6,7 @@
 #include "ICollider.h"
 #include "Transform.h"
 #include "Event.h"
+#include "ResourceManager.h"
 
 #include <memory>
 #include "lua.hpp"
@@ -31,6 +32,7 @@ public:
     Actor(): m_canvas(nullptr), m_layer(0), m_refCount(0) {}
     ~Actor() {}
 
+    ResourceManager* getResourceManager();
     Transform& getTransform() {return m_transform;}
     IGraphicsPtr& getGraphics() {return m_graphics;}
 
