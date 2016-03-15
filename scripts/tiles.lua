@@ -6,9 +6,11 @@ tiles:setPosition(-1, -1)
 tiles:setScale(5, 5)
 game:setCenter(2, 2)
 
-player = Actor.create{sprite="hero.tga", collider=true}
+--player = Actor.create{sprite="hero.tga", collider=true}
+player = Actor.create{tiles="heropad.map", collider=true}
 game:addActor(player)
 player:setPosition(-2, -2)
+player:setScale(3, 3)
 
 -- generate a callback function to move the player in a direction
 function player:keyDown(method, arg)
@@ -22,12 +24,20 @@ function player:move(dir)
     if not canvas then return end
 
     local x, y = self:getPosition()
-    x = x + dir[1]; y = y + dir[2]
-    local hit = canvas:getCollision(x + 0.5, y + 0.5)
+    x = x + dir[1] * .5; y = y + dir[2] * .5
+    --local hit = canvas:getCollision(x + 0.5, y + 0.5)
     --local hit = canvas:getCollision(x, y)
 
     if not hit then
         self:setPosition(x, y)
+    end
+end
+
+function player:update(delta)
+    if self:testCollision() then
+        self:setColor{1, .5, .5}
+    else
+        self:setColor{1, 1, 1}
     end
 end
 

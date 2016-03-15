@@ -11,17 +11,16 @@ class SpriteGraphics : public IGraphics
     Actor* m_actor;
     std::string m_filename;
     struct {float r, g, b;} m_color;
-    bool m_visible;
 
 public:
-    SpriteGraphics(Actor* actor, std::string filename): m_actor(actor), m_filename(filename), m_color{1.f, 1.f, 1.f}, m_visible(true) {}
+    SpriteGraphics(Actor* actor, std::string filename): m_actor(actor), m_filename(filename), m_color{1.f, 1.f, 1.f} {}
     ~SpriteGraphics() override {}
 
     void update(float delta) override {}
 
     void render(IRenderer* renderer) override
     {
-        if (!m_visible)
+        if (!isVisible())
             return;
 
         renderer->setColor(m_color.r, m_color.g, m_color.b);
@@ -35,7 +34,7 @@ public:
         //if (!m_visible)
         //    return false;
 
-        Transform& transform = m_actor->getTransform();
+        const Transform& transform = m_actor->getTransform();
         const float left = transform.getX();
         const float bottom = transform.getY();
         const float right = left + transform.getW();
@@ -44,8 +43,6 @@ public:
     }
 
     void setColor(float r, float g, float b) override {m_color = {r, g, b};}
-    void setVisible(bool visible) override {m_visible = visible;}
-    bool isVisible() const override {return m_visible;}
 };
 
 #endif

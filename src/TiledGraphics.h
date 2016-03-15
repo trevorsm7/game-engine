@@ -11,22 +11,21 @@ class TiledGraphics : public IGraphics
 {
     Actor* m_actor;
     std::string m_tilemap;
+    struct {float r, g, b;} m_color;
     //std::vector<struct {char r, g, b;}> m_colors;
-    // matching collision mask in TiledCollider??
-    bool m_visible;
 
 public:
-    TiledGraphics(Actor* actor, std::string tilemap): m_actor(actor), m_tilemap(tilemap), m_visible(true) {}
+    TiledGraphics(Actor* actor, std::string tilemap): m_actor(actor), m_tilemap(tilemap), m_color{1.f, 1.f, 1.f} {}
     ~TiledGraphics() override {}
 
     void update(float delta) override {}
 
     void render(IRenderer* renderer) override
     {
-        if (!m_visible)
+        if (!isVisible())
             return;
 
-        renderer->setColor(1.f, 1.f, 1.f);
+        renderer->setColor(m_color.r, m_color.g, m_color.b);
         renderer->drawTiles(m_tilemap);
     }
 
@@ -38,7 +37,7 @@ public:
         //if (!m_visible)
         //    return false;
 
-        Transform& transform = m_actor->getTransform();
+        const Transform& transform = m_actor->getTransform();
         const float left = transform.getX();
         const float bottom = transform.getY();
         const float right = left + transform.getW();
@@ -46,9 +45,7 @@ public:
         return (x >= left && x < right && y >= bottom && y < top);
     }
 
-    void setColor(float r, float g, float b) override {/*TODO: no-op?*/}
-    void setVisible(bool visible) override {m_visible = visible;}
-    bool isVisible() const override {return m_visible;}
+    void setColor(float r, float g, float b) override {m_color = {r, g, b};}
 };
 
 #endif

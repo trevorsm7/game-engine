@@ -32,9 +32,10 @@ public:
     Actor(): m_canvas(nullptr), m_layer(0), m_refCount(0) {}
     ~Actor() {}
 
-    ResourceManager* getResourceManager();
-    Transform& getTransform() {return m_transform;}
-    IGraphicsPtr& getGraphics() {return m_graphics;}
+    ResourceManager* getResourceManager() const;
+    const Transform& getTransform() const {return m_transform;}
+    const IGraphics* getGraphics() const {return m_graphics.get();}
+    const ICollider* getCollider() const {return m_collider.get();}
 
     void setLayer(int layer) {m_layer = layer;}
     int getLayer() const {return m_layer;}
@@ -69,6 +70,7 @@ private:
     static int actor_setVisible(lua_State* L);
     static int actor_isVisible(lua_State* L);
     static int actor_setCollidable(lua_State* L);
+    static int actor_testCollision(lua_State* L);
 };
 
 #endif

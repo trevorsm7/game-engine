@@ -1,11 +1,11 @@
 #include "Actor.h"
 #include "Canvas.h"
 #include "SpriteGraphics.h"
-#include "SpriteCollider.h"
+#include "AabbCollider.h"
 #include "TiledGraphics.h"
 #include "TiledCollider.h"
 
-ResourceManager* Actor::getResourceManager()
+ResourceManager* Actor::getResourceManager() const
 {
     if (m_canvas)
         return m_canvas->getResourceManager();
@@ -151,6 +151,7 @@ int Actor::actor_init(lua_State* L)
         {"setVisible", actor_setVisible},
         {"isVisible", actor_isVisible},
         {"setCollidable", actor_setCollidable},
+        {"testCollision", actor_testCollision},
         {nullptr, nullptr}
     };
     luaL_newlib(L, library);
@@ -229,7 +230,7 @@ int Actor::actor_create(lua_State* L)
 
             lua_pushliteral(L, "collider");
             if (lua_rawget(L, 1) == LUA_TBOOLEAN && lua_toboolean(L, -1))
-                actor->m_collider = IColliderPtr(new SpriteCollider(actor));
+                actor->m_collider = IColliderPtr(new AabbCollider(actor));
             lua_pop(L, 1);
         }
         lua_pop(L, 1);
@@ -459,4 +460,18 @@ int Actor::actor_setCollidable(lua_State* L)
         actor->m_collider->setCollidable(lua_toboolean(L, 2));
 
     return 0;
+}
+
+int Actor::actor_testCollision(lua_State* L)
+{
+    // Validate function arguments
+    Actor* actor = reinterpret_cast<Actor*>(luaL_checkudata(L, 1, METATABLE));
+
+    bool result = false;
+    if (actor->m_collider && actor->m_canvas)
+        result = actor->m_canvas->testCollision(actor);
+
+    lua_pushboolean(L, result);
+
+    return 1;
 }

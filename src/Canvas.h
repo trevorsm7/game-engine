@@ -29,12 +29,14 @@ public:
     Canvas(): m_scene(nullptr), m_paused(false), m_visible(true), m_actorRemoved(false) {}
     ~Canvas() {}
 
-    ResourceManager* getResourceManager();
+    ResourceManager* getResourceManager() const;
 
     void update(lua_State* L, float delta);
     void render(IRenderer* renderer);
     bool mouseEvent(lua_State* L, MouseEvent& event);
     void resize(lua_State* L, int width, int height);
+
+    bool testCollision(const Actor* actor1) const;
 
     static int canvas_init(lua_State* L);
 

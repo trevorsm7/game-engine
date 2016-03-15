@@ -27,13 +27,13 @@ public:
     ~TileMap() override {}
 
     const std::string& getIndexFile() const {return m_index;}
-    int getIndex(int i) const {if (inBounds(i)) return m_map[i]; return 0;}
-    int getIndex(int x, int y) const {if (inBounds(x, y)) return m_map[y * m_cols + x]; return 0;}
+    int getIndex(int i) const {if (isValidIndex(i)) return m_map[i]; return 0;}
+    int getIndex(int x, int y) const {if (isValidIndex(x, y)) return m_map[y * m_cols + x]; return 0;}
     int getCols() const {return m_cols;}
     int getRows() const {return m_rows;}
 
-    bool inBounds(int i) const {return i < m_cols * m_rows;}
-    bool inBounds(int x, int y) const {return x < m_cols && y < m_rows;}
+    bool isValidIndex(int i) const {return i < m_cols * m_rows;}
+    bool isValidIndex(int x, int y) const {return x < m_cols && y < m_rows;}
 
     static TileMapPtr loadTileMap(ResourceManager& manager, const std::string& filename);
 };
@@ -51,11 +51,11 @@ public:
     ~TileIndex() override {}
 
     const std::string& getImageFile() const {return m_image;}
-    bool getCollidable(int i) const {return inBounds(i) && m_flags[i] & 1;}
+    bool isCollidable(int i) const {return isValidIndex(i) && m_flags[i] & 1;}
     int getCols() const {return m_cols;}
     int getRows() const {return m_rows;}
 
-    bool inBounds(int i) const {return i < m_cols * m_rows;}
+    bool isValidIndex(int i) const {return i < m_cols * m_rows;}
 
     static TileIndexPtr loadTileIndex(ResourceManager& manager, const std::string& filename);
 };

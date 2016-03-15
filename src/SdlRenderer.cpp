@@ -79,7 +79,8 @@ void SdlRenderer::drawTiles(const std::string& name)
         return; // TODO: we should at least have a placeholder instead of null; assert here?
 
     // Apply the render color to the texture
-    //SDL_SetTextureColorMod(texture->getPtr(), m_color.r, m_color.g, m_color.b);
+    // NOTE will need to modulate per tile if we add color mask to tilemap
+    SDL_SetTextureColorMod(texture->getPtr(), m_color.r, m_color.g, m_color.b);
 
     // Set the source rect from which we will draw the texture
     SDL_Rect source;

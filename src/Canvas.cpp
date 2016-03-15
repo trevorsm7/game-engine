@@ -1,11 +1,12 @@
 #include "Canvas.h"
 #include "Scene.h"
 #include "BasicCamera.h"
+#include "ICollider.h"
 
 #include <algorithm>
 #include <cmath>
 
-ResourceManager* Canvas::getResourceManager()
+ResourceManager* Canvas::getResourceManager() const
 {
     if (m_scene)
         return &m_scene->getResourceManager();
@@ -133,6 +134,31 @@ bool Canvas::mouseEvent(lua_State *L, MouseEvent& event)
 void Canvas::resize(lua_State* L, int width, int height)
 {
     m_camera->resize(width, height);
+}
+
+bool Canvas::testCollision(const Actor* actor1) const
+{
+    const ICollider* collider1 = actor1->getCollider();
+    if (!collider1 || !collider1->isCollidable())
+        return false;
+
+    // TODO: test just added actors as well?
+    for (auto& actor2 : m_actors)
+    {
+        // Always skip if marked for removal
+        if (actor2->m_canvas != this)
+            continue;
+
+        // Don't allow collision with self
+        if (actor1 == actor2)
+            continue;
+
+        // Test colliders against each other
+        if (collider1->testCollision(actor2->getCollider()))
+            return true;
+    }
+
+    return false;
 }
 
 // =============================================================================
