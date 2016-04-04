@@ -2,7 +2,9 @@
 #define __AABBCOLLIDER_H__
 
 #include "ICollider.h"
-#include "Actor.h"
+#include "Aabb.h"
+
+class Actor;
 
 class AabbCollider : public ICollider
 {
@@ -14,32 +16,12 @@ public:
 
     void update(float delta) override {}
 
-    bool testCollision(float x, float y) const override
-    {
-        if (!isCollidable() || !m_actor)
-            return false;
+    bool testCollision(float x, float y) const override;
+    bool testCollision(const Aabb& aabb) const override;
+    bool testCollision(float deltaX, float deltaY, const ICollider* other) const override;
 
-        const Aabb self = m_actor->getTransform().getAabb();
-        return self.isContaining(x, y);
-    }
-
-    bool testCollision(const Aabb& aabb) const override
-    {
-        if (!isCollidable() || !m_actor)
-            return false;
-
-        const Aabb self = m_actor->getTransform().getAabb();
-        return self.isOverlapped(aabb);
-    }
-
-    bool testCollision(const ICollider* other) const override
-    {
-        if (!isCollidable() || !m_actor || !other)
-            return false;
-
-        Aabb bounds = m_actor->getTransform().getAabb();
-        return other->testCollision(bounds);
-    }
+    bool getCollisionTime(const Aabb& aabb, float velX, float velY, float& start, float& end, float& normX, float& normY) const override;
+    bool getCollisionTime(float velX, float velY, const ICollider* other, float& start, float& end, float& normX, float& normY) const override;
 };
 
 #endif

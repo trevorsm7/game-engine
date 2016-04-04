@@ -3,7 +3,7 @@ game = Canvas.create({20, 20}, false)
 tiles = Actor.create{tiles="tiles.map", collider=true}
 game:addActor(tiles)
 tiles:setPosition(-1, -1)
-tiles:setScale(5, 5)
+tiles:setScale(7, 7)
 game:setCenter(2, 2)
 
 --player = Actor.create{sprite="hero.tga", collider=true}
@@ -34,7 +34,7 @@ function player:move(dir)
 end
 
 function player:update(delta)
-    if self:testCollision() then
+    if self:testCollision(0, 0) then
         self:setColor{1, .5, .5}
     else
         self:setColor{1, 1, 1}

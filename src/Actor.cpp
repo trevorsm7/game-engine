@@ -4,6 +4,9 @@
 #include "AabbCollider.h"
 #include "TiledGraphics.h"
 #include "TiledCollider.h"
+#include "Physics.h"
+
+#include <limits>
 
 ResourceManager* Actor::getResourceManager() const
 {
@@ -21,6 +24,7 @@ void Actor::update(lua_State* L, float delta)
     if (m_graphics)
         m_graphics->update(delta);
 
+    // NOTE this should be, for example, related to resizing bounds to reflect animation; not related to collisions
     if (m_collider)
         m_collider->update(delta);
 }
@@ -47,6 +51,20 @@ bool Actor::mouseEvent(lua_State* L, bool down)//MouseEvent& event)
     }
 
     return handled;
+}
+
+void Actor::collideEvent(lua_State* L, Actor* with)
+{
+    // Push other Actor's full userdata on stack
+    lua_pushlightuserdata(L, with);
+    lua_rawget(L, LUA_REGISTRYINDEX);
+    if (!lua_isuserdata(L, -1)) // check metatable?
+    {
+        // Reject or make the pcall with nil?
+        lua_pop(L, 1);
+        return;
+    }
+    pcall(L, "collided", 1, 0);
 }
 
 bool Actor::testMouse(float x, float y) const
@@ -152,6 +170,10 @@ int Actor::actor_init(lua_State* L)
         {"isVisible", actor_isVisible},
         {"setCollidable", actor_setCollidable},
         {"testCollision", actor_testCollision},
+        //{"getEarliestCollision", actor_getEarliestCollision},
+        {"setVelocity", actor_setVelocity},
+        {"getVelocity", actor_getVelocity},
+        {"addAcceleration", actor_addAcceleration},
         {nullptr, nullptr}
     };
     luaL_newlib(L, library);
@@ -196,9 +218,6 @@ int Actor::actor_init(lua_State* L)
 
 int Actor::actor_create(lua_State* L)
 {
-    // Validate arguments
-    //lua_Integer spriteID = static_cast<int>(luaL_checkinteger(L, 1));
-
     // Create Actor userdata and construct Actor object in the allocated memory
     // NOTE: consider using a shared_ptr here instead of the Actor object directly
     Actor* actor = reinterpret_cast<Actor*>(lua_newuserdata(L, sizeof(Actor)));
@@ -250,6 +269,37 @@ int Actor::actor_create(lua_State* L)
         }
         lua_pop(L, 1);
 
+        if (!actor->m_graphics)
+        {
+            lua_pushliteral(L, "collider");
+            if (lua_rawget(L, 1) == LUA_TBOOLEAN && lua_toboolean(L, -1))
+                actor->m_collider = IColliderPtr(new AabbCollider(actor));
+            lua_pop(L, 1);
+        }
+
+        lua_pushliteral(L, "physics");
+        if (lua_rawget(L, 1) == LUA_TBOOLEAN && lua_toboolean(L, -1))
+        {
+            float mass = 1.f;
+            lua_pushliteral(L, "mass");
+            if (lua_rawget(L, 1) == LUA_TNUMBER)
+                mass = lua_tonumber(L, -1);
+
+            float cor = 1.f;
+            lua_pushliteral(L, "cor");
+            if (lua_rawget(L, 1) == LUA_TNUMBER)
+                cor = lua_tonumber(L, -1);
+
+            float cof = 0.f;
+            lua_pushliteral(L, "cof");
+            if (lua_rawget(L, 1) == LUA_TNUMBER)
+                cof = lua_tonumber(L, -1);
+
+            actor->m_physics = PhysicsPtr(new Physics(mass, cor, cof));
+            lua_pop(L, 2);
+        }
+        lua_pop(L, 1);
+
         lua_pushliteral(L, "color");
         if (lua_rawget(L, 1) == LUA_TTABLE && actor->m_graphics)
         {
@@ -291,45 +341,31 @@ int Actor::actor_delete(lua_State* L)
 
 int Actor::actor_index(lua_State* L)
 {
-    //printf("-- actor_index called\n");
-
     // Validate Actor userdata
     luaL_checkudata(L, 1, METATABLE); // don't need userdata, just check that it's valid
     //luaL_checktype(L, lua_upvalueindex(1), LUA_TTABLE); // function table
 
     // First check if the key is in the function table
     lua_pushvalue(L, 2);
-    //lua_gettable(L, lua_upvalueindex(1));
     if (lua_rawget(L, lua_upvalueindex(1)) != LUA_TNIL)
-    {
-        //printf("---- found in function table\n");
         return 1;
-    }
 
     // Get the uservalue from Actor and index it with the 2nd argument
     lua_getuservalue(L, 1);
     lua_pushvalue(L, 2);
-    //lua_gettable(L, -2);
     lua_rawget(L, -2); // if type is nil, return it anyway
-    /*if (lua_rawget(L, -2) != LUA_TNIL)
-        printf("---- found in variable table\n");
-    else
-        printf("---- variable not found!\n");*/
 
     return 1;
 }
 
 int Actor::actor_newindex(lua_State* L)
 {
-    //printf("-- actor_newindex called\n");
-
     // Validate Actor userdata
     luaL_checkudata(L, 1, METATABLE); // don't need userdata, just check that it's valid
     //luaL_checktype(L, lua_upvalueindex(1), LUA_TTABLE); // function table
 
     // First check if the key is in the function table
     lua_pushvalue(L, 2);
-    //lua_gettable(L, lua_upvalueindex(1));
     if (lua_rawget(L, lua_upvalueindex(1)) != LUA_TNIL)
     {
         printf("Attempt to overwrite reserved name \"%s\" on Actor\n", lua_tostring(L, 2));
@@ -340,7 +376,6 @@ int Actor::actor_newindex(lua_State* L)
     lua_getuservalue(L, 1);
     lua_pushvalue(L, 2);
     lua_pushvalue(L, 3);
-    // lua_settable(L, -3);
     lua_rawset(L, -3);
 
     return 0;
@@ -385,7 +420,8 @@ int Actor::actor_setPosition(lua_State* L)
     actor->m_transform.setX(x);
     actor->m_transform.setY(y);
 
-    return 0;
+    lua_pushvalue(L, 1);
+    return 1;
 }
 
 int Actor::actor_setScale(lua_State* L)
@@ -398,7 +434,8 @@ int Actor::actor_setScale(lua_State* L)
     actor->m_transform.setW(w);
     actor->m_transform.setH(h);
 
-    return 0;
+    lua_pushvalue(L, 1);
+    return 1;
 }
 
 int Actor::actor_setColor(lua_State* L)
@@ -422,7 +459,8 @@ int Actor::actor_setColor(lua_State* L)
             actor->m_graphics->setColor(red, green, blue);
     }
 
-    return 0;
+    lua_pushvalue(L, 1);
+    return 1;
 }
 
 int Actor::actor_setVisible(lua_State* L)
@@ -435,7 +473,8 @@ int Actor::actor_setVisible(lua_State* L)
     if (actor->m_graphics)
         actor->m_graphics->setVisible(lua_toboolean(L, 2));
 
-    return 0;
+    lua_pushvalue(L, 1);
+    return 1;
 }
 
 int Actor::actor_isVisible(lua_State* L)
@@ -459,19 +498,103 @@ int Actor::actor_setCollidable(lua_State* L)
     if (actor->m_collider != nullptr)
         actor->m_collider->setCollidable(lua_toboolean(L, 2));
 
-    return 0;
+    lua_pushvalue(L, 1);
+    return 1;
 }
 
 int Actor::actor_testCollision(lua_State* L)
 {
     // Validate function arguments
     Actor* actor = reinterpret_cast<Actor*>(luaL_checkudata(L, 1, METATABLE));
+    float deltaX = static_cast<float>(luaL_checknumber(L, 2));
+    float deltaY = static_cast<float>(luaL_checknumber(L, 3));
 
     bool result = false;
     if (actor->m_collider && actor->m_canvas)
-        result = actor->m_canvas->testCollision(actor);
+        result = actor->m_canvas->testCollision(deltaX, deltaY, actor);
 
     lua_pushboolean(L, result);
 
+    return 1;
+}
+
+/*int Actor::actor_getEarliestCollision(lua_State* L)
+{
+    // Validate function arguments
+    Actor* actor = reinterpret_cast<Actor*>(luaL_checkudata(L, 1, METATABLE));
+
+    Actor* hit = nullptr;
+    float start = std::numeric_limits<float>::max();
+    float end = std::numeric_limits<float>::max();;
+
+    bool result = false;
+    if (actor->m_collider && actor->m_canvas)
+        result = actor->m_canvas->getEarliestCollision(actor, hit, start, end);
+
+    lua_pushboolean(L, result);
+    if (hit != nullptr)
+    {
+        lua_pushlightuserdata(L, hit);
+        lua_rawget(L, LUA_REGISTRYINDEX);
+    }
+    else
+        lua_pushnil(L);
+    lua_pushnumber(L, start);
+    lua_pushnumber(L, end);
+
+    return 4;
+}*/
+
+int Actor::actor_setVelocity(lua_State* L)
+{
+    // Validate function arguments
+    Actor* actor = reinterpret_cast<Actor*>(luaL_checkudata(L, 1, METATABLE));
+    float x = static_cast<float>(luaL_checknumber(L, 2));
+    float y = static_cast<float>(luaL_checknumber(L, 3));
+
+    if (actor->m_physics)
+    {
+        actor->m_physics->setVelX(x);
+        actor->m_physics->setVelY(y);
+    }
+
+    lua_pushvalue(L, 1);
+    return 1;
+}
+
+int Actor::actor_getVelocity(lua_State* L)
+{
+    // Validate function arguments
+    Actor* actor = reinterpret_cast<Actor*>(luaL_checkudata(L, 1, METATABLE));
+
+    Physics* physics = actor->m_physics.get();
+    if (physics)
+    {
+        lua_pushnumber(L, physics->getVelX());
+        lua_pushnumber(L, physics->getVelY());
+    }
+    else
+    {
+        lua_pushnumber(L, 0.);
+        lua_pushnumber(L, 0.);
+    }
+
+    return 2;
+}
+
+int Actor::actor_addAcceleration(lua_State* L)
+{
+    // Validate function arguments
+    Actor* actor = reinterpret_cast<Actor*>(luaL_checkudata(L, 1, METATABLE));
+    float x = static_cast<float>(luaL_checknumber(L, 2));
+    float y = static_cast<float>(luaL_checknumber(L, 3));
+
+    if (actor->m_physics)
+    {
+        actor->m_physics->addAccX(x);
+        actor->m_physics->addAccY(y);
+    }
+
+    lua_pushvalue(L, 1);
     return 1;
 }

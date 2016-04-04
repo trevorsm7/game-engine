@@ -25,6 +25,9 @@ public:
     void setY(float y) {m_y = y;}
     void setW(float w) {m_w = w;}
     void setH(float h) {m_h = h;}
+
+    void addX(float x) {m_x += x;}
+    void addY(float y) {m_y += y;}
 };
 
 #endif

@@ -2,8 +2,10 @@
 #include "Scene.h"
 #include "BasicCamera.h"
 #include "ICollider.h"
+#include "Physics.h"
 
 #include <algorithm>
+#include <limits>
 #include <cmath>
 
 ResourceManager* Canvas::getResourceManager() const
@@ -18,29 +20,7 @@ void Canvas::update(lua_State *L, float delta)
 {
     if (m_actorRemoved)
     {
-        // TODO: should we iterate through the add queue as well?
-        // Iterate through Actors to find any marked for delete
-        auto tail = m_actors.begin();
-        for (auto end = m_actors.end(), it = tail; it != end; ++it)
-        {
-            // Remove actor if it is marked for delete, then skip
-            if ((*it)->m_canvas != this)
-            {
-                (*it)->refRemoved(L);
-                continue;
-            }
-
-            // Shift elements back if we have empty space from removals
-            if (tail != it)
-                *tail = *it;
-            ++tail;
-        }
-
-        // If any Actors were removed, clear the end of the list
-        // NOTE: since removed Actors can be in the added queue as well, this won't always be true
-        if (tail != m_actors.end())
-            m_actors.erase(tail, m_actors.end());
-
+        processRemovedActors(L);
         m_actorRemoved = false;
     }
 
@@ -48,31 +28,14 @@ void Canvas::update(lua_State *L, float delta)
     if (m_paused)
         return;
 
+    updatePhysics(L, delta);
+
     // Order of update dispatch doesn't really matter; choose bottom to top
     for (auto& actor : m_actors)
         actor->update(L, delta);
 
     // Recently added Actors should now be added to the end
-    for (auto& actor : m_added)
-    {
-        // Remove actor if it is marked for delete, then skip
-        if (actor->m_canvas != this)
-        {
-            actor->refRemoved(L);
-            continue;
-        }
-
-        // Find first actor in canvas with greater layer
-        auto it = m_actors.begin();
-        for (auto end = m_actors.end(); it != end; ++it)
-            if (actor->getLayer() < (*it)->getLayer())
-                break;
-
-        // Insert actor before before one with greater layer (insertion sort)
-        m_actors.insert(it, actor);
-        //m_actors.push_back(actor);
-    }
-    m_added.clear();
+    processAddedActors(L);
 }
 
 void Canvas::render(IRenderer *renderer)
@@ -131,12 +94,142 @@ bool Canvas::mouseEvent(lua_State *L, MouseEvent& event)
     return false;
 }
 
-void Canvas::resize(lua_State* L, int width, int height)
+void Canvas::processAddedActors(lua_State *L)
 {
-    m_camera->resize(width, height);
+    // Process each actor in the add queue
+    for (auto& actor : m_added)
+    {
+        // Remove actor if it is marked for delete, then skip
+        if (actor->m_canvas != this)
+        {
+            actor->refRemoved(L);
+            continue;
+        }
+
+        // Find first actor in canvas with greater layer
+        // TODO would it be better to search starting from the end instead?
+        auto it = m_actors.begin();
+        for (auto end = m_actors.end(); it != end; ++it)
+            if (actor->getLayer() < (*it)->getLayer())
+                break;
+
+        // Insert actor before before one with greater layer (insertion sort)
+        m_actors.insert(it, actor);
+    }
+
+    // All have been copied from the queue, so we clear it
+    m_added.clear();
 }
 
-bool Canvas::testCollision(const Actor* actor1) const
+void Canvas::processRemovedActors(lua_State *L)
+{
+    // Iterate through Actors to find any marked for delete
+    auto end = m_actors.end();
+    auto tail = m_actors.begin();
+    for (auto it = tail; it != end; ++it)
+    {
+        // Remove actor if it is marked for delete, then skip
+        if ((*it)->m_canvas != this)
+        {
+            (*it)->refRemoved(L);
+            continue;
+        }
+
+        // Shift elements back if we have empty space from removals
+        if (tail != it)
+            *tail = *it;
+        ++tail;
+    }
+
+    // If any Actors were removed, clear the end of the list
+    if (tail != end)
+        m_actors.erase(tail, end);
+
+    // TODO: should we iterate through the add queue as well?
+}
+
+void Canvas::updatePhysics(lua_State *L, float delta)
+{
+    // Update physics state required before collisions
+    for (auto& actor : m_actors)
+    {
+        // Always skip if marked for removal
+        if (actor->m_canvas != this)
+            continue;
+
+        Physics* physics = actor->getPhysics();
+        if (physics)
+            physics->preUpdate(delta);
+    }
+
+    while (delta > 0.f)
+    {
+        bool found = false;
+        Actor* actor1 = nullptr;
+        Actor* actor2 = nullptr;
+        float timeStart = delta, timeEnd, normX, normY;
+
+        // Iterate over all Actors
+        auto end = m_actors.end();
+        for (auto it = m_actors.begin(); it != end; ++it)
+        {
+            // Always skip if marked for removal
+            if ((*it)->m_canvas != this)
+                continue;
+
+            // Get earliest collision among remaining Actors
+            // TODO detect and stop repeated collision between stuck objects
+            // TODO add stuck flag to objects to treat as static while stuck
+            Actor* tempActor2;
+            float tempStart, tempEnd, tempNormX, tempNormY;
+            if (getEarliestCollision(*it, it+1, end, tempActor2, tempStart, tempEnd, tempNormX, tempNormY))
+            {
+                // Note if we have found a new earliest collision
+                if (tempStart < timeStart)
+                {
+                    found = true;
+                    actor1 = *it;
+                    actor2 = tempActor2;
+                    timeStart = tempStart;
+                    timeEnd = tempEnd;
+                    normX = tempNormX;
+                    normY = tempNormY;
+                }
+            }
+        }
+
+        // Update all objects to first collision time
+        // TODO could avoid updating all objects by simulating reverse movement back to a common time when we check collisions??
+        if (timeStart > 0.f)
+        {
+            for (auto& actor : m_actors)
+            {
+                Physics* physics = actor->getPhysics();
+                if (physics)
+                    physics->update(actor->getTransform(), timeStart);
+            }
+
+            delta -= timeStart;
+        }
+
+        if (found)
+        {
+            // Allow physics components to resolve collision
+            Physics* physics1 = actor1->getPhysics();
+            Physics* physics2 = actor2->getPhysics();
+            if (physics1)
+                physics1->collide(physics2, normX, normY);
+            else if (physics2)
+                physics2->collide(physics1, normX, normY);
+
+            // Send collision notifications to script
+            actor1->collideEvent(L, actor2);
+            actor2->collideEvent(L, actor1);
+        }
+    }
+}
+
+bool Canvas::testCollision(float deltaX, float deltaY, const Actor* actor1) const
 {
     const ICollider* collider1 = actor1->getCollider();
     if (!collider1 || !collider1->isCollidable())
@@ -154,11 +247,86 @@ bool Canvas::testCollision(const Actor* actor1) const
             continue;
 
         // Test colliders against each other
-        if (collider1->testCollision(actor2->getCollider()))
+        if (collider1->testCollision(deltaX, deltaY, actor2->getCollider()))
             return true;
     }
 
     return false;
+}
+
+bool Canvas::getEarliestCollision(const Actor* actor1, ActorIterator it, ActorIterator itEnd, Actor*& hit, float& start, float& end, float& normX, float& normY) const
+{
+    bool found = false;
+    float tempStart, tempEnd;
+    float tempNormX, tempNormY;
+    start = std::numeric_limits<float>::max();
+
+    // Actor must have a collision component
+    const ICollider* collider1 = actor1->getCollider();
+    if (!collider1 || !collider1->isCollidable())
+        return false;
+
+    // Get Actor's velocity
+    const Physics* physics1 = actor1->getPhysics();
+    float velX = 0.f, velY = 0.f;
+    if (physics1)
+    {
+        velX = physics1->getVelX();
+        velY = physics1->getVelY();
+    }
+
+    for (; it != itEnd; ++it)
+    {
+        Actor* actor2 = *it;
+
+        // Always skip if marked for removal
+        if (actor2->m_canvas != this)
+            continue;
+
+        // Don't allow collision with self
+        if (actor1 == actor2)
+            continue;
+
+        // Compute the relative velocity (in frame of reference of other object)
+        float relVelX = velX, relVelY = velY;
+        const Physics* physics2 = actor2->getPhysics();
+        if (physics2)
+        {
+            relVelX -= physics2->getVelX();
+            relVelY -= physics2->getVelY();
+        }
+
+        // Reject potential collisions between non-moving objects (which we might not be able to resolve)
+        if (relVelX == 0.f && relVelY == 0.f)
+            continue;
+
+        // Test colliders against each other
+        if (collider1->getCollisionTime(relVelX, relVelY, actor2->getCollider(), tempStart, tempEnd, tempNormX, tempNormY))
+        {
+            // NOTE (tempStart < start || (tempStart == start && relPosY <= 0.f)) orders simultaneous collisions by order in the direction of movement
+            // NOTE (tempStart >= 0.f || tempEnd > fabs(tempStart)) is a solution for only considering inward movemnt as collision
+            float /*relPosX,*/ relPosY;
+            if (found)
+            {
+                // IDEA: return start time(s) in reverse sorted list; compare next in list until no longer equal (would need to store entire list on hit)
+                //relPosX = (actor2->getTransform().getX() - hit->getTransform().getX()) * relVelX;
+                relPosY = (actor2->getTransform().getY() - hit->getTransform().getY()) * relVelY;
+            }
+            if (tempEnd > 0.f
+                && (tempStart < start || (tempStart == start /*&& relPosX <= 0.f*/ && relPosY <= 0.f))
+                && (tempStart >= 0.f || tempEnd > fabs(tempStart)))
+            {
+                start = tempStart;
+                end = tempEnd;
+                normX = tempNormX;
+                normY = tempNormY;
+                hit = actor2;
+                found = true;
+            }
+        }
+    }
+
+    return found;
 }
 
 // =============================================================================
@@ -168,7 +336,7 @@ bool Canvas::testCollision(const Actor* actor1) const
 int Canvas::canvas_init(lua_State *L)
 {
     // Push new metatable on the stack
-    luaL_newmetatable(L, "Canvas");
+    luaL_newmetatable(L, METATABLE);
 
     // Push new table to hold member functions
     static const luaL_Reg library[] =
@@ -207,7 +375,7 @@ int Canvas::canvas_init(lua_State *L)
     lua_settable(L, -3);
 
     // Assign global function table to global variable
-    lua_setglobal(L, "Canvas");
+    lua_setglobal(L, "Canvas"); // not necessarily same string as METATABLE
 
     return 0;
 }
@@ -241,7 +409,7 @@ int Canvas::canvas_create(lua_State *L)
 
     //printf("created Canvas(%p)\n", canvas);
 
-    luaL_getmetatable(L, "Canvas");
+    luaL_getmetatable(L, METATABLE);
     lua_setmetatable(L, -2); // -1 is metatable, which gets popped by this call
 
     scene->addCanvas(canvas);
@@ -258,7 +426,7 @@ int Canvas::canvas_create(lua_State *L)
 
 int Canvas::canvas_delete(lua_State *L)
 {
-    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, "Canvas"));
+    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, METATABLE));
     //printf("deleting Canvas(%p)\n", canvas);
 
     // Mark each Actor in primary list for removal
@@ -287,7 +455,7 @@ int Canvas::canvas_delete(lua_State *L)
 int Canvas::canvas_addActor(lua_State *L)
 {
     // Validate function arguments
-    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, "Canvas"));
+    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, METATABLE));
     Actor *actor = reinterpret_cast<Actor*>(luaL_checkudata(L, 2, Actor::METATABLE));
 
     // Don't allow adding an Actor that already belongs to another Canvas
@@ -315,7 +483,7 @@ int Canvas::canvas_addActor(lua_State *L)
 int Canvas::canvas_removeActor(lua_State *L)
 {
     // Validate function arguments
-    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, "Canvas"));
+    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, METATABLE));
     Actor *actor = reinterpret_cast<Actor*>(luaL_checkudata(L, 2, Actor::METATABLE));
 
     // Actor must belong to this Canvas before we can remove it obviously...
@@ -336,7 +504,7 @@ int Canvas::canvas_removeActor(lua_State *L)
 int Canvas::canvas_clear(lua_State* L)
 {
     // Validate function arguments
-    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, "Canvas"));
+    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, METATABLE));
 
     // Mark each Actor belonging to primary list for removal
     for (auto& actor : canvas->m_actors)
@@ -357,7 +525,7 @@ int Canvas::canvas_clear(lua_State* L)
 int Canvas::canvas_setCenter(lua_State* L)
 {
     // Validate function arguments
-    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, "Canvas"));
+    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, METATABLE));
     float x = static_cast<float>(luaL_checknumber(L, 2));
     float y = static_cast<float>(luaL_checknumber(L, 3));
 
@@ -370,7 +538,7 @@ int Canvas::canvas_setCenter(lua_State* L)
 int Canvas::canvas_getCollision(lua_State* L)
 {
     // Validate function arguments
-    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, "Canvas"));
+    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, METATABLE));
     float x = static_cast<float>(luaL_checknumber(L, 2));
     float y = static_cast<float>(luaL_checknumber(L, 3));
 
@@ -413,7 +581,7 @@ int Canvas::canvas_getCollision(lua_State* L)
 int Canvas::canvas_setPaused(lua_State *L)
 {
     // Validate function arguments
-    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, "Canvas"));
+    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, METATABLE));
     luaL_argcheck(L, lua_isboolean(L, 2), 2, "must be boolean (true to pause)\n");
 
     canvas->m_paused = lua_toboolean(L, 2);
@@ -424,7 +592,7 @@ int Canvas::canvas_setPaused(lua_State *L)
 int Canvas::canvas_setVisible(lua_State *L)
 {
     // Validate function arguments
-    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, "Canvas"));
+    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, METATABLE));
     luaL_argcheck(L, lua_isboolean(L, 2), 2, "must be boolean (true for visible)\n");
 
     canvas->m_visible = lua_toboolean(L, 2);

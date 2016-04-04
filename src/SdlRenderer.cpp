@@ -110,11 +110,14 @@ void SdlRenderer::drawTiles(const std::string& name)
     {
         for (int x = 0; x < tileMap->getCols(); ++x)
         {
+            // Skip if tile index invalid (blank tile)
             const int tile = tileMap->getIndex(i++);
+            if (!tileIndex->isValidIndex(tile))
+                continue;
 
             // Index tiles from top-left
-            source.x = (tile % tileIndex->getCols()) * source.w;
-            source.y = (tile / tileIndex->getCols()) * source.h;
+            source.x = tileIndex->getIndexCol(tile) * source.w;
+            source.y = tileIndex->getIndexRow(tile) * source.h;
 
             // Draw tilemap from top-left
             target.x = originX + int(x * floatW);

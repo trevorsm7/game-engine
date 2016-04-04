@@ -231,11 +231,14 @@ void GlfwRenderer::drawTiles(const std::string& name)
     {
         for (int x = 0; x < tileMap->getCols(); ++x)
         {
+            // Skip if tile index invalid (blank tile)
             const int tile = tileMap->getIndex(i++);
+            if (!tileIndex->isValidIndex(tile))
+                continue;
 
             // Index tiles from top-left
-            const float tileX = (tile % tileIndex->getCols()) * tileW;
-            const float tileY = 1.f - ((tile / tileIndex->getCols()) + 1) * tileH;
+            const float tileX = tileIndex->getIndexCol(tile) * tileW;
+            const float tileY = 1.f - (tileIndex->getIndexRow(tile) + 1) * tileH;
             glUniform2f(m_textureOffset, tileX, tileY);
 
             // Draw tilemap from top-left

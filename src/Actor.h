@@ -4,6 +4,7 @@
 #include "IRenderer.h"
 #include "IGraphics.h"
 #include "ICollider.h"
+#include "Physics.h"
 #include "Transform.h"
 #include "Event.h"
 #include "ResourceManager.h"
@@ -17,23 +18,28 @@ class Actor
 {
     typedef std::unique_ptr<IGraphics> IGraphicsPtr;
     typedef std::unique_ptr<ICollider> IColliderPtr;
+    typedef std::unique_ptr<Physics> PhysicsPtr;
 
 public:
     Canvas* m_canvas;
 
 private:
     Transform m_transform;
+    PhysicsPtr m_physics;
     IGraphicsPtr m_graphics;
     IColliderPtr m_collider;
     int m_layer; // TODO: probably want to move this to graphics later
     int m_refCount;
 
-public:
     Actor(): m_canvas(nullptr), m_layer(0), m_refCount(0) {}
+
+public:
     ~Actor() {}
 
     ResourceManager* getResourceManager() const;
-    const Transform& getTransform() const {return m_transform;}
+    Transform& getTransform() {return m_transform;}
+    Physics* getPhysics() {return m_physics.get();}
+    const Physics* getPhysics() const {return m_physics.get();}
     const IGraphics* getGraphics() const {return m_graphics.get();}
     const ICollider* getCollider() const {return m_collider.get();}
 
@@ -43,6 +49,7 @@ public:
     void update(lua_State* L, float delta);
     void render(IRenderer* renderer);
     bool mouseEvent(lua_State* L, bool down);
+    void collideEvent(lua_State* L, Actor* with);
 
     bool testMouse(float x, float y) const;
     bool testCollision(float x, float y) const;
@@ -71,6 +78,10 @@ private:
     static int actor_isVisible(lua_State* L);
     static int actor_setCollidable(lua_State* L);
     static int actor_testCollision(lua_State* L);
+    //static int actor_getEarliestCollision(lua_State* L);
+    static int actor_setVelocity(lua_State* L);
+    static int actor_getVelocity(lua_State* L);
+    static int actor_addAcceleration(lua_State* L);
 };
 
 #endif
