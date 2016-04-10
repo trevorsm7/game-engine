@@ -112,15 +112,14 @@ reset[3](canvases[3])
 
 --canvas[4] = Canvas.create({30, 30}, false)
 canvases[4] = Canvas.create({16, 12}, false)
-canvases[4]:setCenter(0, -2)
 canvases[4]:setVisible(false)
 canvases[4]:setPaused(true)
 
 reset[4] = function(canvas)
     local center = addPhysicsBox(canvas, -1, 1, 1):setVelocity(2, 0)
+    canvas:setCenter(center)
     function center:update()
-        local x, y = self:getPosition()
-        canvas:setCenter(x + 0.5, y + 0.5)
+        canvas:setCenter(self)
     end
 
     addPhysicsBox(canvas, -1, 2, 1)

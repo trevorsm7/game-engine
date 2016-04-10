@@ -11,7 +11,7 @@ class AabbCollider : public ICollider
     Actor* m_actor;
 
 public:
-    AabbCollider(Actor* actor): m_actor(actor) {}
+    AabbCollider(Actor* actor, uint32_t group, uint32_t mask): ICollider(group, mask), m_actor(actor) {}
     ~AabbCollider() override {}
 
     void update(float delta) override {}

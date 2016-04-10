@@ -21,7 +21,7 @@ bool AabbCollider::testCollision(const Aabb& aabb) const
 
 bool AabbCollider::testCollision(float deltaX, float deltaY, const ICollider* other) const
 {
-    if (!isCollidable() || !m_actor || !other)
+    if (!isCollidableWith(other) || !m_actor)
         return false;
 
     Aabb bounds = m_actor->getTransform().getAabb();
@@ -67,7 +67,7 @@ bool AabbCollider::getCollisionTime(const Aabb& aabb, float velX, float velY, fl
 // TODO maybe we should just pull these velocities from the actor physics component???
 bool AabbCollider::getCollisionTime(float velX, float velY, const ICollider* other, float& start, float& end, float& normX, float& normY) const
 {
-    if (!isCollidable() || !m_actor || !other)
+    if (!isCollidableWith(other) || !m_actor)
         return false;
 
     const Aabb bounds = m_actor->getTransform().getAabb();

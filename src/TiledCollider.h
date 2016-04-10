@@ -13,7 +13,7 @@ class TiledCollider : public ICollider
     std::string m_tilemap;
 
 public:
-    TiledCollider(Actor* actor, std::string tilemap): m_actor(actor), m_tilemap(tilemap) {}
+    TiledCollider(Actor* actor, std::string tilemap, uint32_t group, uint32_t mask): ICollider(group, mask), m_actor(actor), m_tilemap(tilemap) {}
     ~TiledCollider() override {}
 
     void update(float delta) override {}

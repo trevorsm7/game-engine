@@ -21,6 +21,8 @@ public:
     float getW() const {return m_w;}
     float getH() const {return m_h;}
 
+    void getCenter(float& x, float& y) const {x = m_x + m_w * 0.5f; y = m_y + m_h * 0.5f;}
+
     void setX(float x) {m_x = x;}
     void setY(float y) {m_y = y;}
     void setW(float w) {m_w = w;}

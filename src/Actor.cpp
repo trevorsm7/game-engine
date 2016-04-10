@@ -7,6 +7,7 @@
 #include "Physics.h"
 
 #include <limits>
+#include <cstdint>
 
 ResourceManager* Actor::getResourceManager() const
 {
@@ -249,7 +250,19 @@ int Actor::actor_create(lua_State* L)
 
             lua_pushliteral(L, "collider");
             if (lua_rawget(L, 1) == LUA_TBOOLEAN && lua_toboolean(L, -1))
-                actor->m_collider = IColliderPtr(new AabbCollider(actor));
+            {
+                uint32_t group = 1;
+                lua_pushliteral(L, "group");
+                if (lua_rawget(L, 1) == LUA_TNUMBER)
+                    group = lua_tointeger(L, -1);
+
+                uint32_t mask = 0xFFFFFFFF;
+                lua_pushliteral(L, "mask");
+                if (lua_rawget(L, 1) == LUA_TNUMBER)
+                    mask = lua_tointeger(L, -1);
+
+                actor->m_collider = IColliderPtr(new AabbCollider(actor, group, mask));
+            }
             lua_pop(L, 1);
         }
         lua_pop(L, 1);
@@ -264,7 +277,20 @@ int Actor::actor_create(lua_State* L)
 
             lua_pushliteral(L, "collider");
             if (lua_rawget(L, 1) == LUA_TBOOLEAN && lua_toboolean(L, -1))
-                actor->m_collider = IColliderPtr(new TiledCollider(actor, tileMap));
+            {
+                // TODO refactoring is in order....
+                uint32_t group = 1;
+                lua_pushliteral(L, "group");
+                if (lua_rawget(L, 1) == LUA_TNUMBER)
+                    group = lua_tointeger(L, -1);
+
+                uint32_t mask = 0xFFFFFFFF;
+                lua_pushliteral(L, "mask");
+                if (lua_rawget(L, 1) == LUA_TNUMBER)
+                    mask = lua_tointeger(L, -1);
+
+                actor->m_collider = IColliderPtr(new TiledCollider(actor, tileMap, group, mask));
+            }
             lua_pop(L, 1);
         }
         lua_pop(L, 1);
@@ -273,7 +299,20 @@ int Actor::actor_create(lua_State* L)
         {
             lua_pushliteral(L, "collider");
             if (lua_rawget(L, 1) == LUA_TBOOLEAN && lua_toboolean(L, -1))
-                actor->m_collider = IColliderPtr(new AabbCollider(actor));
+            {
+                // TODO more refactoring is in order....
+                uint32_t group = 1;
+                lua_pushliteral(L, "group");
+                if (lua_rawget(L, 1) == LUA_TNUMBER)
+                    group = lua_tointeger(L, -1);
+
+                uint32_t mask = 0xFFFFFFFF;
+                lua_pushliteral(L, "mask");
+                if (lua_rawget(L, 1) == LUA_TNUMBER)
+                    mask = lua_tointeger(L, -1);
+
+                actor->m_collider = IColliderPtr(new AabbCollider(actor, group, mask));
+            }
             lua_pop(L, 1);
         }
 

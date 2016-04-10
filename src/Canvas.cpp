@@ -526,8 +526,19 @@ int Canvas::canvas_setCenter(lua_State* L)
 {
     // Validate function arguments
     Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, METATABLE));
-    float x = static_cast<float>(luaL_checknumber(L, 2));
-    float y = static_cast<float>(luaL_checknumber(L, 3));
+
+    // Get position either through Actor or directly from argumentsS
+    float x, y;
+    if (lua_isuserdata(L, 2))
+    {
+        Actor *actor = reinterpret_cast<Actor*>(luaL_checkudata(L, 2, Actor::METATABLE));
+        actor->getTransform().getCenter(x, y);
+    }
+    else
+    {
+        x = static_cast<float>(luaL_checknumber(L, 2));
+        y = static_cast<float>(luaL_checknumber(L, 3));
+    }
 
     if (canvas->m_camera)
         canvas->m_camera->setCenter(x, y);

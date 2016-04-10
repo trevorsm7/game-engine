@@ -13,16 +13,14 @@ local function newPlayer(canvas, x, y)
     local player = Actor.create{sprite="hero.tga", collider=true}
     canvas:addActor(player)
     player:setPosition(x, y)
-    canvas:setCenter(x + 0.5, y + 0.5)
+    canvas:setCenter(player)
     player.player = true
     player.stepTime = 1
 
     function player:update(delta)
         local canvas = self:getCanvas()
         if canvas then
-            local x, y = self:getPosition()
-            canvas:setCenter(x + 0.5, y + 0.5)
-            --canvas:setVisible(true) -- hack to hide flicker in first frame
+            canvas:setCenter(self)
         end
     end
 
@@ -183,7 +181,6 @@ end
 math.randomseed(os.time())
 
 game = Canvas.create({20, 20}, false)
---game:setVisible(false) -- hack to hide flicker in first frame
 
 player = newPlayer(game, 1, 1)
 registerControl("left", player:keyDown(player.move, {-1, 0}))

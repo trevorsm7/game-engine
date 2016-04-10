@@ -104,7 +104,7 @@ bool TiledCollider::testCollision(const Aabb& aabb) const
 // this would probably only be reasonable when testing a tilemap against a tilemap
 bool TiledCollider::testCollision(float deltaX, float deltaY, const ICollider* other) const
 {
-    if (!isCollidable() || !m_actor || !other)
+    if (!isCollidableWith(other) || !m_actor)
         return false;
 
     // Reject early if there is no overlap with the map bounds
