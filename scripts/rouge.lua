@@ -10,7 +10,7 @@ local yellow = {1, 1, 0}
 local gameTime = 0
 
 local function newPlayer(canvas, x, y)
-    local player = Actor.create{sprite="hero.tga", collider=true}
+    local player = Actor{sprite="hero.tga", collider=true}
     canvas:addActor(player)
     player:setPosition(x, y)
     canvas:setCenter(player)
@@ -66,7 +66,7 @@ local function newPlayer(canvas, x, y)
 end
 
 local function newNerd(canvas, x, y)
-    local nerd = Actor.create{sprite="nerd.tga", collider=true}
+    local nerd = Actor{sprite="nerd.tga", collider=true}
     canvas:addActor(nerd)
     nerd:setPosition(x, y)
     nerd.enemy = true
@@ -133,7 +133,7 @@ local function newNerd(canvas, x, y)
 end
 
 local function newWall(canvas, x, y, w, h)
-    local wall = Actor.create{sprite="square.tga", collider=true}
+    local wall = Actor{sprite="square.tga", collider=true}
     canvas:addActor(wall)
     wall:setPosition(x, y)
     wall:setScale(w, h)
@@ -142,7 +142,7 @@ local function newWall(canvas, x, y, w, h)
 end
 
 local function newFloor(canvas, x, y, w, h)
-    local floor = Actor.create{sprite="square.tga", layer=-1, color=darkGrey}
+    local floor = Actor{sprite="square.tga", layer=-1, color=darkGrey}
     canvas:addActor(floor)
     floor:setPosition(x, y)
     floor:setScale(w, h)
@@ -151,7 +151,7 @@ local function newFloor(canvas, x, y, w, h)
 end
 
 local function newDoor(canvas, x, y)
-    local door = Actor.create{sprite="door.tga", collider=true}
+    local door = Actor{sprite="door.tga", collider=true}
     canvas:addActor(door)
     door:setPosition(x, y)
     door.open = false
@@ -180,7 +180,7 @@ end
 -- set a fresh random seed when we start up
 math.randomseed(os.time())
 
-game = Canvas.create({20, 20}, false)
+game = Canvas({20, 20}, false)
 
 player = newPlayer(game, 1, 1)
 registerControl("left", player:keyDown(player.move, {-1, 0}))

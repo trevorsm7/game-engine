@@ -1,53 +1,43 @@
 #include "Scene.h"
+#include "Canvas.h"
+#include "Actor.h"
+#include "IRenderer.h"
+
+#include <cassert>
 
 bool Scene::load(const char *filename)
 {
-    if (m_state)
-        return false;
-
-    m_state = luaL_newstate();
-    luaL_openlibs(m_state);
+    assert(m_L == nullptr);
+    m_L = luaL_newstate();
+    luaL_openlibs(m_L);
 
     // TODO: global utility functions should be protected from write and kept separate from
     // serialization. Make alternate "global" table w/ metatable to separate reads from user
     // globals and library globals.
 
     // Add Scene pointer to registry
-    // NOTE: could also store Scene* as function upvalue or as a full userdata type
-    lua_pushstring(m_state, "Scene");
-    lua_pushlightuserdata(m_state, this);
-    lua_rawset(m_state, LUA_REGISTRYINDEX);
+    lua_pushliteral(m_L, "Scene");
+    lua_pushlightuserdata(m_L, this);
+    lua_rawset(m_L, LUA_REGISTRYINDEX);
 
     // Initialize objects and methods
-    Canvas::canvas_init(m_state);
-    Actor::actor_init(m_state);
+    Canvas::initMetatable(m_L);
+    Actor::initMetatable(m_L);
 
-    lua_pushcfunction(m_state, scene_registerControl);
-    lua_setglobal(m_state, "registerControl");
+    lua_pushcfunction(m_L, scene_registerControl);
+    lua_setglobal(m_L, "registerControl");
 
-    lua_pushcfunction(m_state, scene_quit);
-    lua_setglobal(m_state, "quit");
-
-    // Register Canvas creation function with this Scene* as upvalue
-    //lua_pushlightuserdata(m_state, this);
-    //lua_pushcclosure(m_state, createCanvas, 1);
-    //lua_setglobal(m_state, "createCanvas");
+    lua_pushcfunction(m_L, scene_quit);
+    lua_setglobal(m_L, "quit");
 
     // Execute specified script
-    if (luaL_dofile(m_state, filename) != 0)
+    if (luaL_dofile(m_L, filename) != 0)
     {
-        fprintf(stderr, "%s\n", lua_tostring(m_state, -1));
+        fprintf(stderr, "%s\n", lua_tostring(m_L, -1));
         return false;
     }
 
     return true;
-}
-
-void Scene::addCanvas(Canvas *canvas)
-{
-    // push canvases on top of previous ones
-    m_canvases.push_back(canvas);
-    canvas->m_scene = this;
 }
 
 void Scene::update(float delta)
@@ -55,19 +45,15 @@ void Scene::update(float delta)
     // order of update dispatch doesn't really matter; choose bottom to top
     auto end = m_canvases.end();
     for (auto it = m_canvases.begin(); it != end; ++it)
-        (*it)->update(m_state, delta);
+        (*it)->update(m_L, delta);
 
     // TODO: should we manually tell Lua to step, or wait for auto-collect?
-    lua_gc(m_state, LUA_GCSTEP, 0);
+    lua_gc(m_L, LUA_GCSTEP, 0);
 }
 
 void Scene::render(IRenderer* renderer)
 {
-    if (!renderer)
-    {
-        fprintf(stderr, "Invalid renderer\n");
-        return;
-    }
+    assert(renderer != nullptr);
 
     // dispatch render calls from bottom to top
     auto end = m_canvases.end();
@@ -80,7 +66,7 @@ bool Scene::mouseEvent(MouseEvent& event)
     // dispatch events from top to bottom
     auto end = m_canvases.rend();
     for (auto it = m_canvases.rbegin(); it != end; ++it)
-        if ((*it)->mouseEvent(m_state, event))
+        if ((*it)->mouseEvent(m_L, event))
             return true; // stop dispatching an event when an Actor claims it
 
     return false;
@@ -88,24 +74,24 @@ bool Scene::mouseEvent(MouseEvent& event)
 
 bool Scene::controlEvent(ControlEvent& event)
 {
-    int top = lua_gettop(m_state);
+    int top = lua_gettop(m_L);
     bool handled = false;
 
-    lua_pushliteral(m_state, "controls");
-    if (lua_rawget(m_state, LUA_REGISTRYINDEX) == LUA_TTABLE)
+    lua_pushliteral(m_L, "controls");
+    if (lua_rawget(m_L, LUA_REGISTRYINDEX) == LUA_TTABLE)
     {
-        lua_pushstring(m_state, event.name);
-        if (lua_rawget(m_state, -2) == LUA_TFUNCTION)
+        lua_pushstring(m_L, event.name);
+        if (lua_rawget(m_L, -2) == LUA_TFUNCTION)
         {
-            lua_pushboolean(m_state, event.down);
-            if (lua_pcall(m_state, 1, 0, 0) != 0)
-                printf("%s\n", lua_tostring(m_state, -1));
+            lua_pushboolean(m_L, event.down);
+            if (lua_pcall(m_L, 1, 0, 0) != 0)
+                printf("%s\n", lua_tostring(m_L, -1));
             else
                 handled = true;
         }
     }
 
-    lua_settop(m_state, top);
+    lua_settop(m_L, top);
     return handled;
 }
 
@@ -114,15 +100,43 @@ void Scene::resize(int width, int height)
     // order of resize dispatch doesn't really matter; choose bottom to top
     auto end = m_canvases.end();
     for (auto it = m_canvases.begin(); it != end; ++it)
-        (*it)->resize(m_state, width, height);
+        (*it)->resize(m_L, width, height);
 }
 
-int Scene::scene_registerControl(lua_State *L)
+Scene* Scene::checkScene(lua_State* L)
+{
+    // Get light userdata from registry
+    lua_pushliteral(L, "Scene");
+    if (lua_rawget(L, LUA_REGISTRYINDEX) != LUA_TLIGHTUSERDATA)
+        luaL_error(L, "Failed to get Scene reference (non-userdata)");
+
+    // Cast light userdata to Scene*
+    auto scene = reinterpret_cast<Scene*>(lua_touserdata(L, -1));
+    if (!scene) luaL_error(L, "Failed to get Scene reference (nullptr)");
+    lua_pop(L, 1); // clean up the stack
+
+    return scene;
+}
+
+void Scene::addCanvas(lua_State *L, int index)
+{
+    // Validate and get pointers to Scene and Canvas
+    Scene* scene = Scene::checkScene(L);
+    Canvas* canvas = Canvas::checkUserdata(L, index);
+
+    // Push Canvas on layer above previously pushed Canvases
+    scene->m_canvases.push_back(canvas);
+    canvas->refAdded(L, index);
+    canvas->m_scene = scene;
+}
+
+int Scene::scene_registerControl(lua_State* L)
 {
     // Validate input
     // TODO: add user-friendly name, computer-friendly tags, view/player
     // TODO: add support for analog controls
     // TODO: add option to query state rather than wait for callback?
+    Scene* scene = Scene::checkScene(L);
     luaL_argcheck(L, lua_isstring(L, 1), 1, "Key name must be string\n");
     luaL_argcheck(L, lua_isfunction(L, 2), 2, "Key callback must be function\n");
 
@@ -138,11 +152,6 @@ int Scene::scene_registerControl(lua_State *L)
     lua_pushvalue(L, 2);
     lua_rawset(L, -3);
 
-    lua_pushliteral(L, "Scene");
-    lua_rawget(L, LUA_REGISTRYINDEX);
-    Scene *scene = reinterpret_cast<Scene*>(lua_touserdata(L, -1));
-    luaL_argcheck(L, scene != nullptr, 1, "invalid Scene\n");
-
     // Notify native layer of new control
     // TODO: native layer might also want to query a list of controls
     // for example, when a new game pad is connected
@@ -154,12 +163,9 @@ int Scene::scene_registerControl(lua_State *L)
     return 1;
 }
 
-int Scene::scene_quit(lua_State *L)
+int Scene::scene_quit(lua_State* L)
 {
-    lua_pushstring(L, "Scene");
-    lua_gettable(L, LUA_REGISTRYINDEX);
-    Scene *scene = reinterpret_cast<Scene*>(lua_touserdata(L, -1));
-    luaL_argcheck(L, scene != nullptr, 1, "invalid Scene\n");
+    Scene* scene = Scene::checkScene(L);
 
     if (scene->m_quitCallback)
         scene->m_quitCallback();

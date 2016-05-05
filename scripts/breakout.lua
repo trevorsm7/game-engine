@@ -1,23 +1,23 @@
 -- create a 20x15 game window
-game = Canvas.create({20, 15}, true)
+game = Canvas({20, 15}, true)
 
 -- put invisible walls around the edges of the screen
-leftWall = Actor.create{collider=true, group=4, mask=3}
+leftWall = Actor{collider=true, group=4, mask=3}
 game:addActor(leftWall)
 leftWall:setPosition(-1, -1)
 leftWall:setScale(1, 16)
 
-rightWall = Actor.create{collider=true, group=4, mask=3}
+rightWall = Actor{collider=true, group=4, mask=3}
 game:addActor(rightWall)
 rightWall:setPosition(20, -1)
 rightWall:setScale(1, 16)
 
-topWall = Actor.create{collider=true, group=4, mask=1}
+topWall = Actor{collider=true, group=4, mask=1}
 game:addActor(topWall)
 topWall:setPosition(0, 15)
 topWall:setScale(20, 1)
 
-bottomWall = Actor.create{collider=true, group=4, mask=1}
+bottomWall = Actor{collider=true, group=4, mask=1}
 game:addActor(bottomWall)
 bottomWall:setPosition(0, -2)
 bottomWall:setScale(20, 1)
@@ -33,7 +33,7 @@ end
 -- create the paddle
 -- TODO can we have COR=0 between paddle-walls while still having COR=1 between paddle-ball and ball-walls?
 -- TODO make paddle a top edge only collider
-paddle = Actor.create{sprite="square.tga", collider=true, group=2, mask=5, physics=true, mass=math.huge}
+paddle = Actor{sprite="square.tga", collider=true, group=2, mask=5, physics=true, mass=math.huge}
 game:addActor(paddle)
 paddle:setScale(4, 1)
 
@@ -44,7 +44,7 @@ function paddle:update()
 end
 
 -- create the ball
-ball = Actor.create{sprite="round.tga", collider=true, group=1, physics=true}--, cof=1}
+ball = Actor{sprite="round.tga", collider=true, group=1, physics=true}--, cof=1}
 game:addActor(ball)
 
 -- keep the ball stuck to the paddle until it is launched
@@ -69,7 +69,7 @@ end
 -- helper function to create a brick
 bricks = {}
 function addBrick(x, y, color)
-    local brick = Actor.create{sprite="square.tga", collider=true, group=8, mask=1}
+    local brick = Actor{sprite="square.tga", collider=true, group=8, mask=1}
     game:addActor(brick)
     brick:setPosition(x, y)
     brick:setScale(2, 1)

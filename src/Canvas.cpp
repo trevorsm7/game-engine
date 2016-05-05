@@ -1,5 +1,6 @@
 #include "Canvas.h"
 #include "Scene.h"
+#include "Actor.h"
 #include "BasicCamera.h"
 #include "ICollider.h"
 #include "Physics.h"
@@ -333,56 +334,18 @@ bool Canvas::getEarliestCollision(const Actor* actor1, ActorIterator it, ActorIt
 // Lua library functions
 // =============================================================================
 
-int Canvas::canvas_init(lua_State *L)
+// NOTE constexpr declaration requires a definition
+const luaL_Reg Canvas::METHODS[];
+
+void Canvas::construct(lua_State* L)
 {
-    // Push new metatable on the stack
-    luaL_newmetatable(L, METATABLE);
+    // Add empty table as uservalue for storage of runtime variables
+    // NOTE uncomment if we'd like to have data members in canvases
+    //lua_newtable(L);
+    //lua_setuservalue(L, -2);
 
-    // Push new table to hold member functions
-    static const luaL_Reg library[] =
-    {
-        {"addActor", canvas_addActor},
-        {"removeActor", canvas_removeActor},
-        {"clear", canvas_clear},
-        {"setCenter", canvas_setCenter},
-        {"getCollision", canvas_getCollision},
-        {"setPaused", canvas_setPaused},
-        {"setVisible", canvas_setVisible},
-        {nullptr, nullptr}
-    };
-    luaL_newlib(L, library);
-
-    // Set index of metatable to function table
-    lua_pushstring(L, "__index");
-    lua_insert(L, -2); // insert "__index" before function library
-    lua_settable(L, -3); // metatable.__index = function library
-
-    lua_pushstring(L, "__gc");
-    lua_pushcfunction(L, canvas_delete);
-    lua_settable(L, -3);
-
-    // Prevent metatable from being accessed through Lua
-    lua_pushstring(L, "__metatable");
-    lua_pushstring(L, "private");
-    lua_settable(L, -3);
-
-    // Push new table to hold global functions
-    //luaL_newlib(L, /*luaL_reg*/);
-    lua_newtable(L);
-    // TODO: add utility functions
-    lua_pushstring(L, "create");
-    lua_pushcfunction(L, canvas_create);
-    lua_settable(L, -3);
-
-    // Assign global function table to global variable
-    lua_setglobal(L, "Canvas"); // not necessarily same string as METATABLE
-
-    return 0;
-}
-
-int Canvas::canvas_create(lua_State *L)
-{
     // Validate arguments
+    // TODO better to validate arguments before userdata is created/constructor is called?
     float w = 20.f, h = 15.f;
     if (lua_istable(L, 1))
     {
@@ -395,68 +358,38 @@ int Canvas::canvas_create(lua_State *L)
 
     bool fixed = lua_isboolean(L, 2) && lua_toboolean(L, 2);
 
-    //Scene *scene = reinterpret_cast<Scene*>(lua_touserdata(state, lua_upvalueindex(1)));
-    // TODO: probably not best to get Scene off the registry this way; conflict if we have a Scene metatable
-    lua_pushstring(L, "Scene");
-    lua_gettable(L, LUA_REGISTRYINDEX);
-    Scene *scene = reinterpret_cast<Scene*>(lua_touserdata(L, -1));
-    luaL_argcheck(L, scene != nullptr, 1, "invalid Scene\n");
+    m_camera = ICameraPtr(new BasicCamera(w, h, fixed));
 
-    // Create Actor userdata and construct Actor object in the allocated memory
-    Canvas *canvas = reinterpret_cast<Canvas*>(lua_newuserdata(L, sizeof(Canvas)));
-    new(canvas) Canvas(); // call the constructor on the already allocated block of memory
-    canvas->m_camera = ICameraPtr(new BasicCamera(w, h, fixed));
-
-    //printf("created Canvas(%p)\n", canvas);
-
-    luaL_getmetatable(L, METATABLE);
-    lua_setmetatable(L, -2); // -1 is metatable, which gets popped by this call
-
-    scene->addCanvas(canvas);
-
-    // add userdata to registry with bare pointer as the key
-    // TODO: if we ever remove the Canvas, need to clear this...
-    lua_pushlightuserdata(L, canvas);
-    lua_pushvalue(L, -2); // alternatively, push table w/ userdata and callbacks (if Canvas needs)
-    lua_settable(L, LUA_REGISTRYINDEX);
-
-    // userdata should be on top of Lua stack
-    return 1;
+    // Implicitly add Canvas to Scene
+    Scene::addCanvas(L, -1);
 }
 
-int Canvas::canvas_delete(lua_State *L)
+void Canvas::destroy(lua_State* L)
 {
-    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, METATABLE));
-    //printf("deleting Canvas(%p)\n", canvas);
-
     // Mark each Actor in primary list for removal
-    for (auto& actor : canvas->m_actors)
+    for (auto& actor : m_actors)
     {
-        if (actor->m_canvas == canvas)
+        if (actor->m_canvas == this)
             actor->m_canvas = nullptr;
 
         actor->refRemoved(L);
     }
 
     // Mark each actor in pending list for removal
-    for (auto& actor : canvas->m_added)
+    for (auto& actor : m_added)
     {
-        if (actor->m_canvas == canvas)
+        if (actor->m_canvas == this)
             actor->m_canvas = nullptr;
 
         actor->refRemoved(L);
     }
-
-    canvas->~Canvas(); // manually call destructor before Lua calls free()
-
-    return 0;
 }
 
 int Canvas::canvas_addActor(lua_State *L)
 {
     // Validate function arguments
-    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, METATABLE));
-    Actor *actor = reinterpret_cast<Actor*>(luaL_checkudata(L, 2, Actor::METATABLE));
+    Canvas* canvas = Canvas::checkUserdata(L, 1);
+    Actor* actor = Actor::checkUserdata(L, 2);
 
     // Don't allow adding an Actor that already belongs to another Canvas
     // NOTE: while we could implicitly remove, might be better to throw an error
@@ -483,8 +416,8 @@ int Canvas::canvas_addActor(lua_State *L)
 int Canvas::canvas_removeActor(lua_State *L)
 {
     // Validate function arguments
-    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, METATABLE));
-    Actor *actor = reinterpret_cast<Actor*>(luaL_checkudata(L, 2, Actor::METATABLE));
+    Canvas* canvas = Canvas::checkUserdata(L, 1);
+    Actor* actor = Actor::checkUserdata(L, 2);
 
     // Actor must belong to this Canvas before we can remove it obviously...
     //luaL_argcheck(L, (actor->m_canvas == canvas), 2, "doesn't belong to this Canvas\n");
@@ -504,7 +437,7 @@ int Canvas::canvas_removeActor(lua_State *L)
 int Canvas::canvas_clear(lua_State* L)
 {
     // Validate function arguments
-    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, METATABLE));
+    Canvas *canvas = Canvas::checkUserdata(L, 1);
 
     // Mark each Actor belonging to primary list for removal
     for (auto& actor : canvas->m_actors)
@@ -525,13 +458,13 @@ int Canvas::canvas_clear(lua_State* L)
 int Canvas::canvas_setCenter(lua_State* L)
 {
     // Validate function arguments
-    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, METATABLE));
+    Canvas *canvas = Canvas::checkUserdata(L, 1);
 
     // Get position either through Actor or directly from argumentsS
     float x, y;
     if (lua_isuserdata(L, 2))
     {
-        Actor *actor = reinterpret_cast<Actor*>(luaL_checkudata(L, 2, Actor::METATABLE));
+        Actor *actor = Actor::checkUserdata(L, 2);
         actor->getTransform().getCenter(x, y);
     }
     else
@@ -549,22 +482,21 @@ int Canvas::canvas_setCenter(lua_State* L)
 int Canvas::canvas_getCollision(lua_State* L)
 {
     // Validate function arguments
-    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, METATABLE));
+    Canvas *canvas = Canvas::checkUserdata(L, 1);
     float x = static_cast<float>(luaL_checknumber(L, 2));
     float y = static_cast<float>(luaL_checknumber(L, 3));
 
-    // TODO: possibly want to return a list of collisions
+    // TODO return list of collisions instead of just first collision?
     for (auto& actor : canvas->m_actors)
     {
         // Always skip if marked for removal
         if (actor->m_canvas != canvas)
             continue;
 
+        // If we find a collision, push the Actor and return
         if (actor->testCollision(x, y))
         {
-            // Push Actor userdata on the stack
-            lua_pushlightuserdata(L, actor);
-            lua_rawget(L, LUA_REGISTRYINDEX);
+            actor->pushUserdata(L);
             return 1;
         }
     }
@@ -576,11 +508,10 @@ int Canvas::canvas_getCollision(lua_State* L)
         if (actor->m_canvas != canvas)
             continue;
 
+        // If we find a collision, push the Actor and return
         if (actor->testCollision(x, y))
         {
-            // Push Actor userdata on the stack
-            lua_pushlightuserdata(L, actor);
-            lua_rawget(L, LUA_REGISTRYINDEX);
+            actor->pushUserdata(L);
             return 1;
         }
     }
@@ -592,7 +523,7 @@ int Canvas::canvas_getCollision(lua_State* L)
 int Canvas::canvas_setPaused(lua_State *L)
 {
     // Validate function arguments
-    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, METATABLE));
+    Canvas *canvas = Canvas::checkUserdata(L, 1);
     luaL_argcheck(L, lua_isboolean(L, 2), 2, "must be boolean (true to pause)\n");
 
     canvas->m_paused = lua_toboolean(L, 2);
@@ -603,7 +534,7 @@ int Canvas::canvas_setPaused(lua_State *L)
 int Canvas::canvas_setVisible(lua_State *L)
 {
     // Validate function arguments
-    Canvas *canvas = reinterpret_cast<Canvas*>(luaL_checkudata(L, 1, METATABLE));
+    Canvas *canvas = Canvas::checkUserdata(L, 1);
     luaL_argcheck(L, lua_isboolean(L, 2), 2, "must be boolean (true for visible)\n");
 
     canvas->m_visible = lua_toboolean(L, 2);

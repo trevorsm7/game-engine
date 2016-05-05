@@ -18,7 +18,7 @@ local function newApple(canvas)
     local defaultColor = green
     local defaultScore = 2
 
-    local apple = Actor.create{color=defaultColor, sprite="round.tga", collider=true}
+    local apple = Actor{color=defaultColor, sprite="round.tga", collider=true}
     canvas:addActor(apple)
     apple:setPosition(getEmptySpace(canvas))
     apple.food = true
@@ -60,7 +60,7 @@ end
 
 -- create an invisible controller that drives a snake
 local function newSnake(canvas, name, pos, dir, color)
-    local snake = Actor.create{}
+    local snake = Actor{}
     snake:setVisible(false)
     canvas:addActor(snake)
     snake.time = 0
@@ -71,7 +71,7 @@ local function newSnake(canvas, name, pos, dir, color)
     snake.dir = dir
 
     local function newBody(canvas, x, y)
-        local body = Actor.create{color=color, sprite="round.tga", collider=true}
+        local body = Actor{color=color, sprite="round.tga", collider=true}
         canvas:addActor(body)
         body:setPosition(x, y)
         return body
@@ -163,7 +163,7 @@ local function resetGame(game)
     game:clear()
 
     -- NOTE: currently, we need a graphics component to receive mouse events
-    god = Actor.create{layer=-1, sprite="unused"}
+    god = Actor{layer=-1, sprite="unused"}
     game:addActor(god)
     god:setVisible(false)
     god:setScale(20, 15)
@@ -198,15 +198,15 @@ end
 math.randomseed(os.time())
 
 -- create and populate our game canvas
-local game = Canvas.create({20, 15}, true)
+local game = Canvas({20, 15}, true)
 resetGame(game)
 
 -- create game menu
-local menu = Canvas.create({20, 15}, true)
+local menu = Canvas({20, 15}, true)
 menu:setCenter(0, 0)
 menu:setVisible(false)
 
-local continue = Actor.create{sprite="continue.tga"}
+local continue = Actor{sprite="continue.tga"}
 menu:addActor(continue)
 continue:setPosition(-5, 2)
 continue:setScale(10, 2)
@@ -218,7 +218,7 @@ function continue:mouse(down)
     return true
 end
 
-local newGame = Actor.create{sprite="newgame.tga"}
+local newGame = Actor{sprite="newgame.tga"}
 menu:addActor(newGame)
 newGame:setPosition(-5, -1)
 newGame:setScale(10, 2)
@@ -231,7 +231,7 @@ function newGame:mouse(down)
     return true
 end
 
-local endGame = Actor.create{sprite="quit.tga"}
+local endGame = Actor{sprite="quit.tga"}
 menu:addActor(endGame)
 endGame:setPosition(-5, -4)
 endGame:setScale(10, 2)

@@ -1,10 +1,10 @@
 red = {1, 0, 0}
 white = {1, 1, 1}
 
-game = Canvas.create({20, 20}, false)
+game = Canvas({20, 20}, false)
 game:setCenter(0.5, 5)
 
-player = Actor.create{sprite="hero.tga", collider=true, physics=true, cor=0.01, cof=0.2}
+player = Actor{sprite="hero.tga", collider=true, physics=true, cor=0.01, cof=0.2}
 player.name = "box1"
 game:addActor(player)
 player:setPosition(-4, 0)
@@ -29,7 +29,7 @@ allBoxes = {}
 
 function addBox(x, y)
     local num = #allBoxes + 1
-    local box = Actor.create{sprite="square.tga", collider=true}
+    local box = Actor{sprite="square.tga", collider=true}
     box.name = "box"..num
     game:addActor(box)
     box:setPosition(x, y)
@@ -43,7 +43,7 @@ end
 
 function addMovingBox(x, y)
     local num = #allBoxes + 1
-    local box = Actor.create{sprite="square.tga", collider=true, physics=true, cor=0.8, cof=0.2}
+    local box = Actor{sprite="square.tga", collider=true, physics=true, cor=0.8, cof=0.2}
     game:addActor(box)
     box:setPosition(x, y)
     box.update = updateBox

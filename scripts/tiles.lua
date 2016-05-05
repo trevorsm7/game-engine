@@ -1,13 +1,13 @@
-game = Canvas.create({20, 20}, false)
+game = Canvas({20, 20}, false)
 
-tiles = Actor.create{tiles="tiles.map", collider=true}
+tiles = Actor{tiles="tiles.map", collider=true}
 game:addActor(tiles)
 tiles:setPosition(-1, -1)
 tiles:setScale(7, 7)
 game:setCenter(2, 2)
 
---player = Actor.create{sprite="hero.tga", collider=true}
-player = Actor.create{tiles="heropad.map", collider=true}
+--player = Actor{sprite="hero.tga", collider=true}
+player = Actor{tiles="heropad.map", collider=true}
 game:addActor(player)
 player:setPosition(-2, -2)
 player:setScale(3, 3)
@@ -46,6 +46,6 @@ registerControl("right", player:keyDown(player.move, {1, 0}))
 registerControl("down", player:keyDown(player.move, {0, -1}))
 registerControl("up", player:keyDown(player.move, {0, 1}))
 
-nerd = Actor.create{sprite="nerd.tga", collider=true}
+nerd = Actor{sprite="nerd.tga", collider=true}
 game:addActor(nerd)
 nerd:setPosition(4, 4)

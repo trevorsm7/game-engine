@@ -1,8 +1,6 @@
 #ifndef __SCENE_H__
 #define __SCENE_H__
 
-#include "IRenderer.h"
-#include "Canvas.h"
 #include "Event.h"
 #include "ResourceManager.h"
 
@@ -10,6 +8,9 @@
 #include <memory>
 #include <functional>
 #include "lua.hpp"
+
+class Canvas;
+class IRenderer;
 
 class Scene
 {
@@ -19,13 +20,13 @@ class Scene
 
     ResourceManager& m_resources;
     std::vector<Canvas*> m_canvases;
-    lua_State *m_state;
     QuitCallback m_quitCallback;
     RegisterControlCallback m_registerControlCallback;
+    lua_State *m_L;
 
 public:
-    Scene(ResourceManager& resources): m_resources(resources), m_state(nullptr) {}
-    ~Scene() {if (m_state) lua_close(m_state);}
+    Scene(ResourceManager& resources): m_resources(resources), m_L(nullptr) {}
+    ~Scene() {if (m_L) lua_close(m_L);} // TODO remove Canvas references; will be deleted anyway when closing Lua state, but would be nice to do?
 
     bool load(const char *filename);
     void setQuitCallback(QuitCallback cb) {m_quitCallback = cb;}
@@ -40,10 +41,11 @@ public:
     void resize(int width, int height);
 
 //private:
-    void addCanvas(Canvas *canvas);
+    static Scene* checkScene(lua_State* L);
+    static void addCanvas(lua_State* L, int index);
 
-    static int scene_registerControl(lua_State *L);
-    static int scene_quit(lua_State *L);
+    static int scene_registerControl(lua_State* L);
+    static int scene_quit(lua_State* L);
 };
 
 #endif

@@ -1,20 +1,21 @@
 #ifndef __ACTOR_H__
 #define __ACTOR_H__
 
-#include "IRenderer.h"
+#include "TUserdata.h"
 #include "IGraphics.h"
 #include "ICollider.h"
 #include "Physics.h"
 #include "Transform.h"
 #include "Event.h"
-#include "ResourceManager.h"
 
 #include <memory>
 #include "lua.hpp"
 
 class Canvas;
+class IRenderer;
+class ResourceManager;
 
-class Actor
+class Actor : public TUserdata<Actor>
 {
     typedef std::unique_ptr<IGraphics> IGraphicsPtr;
     typedef std::unique_ptr<ICollider> IColliderPtr;
@@ -29,9 +30,8 @@ private:
     IGraphicsPtr m_graphics;
     IColliderPtr m_collider;
     int m_layer; // TODO: probably want to move this to graphics later
-    int m_refCount;
 
-    Actor(): m_canvas(nullptr), m_layer(0), m_refCount(0) {}
+    Actor(): m_canvas(nullptr), m_layer(0) {}
 
 public:
     ~Actor() {}
@@ -54,21 +54,12 @@ public:
     bool testMouse(float x, float y) const;
     bool testCollision(float x, float y) const;
 
-    void refAdded(lua_State* L, int index);
-    void refRemoved(lua_State* L);
-
 private:
-    bool pcall(lua_State* L, const char* method, int in, int out);
+    friend class TUserdata<Actor>;
+    void construct(lua_State* L);
+    void destroy(lua_State* L) {}
 
-public:
-    static int actor_init(lua_State* L);
     static constexpr const char* const METATABLE = "Actor";
-
-private:
-    static int actor_create(lua_State* L);
-    static int actor_delete(lua_State* L);
-    static int actor_index(lua_State* L);
-    static int actor_newindex(lua_State* L);
     static int actor_getCanvas(lua_State* L);
     static int actor_getPosition(lua_State* L);
     static int actor_setPosition(lua_State* L);
@@ -82,6 +73,23 @@ private:
     static int actor_setVelocity(lua_State* L);
     static int actor_getVelocity(lua_State* L);
     static int actor_addAcceleration(lua_State* L);
+    static constexpr const luaL_Reg METHODS[] =
+    {
+        {"getCanvas", actor_getCanvas},
+        {"getPosition", actor_getPosition},
+        {"setPosition", actor_setPosition},
+        {"setScale", actor_setScale},
+        {"setColor", actor_setColor},
+        {"setVisible", actor_setVisible},
+        {"isVisible", actor_isVisible},
+        {"setCollidable", actor_setCollidable},
+        {"testCollision", actor_testCollision},
+        //{"getEarliestCollision", actor_getEarliestCollision},
+        {"setVelocity", actor_setVelocity},
+        {"getVelocity", actor_getVelocity},
+        {"addAcceleration", actor_addAcceleration},
+        {nullptr, nullptr}
+    };
 };
 
 #endif

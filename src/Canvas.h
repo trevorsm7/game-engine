@@ -1,18 +1,19 @@
 #ifndef __CANVAS_H__
 #define __CANVAS_H__
 
-#include "Actor.h"
+#include "TUserdata.h"
 #include "Event.h"
 #include "ICamera.h"
-#include "ResourceManager.h"
 
 #include <vector>
 #include <memory>
 #include "lua.hpp"
 
 class Scene;
+class Actor;
+class ResourceManager;
 
-class Canvas
+class Canvas : public TUserdata<Canvas>
 {
     friend class Scene;
 
@@ -20,8 +21,8 @@ class Canvas
     typedef std::vector<Actor*> ActorVector;
     typedef ActorVector::const_iterator ActorIterator;
 
-    std::vector<Actor*> m_actors;
-    std::vector<Actor*> m_added;
+    ActorVector m_actors;
+    ActorVector m_added;
     ICameraPtr m_camera;
     Scene* m_scene;
     bool m_paused, m_visible;
@@ -49,12 +50,12 @@ public:
     bool getEarliestCollision(const Actor* actor1, Actor*& hit, float& start, float& end, float& normX, float& normY) const
         {return getEarliestCollision(actor1, m_actors.begin(), m_actors.end(), hit, start, end, normX, normY);}
 
-    static int canvas_init(lua_State* L);
-    static constexpr const char* const METATABLE = "Canvas";
-
 private:
-    static int canvas_create(lua_State* L);
-    static int canvas_delete(lua_State* L);
+    friend class TUserdata<Canvas>;
+    void construct(lua_State* L);
+    void destroy(lua_State* L);
+
+    static constexpr const char* const METATABLE = "Canvas";
     static int canvas_addActor(lua_State* L);
     static int canvas_removeActor(lua_State* L);
     static int canvas_clear(lua_State* L);
@@ -62,6 +63,17 @@ private:
     static int canvas_getCollision(lua_State* L);
     static int canvas_setPaused(lua_State* L);
     static int canvas_setVisible(lua_State* L);
+    static constexpr const luaL_Reg METHODS[] =
+    {
+        {"addActor", canvas_addActor},
+        {"removeActor", canvas_removeActor},
+        {"clear", canvas_clear},
+        {"setCenter", canvas_setCenter},
+        {"getCollision", canvas_getCollision},
+        {"setPaused", canvas_setPaused},
+        {"setVisible", canvas_setVisible},
+        {nullptr, nullptr}
+    };
 };
 
 #endif
