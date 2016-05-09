@@ -8,7 +8,7 @@ colors[2] = {1, 0, 0}
 --colors[7] = {0, 1, 1}
 
 function addStaticBox(canvas, x, y)
-    local box = Actor{sprite="square.tga", collider=true}
+    local box = Actor{graphics=SpriteGraphics{sprite="square.tga"}, collider=AabbCollider{}}
     canvas:addActor(box)
     box:setPosition(x, y)
     return box
@@ -30,14 +30,14 @@ function collideBox(self)
         newColor = 1
     end
     self.color = newColor
-    self:setColor(colors[newColor])
+    self:getGraphics():setColor(colors[newColor])
 end
 
 function addPhysicsBox(canvas, x, y, m, cor, ay)
-    local params = {sprite="square.tga", collider=true, physics=true}
-    if m then params.mass = m end
-    if cor then params.cor = cor end
-    local box = Actor(params)
+    local physics = {}
+    if m then physics.mass = m end
+    if cor then physics.cor = cor end
+    local box = Actor{graphics=SpriteGraphics{sprite="square.tga"}, collider=AabbCollider{}, physics=physics}
     canvas:addActor(box)
     box:setPosition(x, y)
     if ay then

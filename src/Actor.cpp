@@ -1,5 +1,6 @@
 #include "Actor.h"
 #include "Canvas.h"
+#include "IRenderer.h"
 #include "SpriteGraphics.h"
 #include "AabbCollider.h"
 #include "TiledGraphics.h"
@@ -95,133 +96,109 @@ void Actor::construct(lua_State* L)
     lua_setuservalue(L, -2);
 
     // Create the Actor object
-    // TODO: try and refactor this procedure for getting params
     // TODO: what about looping of given params instead of checking all?
-    if (lua_istable(L, 1))
+    luaL_checktype(L, 1, LUA_TTABLE);
+
+    lua_pushliteral(L, "graphics");
+    if (lua_rawget(L, 1) != LUA_TNIL)
     {
-        int top = lua_gettop(L);
+        m_graphics = IGraphics::checkUserdata(L, -1);
+        m_graphics->m_actor = this;
+        m_graphics->refAdded(L, -1);
+    }
+    lua_pop(L, 1);
 
-        lua_pushliteral(L, "sprite");
-        if (lua_rawget(L, 1) == LUA_TSTRING)
+    lua_pushliteral(L, "collider");
+    if (lua_rawget(L, 1) != LUA_TNIL)
+    {
+        m_collider = ICollider::checkUserdata(L, -1);
+        m_collider->m_actor = this;
+        m_collider->refAdded(L, -1);
+    }
+    lua_pop(L, 1);
+
+    lua_pushliteral(L, "physics");
+    if (lua_rawget(L, 1) != LUA_TNIL)
+    {
+        luaL_checktype(L, -1, LUA_TTABLE);
+
+        float mass = 1.f, cor = 1.f, cof = 0.f;
+
+        lua_pushliteral(L, "mass");
+        if (lua_rawget(L, -2) != LUA_TNIL)
         {
-            // TODO should log an error if the type is non-string and non-nil
-            SpriteGraphics* graphics = new SpriteGraphics(this, lua_tostring(L, -1));
-            m_graphics = IGraphicsPtr(graphics); // take responsibility for ptr
-
-            lua_pushliteral(L, "collider");
-            if (lua_rawget(L, 1) == LUA_TBOOLEAN && lua_toboolean(L, -1))
-            {
-                uint32_t group = 1;
-                lua_pushliteral(L, "group");
-                if (lua_rawget(L, 1) == LUA_TNUMBER)
-                    group = lua_tointeger(L, -1);
-
-                uint32_t mask = 0xFFFFFFFF;
-                lua_pushliteral(L, "mask");
-                if (lua_rawget(L, 1) == LUA_TNUMBER)
-                    mask = lua_tointeger(L, -1);
-
-                m_collider = IColliderPtr(new AabbCollider(this, group, mask));
-            }
-            lua_pop(L, 1);
+            luaL_checktype(L, -1, LUA_TNUMBER);
+            mass = lua_tonumber(L, -1);
         }
         lua_pop(L, 1);
 
-        // TODO: make graphics components exclusive (or allow layering multiple?)
-        lua_pushliteral(L, "tiles");
-        if (lua_rawget(L, 1) == LUA_TSTRING)
+        lua_pushliteral(L, "cor");
+        if (lua_rawget(L, -2) != LUA_TNIL)
         {
-            const char* tileMap = lua_tostring(L, -1);
-            TiledGraphics* graphics = new TiledGraphics(this, tileMap);
-            m_graphics = IGraphicsPtr(graphics); // take responsibility for ptr
-
-            lua_pushliteral(L, "collider");
-            if (lua_rawget(L, 1) == LUA_TBOOLEAN && lua_toboolean(L, -1))
-            {
-                // TODO refactoring is in order....
-                uint32_t group = 1;
-                lua_pushliteral(L, "group");
-                if (lua_rawget(L, 1) == LUA_TNUMBER)
-                    group = lua_tointeger(L, -1);
-
-                uint32_t mask = 0xFFFFFFFF;
-                lua_pushliteral(L, "mask");
-                if (lua_rawget(L, 1) == LUA_TNUMBER)
-                    mask = lua_tointeger(L, -1);
-
-                m_collider = IColliderPtr(new TiledCollider(this, tileMap, group, mask));
-            }
-            lua_pop(L, 1);
+            luaL_checktype(L, -1, LUA_TNUMBER);
+            cor = lua_tonumber(L, -1);
         }
         lua_pop(L, 1);
 
-        if (!m_graphics)
+        lua_pushliteral(L, "cof");
+        if (lua_rawget(L, -2) != LUA_TNIL)
         {
-            lua_pushliteral(L, "collider");
-            if (lua_rawget(L, 1) == LUA_TBOOLEAN && lua_toboolean(L, -1))
-            {
-                // TODO more refactoring is in order....
-                uint32_t group = 1;
-                lua_pushliteral(L, "group");
-                if (lua_rawget(L, 1) == LUA_TNUMBER)
-                    group = lua_tointeger(L, -1);
-
-                uint32_t mask = 0xFFFFFFFF;
-                lua_pushliteral(L, "mask");
-                if (lua_rawget(L, 1) == LUA_TNUMBER)
-                    mask = lua_tointeger(L, -1);
-
-                m_collider = IColliderPtr(new AabbCollider(this, group, mask));
-            }
-            lua_pop(L, 1);
-        }
-
-        lua_pushliteral(L, "physics");
-        if (lua_rawget(L, 1) == LUA_TBOOLEAN && lua_toboolean(L, -1))
-        {
-            float mass = 1.f;
-            lua_pushliteral(L, "mass");
-            if (lua_rawget(L, 1) == LUA_TNUMBER)
-                mass = lua_tonumber(L, -1);
-
-            float cor = 1.f;
-            lua_pushliteral(L, "cor");
-            if (lua_rawget(L, 1) == LUA_TNUMBER)
-                cor = lua_tonumber(L, -1);
-
-            float cof = 0.f;
-            lua_pushliteral(L, "cof");
-            if (lua_rawget(L, 1) == LUA_TNUMBER)
-                cof = lua_tonumber(L, -1);
-
-            m_physics = PhysicsPtr(new Physics(mass, cor, cof));
-            lua_pop(L, 2);
+            luaL_checktype(L, -1, LUA_TNUMBER);
+            cof = lua_tonumber(L, -1);
         }
         lua_pop(L, 1);
 
-        lua_pushliteral(L, "color");
-        if (lua_rawget(L, 1) == LUA_TTABLE && m_graphics)
-        {
-            lua_rawgeti(L, -1, 1); // should return LUA_TNUMBER
-            lua_rawgeti(L, -2, 2);
-            lua_rawgeti(L, -3, 3);
-            float r = lua_tonumber(L, -3);
-            float g = lua_tonumber(L, -2);
-            float b = lua_tonumber(L, -1);
-            lua_pop(L, 3);
+        m_physics = PhysicsPtr(new Physics(mass, cor, cof));
+    }
+    lua_pop(L, 1);
 
-            m_graphics->setColor(r, g, b);
-        }
-        lua_pop(L, 1);
+    lua_pushliteral(L, "position");
+    if (lua_rawget(L, 1) != LUA_TNIL)
+    {
+        luaL_checktype(L, -1, LUA_TTABLE);
+        lua_rawgeti(L, -1, 1);
+        lua_rawgeti(L, -2, 2);
+        m_transform.setX(luaL_checknumber(L, -2));
+        m_transform.setY(luaL_checknumber(L, -1));
+        lua_pop(L, 2);
+    }
+    lua_pop(L, 1);
 
-        lua_pushliteral(L, "layer");
-        if (lua_rawget(L, 1) == LUA_TNUMBER)
-        {
-            setLayer(lua_tointeger(L, -1));
-        }
-        lua_pop(L, 1);
+    lua_pushliteral(L, "scale");
+    if (lua_rawget(L, 1) != LUA_TNIL)
+    {
+        luaL_checktype(L, -1, LUA_TTABLE);
+        lua_rawgeti(L, -1, 1);
+        lua_rawgeti(L, -2, 2);
+        m_transform.setW(luaL_checknumber(L, -2));
+        m_transform.setH(luaL_checknumber(L, -1));
+        lua_pop(L, 2);
+    }
+    lua_pop(L, 1);
 
-        lua_settop(L, top);
+    lua_pushliteral(L, "layer");
+    if (lua_rawget(L, 1) != LUA_TNIL)
+    {
+        luaL_checktype(L, -1, LUA_TNUMBER);
+        setLayer(lua_tointeger(L, -1));
+    }
+    lua_pop(L, 1);
+}
+
+void Actor::destroy(lua_State* L)
+{
+    if (m_graphics)
+    {
+        m_graphics->m_actor = nullptr;
+        m_graphics->refRemoved(L);
+        m_graphics = nullptr;
+    }
+
+    if (m_collider)
+    {
+        m_collider->m_actor = nullptr;
+        m_collider->refRemoved(L);
+        m_collider = nullptr;
     }
 }
 
@@ -233,6 +210,36 @@ int Actor::actor_getCanvas(lua_State* L)
     if (actor->m_canvas != nullptr)
     {
         actor->m_canvas->pushUserdata(L);
+        return 1;
+    }
+
+    // NOTE will implicitly return nil, correct?
+    return 0;
+}
+
+int Actor::actor_getGraphics(lua_State* L)
+{
+    // Validate function arguments
+    Actor* actor = Actor::checkUserdata(L, 1);
+
+    if (actor->m_graphics != nullptr)
+    {
+        actor->m_graphics->pushUserdata(L);
+        return 1;
+    }
+
+    // NOTE will implicitly return nil, correct?
+    return 0;
+}
+
+int Actor::actor_getCollider(lua_State* L)
+{
+    // Validate function arguments
+    Actor* actor = Actor::checkUserdata(L, 1);
+
+    if (actor->m_collider != nullptr)
+    {
+        actor->m_collider->pushUserdata(L);
         return 1;
     }
 
@@ -276,72 +283,6 @@ int Actor::actor_setScale(lua_State* L)
 
     actor->m_transform.setW(w);
     actor->m_transform.setH(h);
-
-    // Return self userdata
-    lua_pushvalue(L, 1);
-    return 1;
-}
-
-int Actor::actor_setColor(lua_State* L)
-{
-    // Validate function arguments
-    Actor* actor = Actor::checkUserdata(L, 1);
-    luaL_checktype(L, 2, LUA_TTABLE);
-
-    if (lua_istable(L, 2))
-    {
-        lua_rawgeti(L, 2, 1); // should return LUA_TNUMBER
-        float red = lua_tonumber(L, -1);
-        lua_rawgeti(L, 2, 2);
-        float green = lua_tonumber(L, -1);
-        lua_rawgeti(L, 2, 3);
-        float blue = lua_tonumber(L, -1);
-        lua_pop(L, 3);
-
-        if (actor->m_graphics)
-            actor->m_graphics->setColor(red, green, blue);
-    }
-
-    // Return self userdata
-    lua_pushvalue(L, 1);
-    return 1;
-}
-
-int Actor::actor_setVisible(lua_State* L)
-{
-    // Validate function arguments
-    Actor* actor = Actor::checkUserdata(L, 1);
-    //luaL_argcheck(L, (actor->m_graphics != nullptr), 1, "must have graphics component\n");
-    luaL_argcheck(L, lua_isboolean(L, 2), 2, "must be boolean (true to pause)\n");
-
-    if (actor->m_graphics)
-        actor->m_graphics->setVisible(lua_toboolean(L, 2));
-
-    // Return self userdata
-    lua_pushvalue(L, 1);
-    return 1;
-}
-
-int Actor::actor_isVisible(lua_State* L)
-{
-    // Validate function arguments
-    Actor* actor = Actor::checkUserdata(L, 1);
-    //luaL_argcheck(L, (actor->m_graphics != nullptr), 1, "must have graphics component\n");
-
-    lua_pushboolean(L, actor->m_graphics && actor->m_graphics->isVisible());
-
-    return 1;
-}
-
-int Actor::actor_setCollidable(lua_State* L)
-{
-    // Validate function arguments
-    Actor* actor = Actor::checkUserdata(L, 1);
-    //luaL_argcheck(L, (actor->m_collider != nullptr), 1, "must have collision component\n");
-    luaL_argcheck(L, lua_isboolean(L, 2), 2, "must be boolean\n");
-
-    if (actor->m_collider != nullptr)
-        actor->m_collider->setCollidable(lua_toboolean(L, 2));
 
     // Return self userdata
     lua_pushvalue(L, 1);

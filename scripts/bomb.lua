@@ -16,7 +16,7 @@ local function getEmptySpace(canvas)
 end
 
 local function newFire(canvas, x, y)
-    local fire = Actor{color=yellow, sprite="round.tga", collider=false}
+    local fire = Actor{graphics=SpriteGraphics{color=yellow, sprite="round.tga"}}
     canvas:addActor(fire)
     fire:setPosition(x, y)
     fire.time = 1
@@ -42,7 +42,7 @@ local function newFire(canvas, x, y)
 end
 
 local function newBomb(canvas, x, y)
-    local bomb = Actor{color=red, sprite="round.tga", collider=true}
+    local bomb = Actor{graphics=SpriteGraphics{color=red, sprite="round.tga"}, collider=AabbCollider{}}
     canvas:addActor(bomb)
     bomb:setPosition(x, y)
     bomb.time = 2
@@ -98,7 +98,7 @@ local function newBomb(canvas, x, y)
 end
 
 local function newWall(canvas, x, y)
-    local wall = Actor{color=white, sprite="square.tga", collider=true}
+    local wall = Actor{graphics=SpriteGraphics{color=white, sprite="square.tga"}, collider=AabbCollider{}}
     canvas:addActor(wall)
     wall:setPosition(x, y)
 
@@ -108,7 +108,7 @@ local function newWall(canvas, x, y)
 end
 
 local function newBreakable(canvas, x, y)
-    local breakable = Actor{color=grey, sprite="square.tga", collider=true}
+    local breakable = Actor{graphics=SpriteGraphics{color=grey, sprite="square.tga"}, collider=AabbCollider{}}
     canvas:addActor(breakable)
     breakable:setPosition(x, y)
 
@@ -123,7 +123,7 @@ end
 
 local function newNerd(canvas)--, x, y)
     local x, y = getEmptySpace(canvas)
-    local nerd = Actor{color=red, sprite="square.tga", collider=true}
+    local nerd = Actor{graphics=SpriteGraphics{color=red, sprite="square.tga"}, collider=AabbCollider{}}
     canvas:addActor(nerd)
     nerd:setPosition(x, y)
     nerd.dirList = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}
@@ -171,7 +171,7 @@ local function newNerd(canvas)--, x, y)
 end
 
 local function newPlayer(canvas, x, y)
-    local player = Actor{color=blue, sprite="square.tga", collider=true}
+    local player = Actor{graphics=SpriteGraphics{color=blue, sprite="square.tga"}, collider=AabbCollider{}}
     canvas:addActor(player)
     player:setPosition(x, y)
     player.player = true

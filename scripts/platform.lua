@@ -4,14 +4,18 @@ white = {1, 1, 1}
 game = Canvas({20, 20}, false)
 game:setCenter(0.5, 5)
 
-player = Actor{sprite="hero.tga", collider=true, physics=true, cor=0.01, cof=0.2}
-player.name = "box1"
+player = Actor
+{
+    graphics = SpriteGraphics{sprite="hero.tga"},
+    collider = AabbCollider{},
+    physics = {cor=0.01, cof=0.2},
+    position = {-4, 0}
+}
 game:addActor(player)
-player:setPosition(-4, 0)
 player.velX = 0
 
 function player:collided(hit)
-    hit:setColor(red)
+    hit:getGraphics():setColor(red)
 end
 
 function player:update(delta)
@@ -29,10 +33,13 @@ allBoxes = {}
 
 function addBox(x, y)
     local num = #allBoxes + 1
-    local box = Actor{sprite="square.tga", collider=true}
-    box.name = "box"..num
+    local box = Actor
+    {
+        graphics = SpriteGraphics{sprite="square.tga"},
+        collider = AabbCollider{},
+        position = {x, y}
+    }
     game:addActor(box)
-    box:setPosition(x, y)
     allBoxes[num] = box
     return box
 end
@@ -43,9 +50,14 @@ end
 
 function addMovingBox(x, y)
     local num = #allBoxes + 1
-    local box = Actor{sprite="square.tga", collider=true, physics=true, cor=0.8, cof=0.2}
+    local box = Actor
+    {
+        graphics = SpriteGraphics{sprite="square.tga"},
+        collider = AabbCollider{},
+        physics = {cor=0.8, cof=0.2},
+        position = {x, y}
+    }
     game:addActor(box)
-    box:setPosition(x, y)
     box.update = updateBox
     allBoxes[num] = box
     return box
@@ -92,7 +104,7 @@ addBox(3, 8)
 
 function resetBoxes()
     for i, box in ipairs(allBoxes) do
-        box:setColor(white)
+        box:getGraphics():setColor(white)
     end
 end
 

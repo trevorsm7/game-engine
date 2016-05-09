@@ -10,9 +10,13 @@ local yellow = {1, 1, 0}
 local gameTime = 0
 
 local function newPlayer(canvas, x, y)
-    local player = Actor{sprite="hero.tga", collider=true}
+    local player = Actor
+    {
+        graphics = SpriteGraphics{sprite="hero.tga"},
+        collider = AabbCollider{},
+        position = {x, y}
+    }
     canvas:addActor(player)
-    player:setPosition(x, y)
     canvas:setCenter(player)
     player.player = true
     player.stepTime = 1
@@ -66,9 +70,13 @@ local function newPlayer(canvas, x, y)
 end
 
 local function newNerd(canvas, x, y)
-    local nerd = Actor{sprite="nerd.tga", collider=true}
+    local nerd = Actor
+    {
+        graphics = SpriteGraphics{sprite="nerd.tga"},
+        collider = AabbCollider{},
+        position = {x, y}
+    }
     canvas:addActor(nerd)
-    nerd:setPosition(x, y)
     nerd.enemy = true
     nerd.stepTime = 1
     nerd.time = gameTime
@@ -133,27 +141,39 @@ local function newNerd(canvas, x, y)
 end
 
 local function newWall(canvas, x, y, w, h)
-    local wall = Actor{sprite="square.tga", collider=true}
+    local wall = Actor
+    {
+        graphics = SpriteGraphics{sprite="square.tga"},
+        collider = AabbCollider{},
+        position = {x, y},
+        scale = {w, h}
+    }
     canvas:addActor(wall)
-    wall:setPosition(x, y)
-    wall:setScale(w, h)
 
     return wall
 end
 
 local function newFloor(canvas, x, y, w, h)
-    local floor = Actor{sprite="square.tga", layer=-1, color=darkGrey}
+    local floor = Actor
+    {
+        graphics = SpriteGraphics{sprite="square.tga", color=darkGrey},
+        position = {x, y},
+        scale = {w, h},
+        layer = -1
+    }
     canvas:addActor(floor)
-    floor:setPosition(x, y)
-    floor:setScale(w, h)
 
     return floor
 end
 
 local function newDoor(canvas, x, y)
-    local door = Actor{sprite="door.tga", collider=true}
+    local door = Actor
+    {
+        graphics = SpriteGraphics{sprite="door.tga"},
+        collider = AabbCollider{},
+        position = {x, y},
+    }
     canvas:addActor(door)
-    door:setPosition(x, y)
     door.open = false
 
     function door:interact(actor)
@@ -161,12 +181,12 @@ local function newDoor(canvas, x, y)
         if canvas then
             if self.open then
                 self:setScale(1, 1)
-                self:setCollidable(true)
+                self:getCollider():setCollidable(true)
                 self.open = false
                 return 1 -- time to close door
             else
                 self:setScale(0.1, 1)
-                self:setCollidable(false)
+                self:getCollider():setCollidable(false)
                 self.open = true
                 return 1 -- time to open door
             end

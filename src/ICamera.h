@@ -1,9 +1,9 @@
 #ifndef __ICAMERA_H__
 #define __ICAMERA_H__
 
-#include "Transform.h"
-#include "IRenderer.h"
 #include "Event.h"
+
+class IRenderer;
 
 class ICamera
 {

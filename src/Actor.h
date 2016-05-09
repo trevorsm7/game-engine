@@ -17,8 +17,6 @@ class ResourceManager;
 
 class Actor : public TUserdata<Actor>
 {
-    typedef std::unique_ptr<IGraphics> IGraphicsPtr;
-    typedef std::unique_ptr<ICollider> IColliderPtr;
     typedef std::unique_ptr<Physics> PhysicsPtr;
 
 public:
@@ -27,11 +25,11 @@ public:
 private:
     Transform m_transform;
     PhysicsPtr m_physics;
-    IGraphicsPtr m_graphics;
-    IColliderPtr m_collider;
+    IGraphics* m_graphics;
+    ICollider* m_collider;
     int m_layer; // TODO: probably want to move this to graphics later
 
-    Actor(): m_canvas(nullptr), m_layer(0) {}
+    Actor(): m_canvas(nullptr), m_graphics(nullptr), m_collider(nullptr), m_layer(0) {}
 
 public:
     ~Actor() {}
@@ -40,8 +38,8 @@ public:
     Transform& getTransform() {return m_transform;}
     Physics* getPhysics() {return m_physics.get();}
     const Physics* getPhysics() const {return m_physics.get();}
-    const IGraphics* getGraphics() const {return m_graphics.get();}
-    const ICollider* getCollider() const {return m_collider.get();}
+    const IGraphics* getGraphics() const {return m_graphics;}
+    const ICollider* getCollider() const {return m_collider;}
 
     void setLayer(int layer) {m_layer = layer;}
     int getLayer() const {return m_layer;}
@@ -57,17 +55,15 @@ public:
 private:
     friend class TUserdata<Actor>;
     void construct(lua_State* L);
-    void destroy(lua_State* L) {}
+    void destroy(lua_State* L);
 
     static constexpr const char* const METATABLE = "Actor";
     static int actor_getCanvas(lua_State* L);
+    static int actor_getGraphics(lua_State* L);
+    static int actor_getCollider(lua_State* L);
     static int actor_getPosition(lua_State* L);
     static int actor_setPosition(lua_State* L);
     static int actor_setScale(lua_State* L);
-    static int actor_setColor(lua_State* L);
-    static int actor_setVisible(lua_State* L);
-    static int actor_isVisible(lua_State* L);
-    static int actor_setCollidable(lua_State* L);
     static int actor_testCollision(lua_State* L);
     //static int actor_getEarliestCollision(lua_State* L);
     static int actor_setVelocity(lua_State* L);
@@ -76,13 +72,11 @@ private:
     static constexpr const luaL_Reg METHODS[] =
     {
         {"getCanvas", actor_getCanvas},
+        {"getGraphics", actor_getGraphics},
+        {"getCollider", actor_getCollider},
         {"getPosition", actor_getPosition},
         {"setPosition", actor_setPosition},
         {"setScale", actor_setScale},
-        {"setColor", actor_setColor},
-        {"setVisible", actor_setVisible},
-        {"isVisible", actor_isVisible},
-        {"setCollidable", actor_setCollidable},
         {"testCollision", actor_testCollision},
         //{"getEarliestCollision", actor_getEarliestCollision},
         {"setVelocity", actor_setVelocity},

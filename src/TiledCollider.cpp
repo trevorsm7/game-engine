@@ -4,10 +4,13 @@
 
 #include <cmath>
 #include <algorithm>
+#include <cassert>
 
 bool TiledCollider::testCollision(float x, float y) const
 {
-    if (!isCollidable() || !m_actor)
+    assert(m_actor != nullptr);
+
+    if (!isCollidable())
         return false;
 
     // Reject if outside of tilemap bounds
@@ -48,7 +51,9 @@ bool TiledCollider::testCollision(float x, float y) const
 
 bool TiledCollider::testCollision(const Aabb& aabb) const
 {
-    if (!isCollidable() || !m_actor)
+    assert(m_actor != nullptr);
+
+    if (!isCollidable())
         return false;
 
     // Translate AABB relative to transform; reject if no overlap
@@ -104,7 +109,10 @@ bool TiledCollider::testCollision(const Aabb& aabb) const
 // this would probably only be reasonable when testing a tilemap against a tilemap
 bool TiledCollider::testCollision(float deltaX, float deltaY, const ICollider* other) const
 {
-    if (!isCollidableWith(other) || !m_actor)
+    assert(m_actor != nullptr);
+    assert(other != nullptr);
+
+    if (!isCollidableWith(other))
         return false;
 
     // Reject early if there is no overlap with the map bounds
@@ -172,4 +180,14 @@ bool TiledCollider::getCollisionTime(float velX, float velY, const ICollider* ot
 {
     // TODO need to implement
     return false;
+}
+
+void TiledCollider::construct(lua_State* L)
+{
+    TCollider<TiledCollider>::construct(L);
+
+    lua_pushliteral(L, "tilemap");
+    luaL_argcheck(L, (lua_rawget(L, 1) == LUA_TSTRING), 1, "{tilemap = filename} is required");
+    m_tilemap = lua_tostring(L, -1);
+    lua_pop(L, 1);
 }

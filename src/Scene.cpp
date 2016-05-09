@@ -3,6 +3,11 @@
 #include "Actor.h"
 #include "IRenderer.h"
 
+#include "SpriteGraphics.h"
+#include "TiledGraphics.h"
+#include "AabbCollider.h"
+#include "TiledCollider.h"
+
 #include <cassert>
 
 bool Scene::load(const char *filename)
@@ -23,6 +28,10 @@ bool Scene::load(const char *filename)
     // Initialize objects and methods
     Canvas::initMetatable(m_L);
     Actor::initMetatable(m_L);
+    SpriteGraphics::initMetatable(m_L);
+    TiledGraphics::initMetatable(m_L);
+    AabbCollider::initMetatable(m_L);
+    TiledCollider::initMetatable(m_L);
 
     lua_pushcfunction(m_L, scene_registerControl);
     lua_setglobal(m_L, "registerControl");

@@ -1,4 +1,5 @@
 #include "BasicCamera.h"
+#include "IRenderer.h"
 
 void BasicCamera::resize(int width, int height)
 {

@@ -2,25 +2,37 @@
 game = Canvas({20, 15}, true)
 
 -- put invisible walls around the edges of the screen
-leftWall = Actor{collider=true, group=4, mask=3}
+leftWall = Actor
+{
+    collider = AabbCollider{group = 4, mask = 3},
+    position = {-1, -1},
+    scale = {1, 16}
+}
 game:addActor(leftWall)
-leftWall:setPosition(-1, -1)
-leftWall:setScale(1, 16)
 
-rightWall = Actor{collider=true, group=4, mask=3}
+rightWall = Actor
+{
+    collider = AabbCollider{group = 4, mask = 3},
+    position = {20, -1},
+    scale = {1, 16}
+}
 game:addActor(rightWall)
-rightWall:setPosition(20, -1)
-rightWall:setScale(1, 16)
 
-topWall = Actor{collider=true, group=4, mask=1}
+topWall = Actor
+{
+    collider = AabbCollider{group = 4, mask = 1},
+    position = {0, 15},
+    scale = {20, 1}
+}
 game:addActor(topWall)
-topWall:setPosition(0, 15)
-topWall:setScale(20, 1)
 
-bottomWall = Actor{collider=true, group=4, mask=1}
+bottomWall = Actor
+{
+    collider = AabbCollider{group = 4, mask = 1},
+    position = {0, -2},
+    scale = {20, 1}
+}
 game:addActor(bottomWall)
-bottomWall:setPosition(0, -2)
-bottomWall:setScale(20, 1)
 
 -- reset the ball if it hits the bottom wall
 function bottomWall:collided(hit)
@@ -33,9 +45,14 @@ end
 -- create the paddle
 -- TODO can we have COR=0 between paddle-walls while still having COR=1 between paddle-ball and ball-walls?
 -- TODO make paddle a top edge only collider
-paddle = Actor{sprite="square.tga", collider=true, group=2, mask=5, physics=true, mass=math.huge}
+paddle = Actor
+{
+    graphics = SpriteGraphics{sprite = "square.tga"},
+    collider = AabbCollider{group = 2, mask = 5},
+    physics = {mass = math.huge},
+    scale = {4, 1}
+}
 game:addActor(paddle)
-paddle:setScale(4, 1)
 
 paddle.vel = 0
 function paddle:update()
@@ -44,7 +61,12 @@ function paddle:update()
 end
 
 -- create the ball
-ball = Actor{sprite="round.tga", collider=true, group=1, physics=true}--, cof=1}
+ball = Actor
+{
+    graphics=SpriteGraphics{sprite="round.tga"},
+    collider=AabbCollider{group=1},
+    physics={} --cof=1
+}
 game:addActor(ball)
 
 -- keep the ball stuck to the paddle until it is launched
@@ -69,13 +91,22 @@ end
 -- helper function to create a brick
 bricks = {}
 function addBrick(x, y, color)
-    local brick = Actor{sprite="square.tga", collider=true, group=8, mask=1}
+    local brick = Actor
+    {
+        graphics = SpriteGraphics{sprite="square.tga", color=color},
+        collider = AabbCollider{group=8, mask=1},
+        position = {x, y},
+        scale = {2, 1}
+    }
     game:addActor(brick)
-    brick:setPosition(x, y)
-    brick:setScale(2, 1)
-    brick:setColor(color)
     function brick:collided()
         game:removeActor(self)
+        for i, v in ipairs(bricks) do
+            if v == self then
+                table.remove(bricks, i)
+                break
+            end
+        end
     end
     bricks[#bricks+1] = brick
 end
@@ -99,7 +130,7 @@ function resetGame()
     ball:update()
 
     -- clear any bricks currently in play
-    for _,v in ipairs(bricks) do
+    for _, v in ipairs(bricks) do
         game:removeActor(v)
     end
     bricks = {}

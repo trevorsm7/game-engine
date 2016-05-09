@@ -2,7 +2,6 @@
 #define __TILEMAP_H__
 
 #include "IResource.h"
-#include "ResourceManager.h"
 
 #include <memory>
 #include <string>
@@ -13,6 +12,8 @@ typedef std::shared_ptr<TileMap> TileMapPtr;
 
 class TileIndex;
 typedef std::shared_ptr<TileIndex> TileIndexPtr;
+
+class ResourceManager;
 
 class TileMap : public IResource
 {

@@ -37,7 +37,7 @@ public:
     void update(lua_State* L, float delta);
     void render(IRenderer* renderer);
     bool mouseEvent(lua_State* L, MouseEvent& event);
-    void resize(lua_State* L, int width, int height) {m_camera->resize(width, height);}
+    void resize(lua_State* L, int width, int height);
 
 private:
     void processAddedActors(lua_State *L);

@@ -12,15 +12,14 @@ class TUserdata
 public:
     TUserdata(): m_refCount(0) {}
 
+    static void initMetatable(lua_State* L);
+    static T* checkUserdata(lua_State* L, int index)
+        {return reinterpret_cast<T*>(luaL_checkudata(L, index, T::METATABLE));}
+
     bool pushUserdata(lua_State* L);
     // NOTE should be protected? Wrap in unique_ptr-like class?
     void refAdded(lua_State* L, int index);
     void refRemoved(lua_State* L);
-
-    static T* checkUserdata(lua_State* L, int index)
-        {return reinterpret_cast<T*>(luaL_checkudata(L, index, T::METATABLE));}
-
-    static void initMetatable(lua_State* L);
 
 protected:
     bool pcall(lua_State* L, const char* method, int in, int out);
@@ -33,93 +32,10 @@ private:
 };
 
 template <class T>
-bool TUserdata<T>::pushUserdata(lua_State* L)
-{
-    lua_pushlightuserdata(L, this);
-    lua_rawget(L, LUA_REGISTRYINDEX);
-    // NOTE will these always match even if we have a complicated inheritance?
-    // if so, will it be ok as long as we are consistent in using TUserdata this as the key?
-    //assert(luaL_testudata(L, -1, T::METATABLE));
-    //assert(lua_touserdata(L, -1) == this);
-    if (lua_touserdata(L, -1) != this)
-    {
-        fprintf(stderr, "Userdata pointer in registry doesn't match\n");
-        return false;
-    }
-
-    return true;
-}
-
-template <class T>
-void TUserdata<T>::refAdded(lua_State* L, int index)
-{
-    // TODO use get rid of ref counting? make a container to manage these?
-    // Add userdata to the registry while it is ref'd by engine
-    if (m_refCount++ == 0)
-    {
-        lua_pushlightuserdata(L, this);
-        lua_pushvalue(L, (index < 0) ? index - 1 : index); // adjust relative offset
-        lua_rawset(L, LUA_REGISTRYINDEX);
-    }
-}
-
-template <class T>
-void TUserdata<T>::refRemoved(lua_State* L)
-{
-    // TODO use get rid of ref counting? make a container to manage these?
-    // Remove from registry if reference count drops to zero
-    if (--m_refCount == 0)
-    {
-        //printf("removing %s(%p) from registry\n", T::METATABLE, this);
-        lua_pushlightuserdata(L, this);
-        lua_pushnil(L);
-        lua_rawset(L, LUA_REGISTRYINDEX);
-    }
-}
-
-template <class T>
-bool TUserdata<T>::pcall(lua_State* L, const char* method, int in, int out)
-{
-    if (!pushUserdata(L))
-    {
-        fprintf(stderr, "Attempt to call %s:%s with invalid userdata (%p)\n", T::METATABLE, method, this);
-        lua_pop(L, in + 1);
-        return false;
-    }
-
-    // Push uservalue on stack ([in] udata uvalue)
-    lua_getuservalue(L, -1);
-    assert(lua_type(L, -1) == LUA_TTABLE);
-
-    // Push function on stack ([in] udata uvalue function)
-    lua_pushstring(L, method); // TODO this is unsafe if it fails (out of memory error)
-    if (lua_rawget(L, -2) != LUA_TFUNCTION)
-    {
-        // NOTE this is not an error so don't spam error messages about it!
-        lua_pop(L, in + 3);
-        return false;
-    }
-
-    // Reorder stack (function udata [in])
-    lua_insert(L, -(in + 3)); // insert function before args
-    lua_pop(L, 1); // remove the uservalue from the stack
-    lua_insert(L, -(in + 1)); // insert udata before args
-
-    // Do a protected call; pops function, udata, and args
-    if (lua_pcall(L, in + 1, out, 0) != 0)
-    {
-        fprintf(stderr, "%s\n", lua_tostring(L, -1));
-        lua_pop(L, 1); // remove the error string from the stack
-        return false;
-    }
-
-    return true;
-}
-
-template <class T>
 void TUserdata<T>::initMetatable(lua_State* L)
 {
     // TODO the push string/table functions are unsafe if they fail (out of memory error)
+    int top = lua_gettop(L);
 
     // Push new metatable on the stack
     luaL_newmetatable(L, T::METATABLE);
@@ -155,6 +71,94 @@ void TUserdata<T>::initMetatable(lua_State* L)
     // Push constructor as global function with class name
     lua_pushcfunction(L, script_create);
     lua_setglobal(L, T::METATABLE);
+
+    assert(top == lua_gettop(L));
+}
+
+template <class T>
+bool TUserdata<T>::pushUserdata(lua_State* L)
+{
+    lua_pushlightuserdata(L, this);
+    lua_rawget(L, LUA_REGISTRYINDEX);
+    // NOTE this pointer will not always == the base address of the userdata!
+    // TODO could store the TUserdata<T> this pointer as light udata in uservalue?
+    assert(luaL_testudata(L, -1, T::METATABLE));
+    //assert(lua_touserdata(L, -1) == this);
+    /*if (lua_touserdata(L, -1) != this)
+    {
+        fprintf(stderr, "Userdata pointer in registry doesn't match\n");
+        return false;
+    }*/
+
+    return true;
+}
+
+template <class T>
+void TUserdata<T>::refAdded(lua_State* L, int index)
+{
+    // TODO use get rid of ref counting? make a container to manage these?
+    // Add userdata to the registry while it is ref'd by engine
+    if (m_refCount++ == 0)
+    {
+        lua_pushlightuserdata(L, this);
+        // TODO assert that full userdata pointer matches this?
+        lua_pushvalue(L, (index < 0) ? index - 1 : index); // adjust relative offset
+        lua_rawset(L, LUA_REGISTRYINDEX);
+    }
+}
+
+template <class T>
+void TUserdata<T>::refRemoved(lua_State* L)
+{
+    // TODO use get rid of ref counting? make a container to manage these?
+    // Remove from registry if reference count drops to zero
+    if (--m_refCount == 0)
+    {
+        //printf("removing %s(%p) from registry\n", T::METATABLE, this);
+        lua_pushlightuserdata(L, this);
+        lua_pushnil(L);
+        lua_rawset(L, LUA_REGISTRYINDEX);
+    }
+}
+
+template <class T>
+bool TUserdata<T>::pcall(lua_State* L, const char* method, int in, int out)
+{
+    if (!pushUserdata(L))
+    {
+        // TODO can probably just make this an assert; might not even need it if pushUserdata does the same
+        fprintf(stderr, "Attempt to call %s:%s with invalid userdata (%p)\n", T::METATABLE, method, this);
+        lua_pop(L, in + 1);
+        return false;
+    }
+
+    // Push uservalue on stack ([in] udata uvalue)
+    lua_getuservalue(L, -1);
+    assert(lua_type(L, -1) == LUA_TTABLE);
+
+    // Push function on stack ([in] udata uvalue function)
+    lua_pushstring(L, method); // TODO this is unsafe if it fails (out of memory error)
+    if (lua_rawget(L, -2) != LUA_TFUNCTION)
+    {
+        // NOTE this is not an error so don't spam error messages about it!
+        lua_pop(L, in + 3);
+        return false;
+    }
+
+    // Reorder stack (function udata [in])
+    lua_insert(L, -(in + 3)); // insert function before args
+    lua_pop(L, 1); // remove the uservalue from the stack
+    lua_insert(L, -(in + 1)); // insert udata before args
+
+    // Do a protected call; pops function, udata, and args
+    if (lua_pcall(L, in + 1, out, 0) != 0)
+    {
+        fprintf(stderr, "%s\n", lua_tostring(L, -1));
+        lua_pop(L, 1); // remove the error string from the stack
+        return false;
+    }
+
+    return true;
 }
 
 template <class T>
@@ -231,11 +235,6 @@ int TUserdata<T>::script_create(lua_State* L)
     int top = lua_gettop(L);
     ptr->construct(L);
     assert(top == lua_gettop(L));
-    /*if (top != lua_gettop(L))
-    {
-        fprintf(stderr, "Warning: %s::construct is leaving junk on the Lua stack\n", T::METATABLE);
-        lua_settop(L, top);
-    }*/
 
     return 1;
 }

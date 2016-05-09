@@ -1,16 +1,24 @@
 game = Canvas({20, 20}, false)
 
-tiles = Actor{tiles="tiles.map", collider=true}
+tiles = Actor
+{
+    graphics = TiledGraphics{tilemap="tiles.map"},
+    collider = TiledCollider{tilemap="tiles.map"},
+    position = {-1, -1},
+    scale = {7, 7}
+}
 game:addActor(tiles)
-tiles:setPosition(-1, -1)
-tiles:setScale(7, 7)
 game:setCenter(2, 2)
 
 --player = Actor{sprite="hero.tga", collider=true}
-player = Actor{tiles="heropad.map", collider=true}
+player = Actor
+{
+    graphics = TiledGraphics{tilemap="heropad.map"},
+    collider = TiledCollider{tilemap="heropad.map"},
+    position = {-2, -2},
+    scale = {3, 3}
+}
 game:addActor(player)
-player:setPosition(-2, -2)
-player:setScale(3, 3)
 
 -- generate a callback function to move the player in a direction
 function player:keyDown(method, arg)
@@ -35,9 +43,9 @@ end
 
 function player:update(delta)
     if self:testCollision(0, 0) then
-        self:setColor{1, .5, .5}
+        self:getGraphics():setColor{1, .5, .5}
     else
-        self:setColor{1, 1, 1}
+        self:getGraphics():setColor{1, 1, 1}
     end
 end
 
@@ -46,6 +54,10 @@ registerControl("right", player:keyDown(player.move, {1, 0}))
 registerControl("down", player:keyDown(player.move, {0, -1}))
 registerControl("up", player:keyDown(player.move, {0, 1}))
 
-nerd = Actor{sprite="nerd.tga", collider=true}
+nerd = Actor
+{
+    graphics = SpriteGraphics{sprite="nerd.tga"},
+    collider = AabbCollider{},
+    position = {4, 4}
+}
 game:addActor(nerd)
-nerd:setPosition(4, 4)

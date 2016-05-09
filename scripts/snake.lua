@@ -18,7 +18,11 @@ local function newApple(canvas)
     local defaultColor = green
     local defaultScore = 2
 
-    local apple = Actor{color=defaultColor, sprite="round.tga", collider=true}
+    local apple = Actor
+    {
+        graphics = SpriteGraphics{color=defaultColor, sprite="round.tga"},
+        collider = AabbCollider{}
+    }
     canvas:addActor(apple)
     apple:setPosition(getEmptySpace(canvas))
     apple.food = true
@@ -35,10 +39,10 @@ local function newApple(canvas)
 
         -- occasionally spawn a golden apple
         if math.random() < 0.05 then
-            apple:setColor(gold)
+            apple:getGraphics():setColor(gold)
             apple.score = 5
         else
-            apple:setColor(defaultColor)
+            apple:getGraphics():setColor(defaultColor)
             apple.score = defaultScore
         end
 
@@ -61,7 +65,6 @@ end
 -- create an invisible controller that drives a snake
 local function newSnake(canvas, name, pos, dir, color)
     local snake = Actor{}
-    snake:setVisible(false)
     canvas:addActor(snake)
     snake.time = 0
     snake.name = name
@@ -71,9 +74,13 @@ local function newSnake(canvas, name, pos, dir, color)
     snake.dir = dir
 
     local function newBody(canvas, x, y)
-        local body = Actor{color=color, sprite="round.tga", collider=true}
+        local body = Actor
+        {
+            graphics = SpriteGraphics{color=color, sprite="round.tga"},
+            collider = AabbCollider{},
+            position = {x, y}
+        }
         canvas:addActor(body)
-        body:setPosition(x, y)
         return body
     end
 
@@ -162,11 +169,14 @@ end
 local function resetGame(game)
     game:clear()
 
-    -- NOTE: currently, we need a graphics component to receive mouse events
-    god = Actor{layer=-1, sprite="unused"}
+    god = Actor
+    {
+        layer = -1,
+        -- NOTE: currently, we need a graphics component to receive mouse events
+        graphics = SpriteGraphics{sprite="unused", visible=false},
+        scale = {20, 15}
+    }
     game:addActor(god)
-    god:setVisible(false)
-    god:setScale(20, 15)
     god.score = 0
 
     function god:mouse(down)
@@ -206,10 +216,13 @@ local menu = Canvas({20, 15}, true)
 menu:setCenter(0, 0)
 menu:setVisible(false)
 
-local continue = Actor{sprite="continue.tga"}
+local continue = Actor
+{
+    graphics = SpriteGraphics{sprite="continue.tga"},
+    position = {-5, 2},
+    scale = {10, 2}
+}
 menu:addActor(continue)
-continue:setPosition(-5, 2)
-continue:setScale(10, 2)
 function continue:mouse(down)
     if (down) then
         menu:setVisible(false)
@@ -218,10 +231,13 @@ function continue:mouse(down)
     return true
 end
 
-local newGame = Actor{sprite="newgame.tga"}
+local newGame = Actor
+{
+    graphics = SpriteGraphics{sprite="newgame.tga"},
+    position = {-5, -1},
+    scale = {10, 2}
+}
 menu:addActor(newGame)
-newGame:setPosition(-5, -1)
-newGame:setScale(10, 2)
 function newGame:mouse(down)
     if (down) then
         resetGame(game)
@@ -231,10 +247,13 @@ function newGame:mouse(down)
     return true
 end
 
-local endGame = Actor{sprite="quit.tga"}
+local endGame = Actor
+{
+    graphics = SpriteGraphics{sprite="quit.tga"},
+    position = {-5, -4},
+    scale = {10, 2}
+}
 menu:addActor(endGame)
-endGame:setPosition(-5, -4)
-endGame:setScale(10, 2)
 function endGame:mouse(down)
     if (down) then
         quit()

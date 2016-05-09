@@ -1,4 +1,5 @@
 #include "TileMap.h"
+#include "ResourceManager.h"
 
 #include <sstream>
 #include <iterator>

@@ -4,14 +4,11 @@
 #include "ICollider.h"
 #include "Aabb.h"
 
-class Actor;
-
-class AabbCollider : public ICollider
+class AabbCollider : public TCollider<AabbCollider>
 {
-    Actor* m_actor;
+    AabbCollider() {}
 
 public:
-    AabbCollider(Actor* actor, uint32_t group, uint32_t mask): ICollider(group, mask), m_actor(actor) {}
     ~AabbCollider() override {}
 
     void update(float delta) override {}
@@ -22,6 +19,15 @@ public:
 
     bool getCollisionTime(const Aabb& aabb, float velX, float velY, float& start, float& end, float& normX, float& normY) const override;
     bool getCollisionTime(float velX, float velY, const ICollider* other, float& start, float& end, float& normX, float& normY) const override;
+
+private:
+    friend class TCollider<AabbCollider>;
+    friend class TUserdata<AabbCollider>;
+    //void construct(lua_State* L);
+    void destroy(lua_State* L) {}
+
+    static constexpr const char* const METATABLE = "AabbCollider";
+    //static constexpr const luaL_Reg METHODS[] = {};
 };
 
 #endif

@@ -7,13 +7,13 @@
 
 class Actor;
 
-class TiledCollider : public ICollider
+class TiledCollider : public TCollider<TiledCollider>
 {
-    Actor* m_actor;
     std::string m_tilemap;
 
+    TiledCollider() {}
+
 public:
-    TiledCollider(Actor* actor, std::string tilemap, uint32_t group, uint32_t mask): ICollider(group, mask), m_actor(actor), m_tilemap(tilemap) {}
     ~TiledCollider() override {}
 
     void update(float delta) override {}
@@ -26,6 +26,15 @@ public:
 
     bool getCollisionTime(const Aabb& aabb, float velX, float velY, float& start, float& end, float& normX, float& normY) const override;
     bool getCollisionTime(float velX, float velY, const ICollider* other, float& start, float& end, float& normX, float& normY) const override;
+
+private:
+    friend class TCollider<TiledCollider>;
+    friend class TUserdata<TiledCollider>;
+    void construct(lua_State* L);
+    void destroy(lua_State* L) {}
+
+    static constexpr const char* const METATABLE = "TiledCollider";
+    //static constexpr const luaL_Reg METHODS[] = {};
 };
 
 #endif

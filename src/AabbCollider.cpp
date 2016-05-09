@@ -1,9 +1,13 @@
 #include "AabbCollider.h"
 #include "Actor.h"
 
+#include <cassert>
+
 bool AabbCollider::testCollision(float x, float y) const
 {
-    if (!isCollidable() || !m_actor)
+    assert(m_actor != nullptr);
+
+    if (!isCollidable())
         return false;
 
     const Aabb self = m_actor->getTransform().getAabb();
@@ -12,7 +16,9 @@ bool AabbCollider::testCollision(float x, float y) const
 
 bool AabbCollider::testCollision(const Aabb& aabb) const
 {
-    if (!isCollidable() || !m_actor)
+    assert(m_actor != nullptr);
+
+    if (!isCollidable())
         return false;
 
     const Aabb self = m_actor->getTransform().getAabb();
@@ -21,7 +27,9 @@ bool AabbCollider::testCollision(const Aabb& aabb) const
 
 bool AabbCollider::testCollision(float deltaX, float deltaY, const ICollider* other) const
 {
-    if (!isCollidableWith(other) || !m_actor)
+    assert(m_actor != nullptr);
+
+    if (!isCollidableWith(other))
         return false;
 
     Aabb bounds = m_actor->getTransform().getAabb();
@@ -32,7 +40,9 @@ bool AabbCollider::testCollision(float deltaX, float deltaY, const ICollider* ot
 // NOTE here we are taking the velocity of the other object
 bool AabbCollider::getCollisionTime(const Aabb& aabb, float velX, float velY, float& start, float& end, float& normX, float& normY) const
 {
-    if (!isCollidable() || !m_actor)
+    assert(m_actor != nullptr);
+
+    if (!isCollidable())
         return false;
 
     const Aabb self = m_actor->getTransform().getAabb();
@@ -67,10 +77,18 @@ bool AabbCollider::getCollisionTime(const Aabb& aabb, float velX, float velY, fl
 // TODO maybe we should just pull these velocities from the actor physics component???
 bool AabbCollider::getCollisionTime(float velX, float velY, const ICollider* other, float& start, float& end, float& normX, float& normY) const
 {
-    if (!isCollidableWith(other) || !m_actor)
+    assert(m_actor != nullptr);
+    assert(other != nullptr);
+
+    if (!isCollidableWith(other))
         return false;
 
     const Aabb bounds = m_actor->getTransform().getAabb();
     bool result = other->getCollisionTime(bounds, velX, velY, start, end, normX, normY);
     return result;
 }
+
+/*void AabbCollider::construct(lua_State* L)
+{
+    TCollider<AabbCollider>::construct(L);
+}*/

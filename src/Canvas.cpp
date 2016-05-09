@@ -95,6 +95,11 @@ bool Canvas::mouseEvent(lua_State *L, MouseEvent& event)
     return false;
 }
 
+void Canvas::resize(lua_State* L, int width, int height)
+{
+    m_camera->resize(width, height);
+}
+
 void Canvas::processAddedActors(lua_State *L)
 {
     // Process each actor in the add queue
@@ -420,8 +425,9 @@ int Canvas::canvas_removeActor(lua_State *L)
     Actor* actor = Actor::checkUserdata(L, 2);
 
     // Actor must belong to this Canvas before we can remove it obviously...
-    //luaL_argcheck(L, (actor->m_canvas == canvas), 2, "doesn't belong to this Canvas\n");
-    bool isOwner = (actor->m_canvas == canvas);
+    luaL_argcheck(L, (actor->m_canvas == canvas), 2, "doesn't belong to this Canvas\n");
+    //bool isOwner = (actor->m_canvas == canvas);
+    bool isOwner = true;
 
     // Mark Actor for later removal (after we're done iterating)
     if (isOwner)
