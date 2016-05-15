@@ -61,20 +61,13 @@ void SdlRenderer::drawSprite(const std::string& name)
     SDL_RenderCopy(m_renderer, texture->getPtr(), nullptr, &target);
 }
 
-void SdlRenderer::drawTiles(const std::string& name)
+void SdlRenderer::drawTiles(TileMap* tilemap)
 {
-    // Load the tile map
-    TileMapPtr tileMap = TileMap::loadTileMap(m_resources, name);
-    if (!tileMap)
-        return;
-
-    // Load the tile index
-    TileIndexPtr tileIndex = TileIndex::loadTileIndex(m_resources, tileMap->getIndexFile());
-    if (!tileIndex)
-        return;
+    assert(tilemap != nullptr);
+    TileIndex* tileindex = tilemap->getTileIndex();
 
     // Get texture resource
-    SdlTexturePtr texture = SdlTexture::loadTexture(m_resources, m_renderer, tileIndex->getImageFile());
+    SdlTexturePtr texture = SdlTexture::loadTexture(m_resources, m_renderer, tileindex->getImageFile());
     if (!texture)
         return; // TODO: we should at least have a placeholder instead of null; assert here?
 
@@ -84,16 +77,16 @@ void SdlRenderer::drawTiles(const std::string& name)
 
     // Set the source rect from which we will draw the texture
     SDL_Rect source;
-    source.w = texture->getWidth() / tileIndex->getCols();
-    source.h = texture->getHeight() / tileIndex->getRows();
+    source.w = texture->getWidth() / tileindex->getCols();
+    source.h = texture->getHeight() / tileindex->getRows();
 
     // Compute the scale from camera to screen
     const float scaleW = m_width / m_camera.getW();
     const float scaleH = m_height / m_camera.getH();
 
     // Compute the scale from index to tile (i.e. the size in pixels as float)
-    const float floatW = m_model.getW() * scaleW / tileMap->getCols();
-    const float floatH = m_model.getH() * scaleH / tileMap->getRows();
+    const float floatW = m_model.getW() * scaleW / tilemap->getCols();
+    const float floatH = m_model.getH() * scaleH / tilemap->getRows();
 
     // Use the top-left corner of the tilemap as the origin
     const int originX = (m_model.getX() - m_camera.getX()) * scaleW;
@@ -106,18 +99,18 @@ void SdlRenderer::drawTiles(const std::string& name)
 
     // Iterate over tile (x, y) indices
     int i = 0;
-    for (int y = 0; y < tileMap->getRows(); ++y)
+    for (int y = 0; y < tilemap->getRows(); ++y)
     {
-        for (int x = 0; x < tileMap->getCols(); ++x)
+        for (int x = 0; x < tilemap->getCols(); ++x)
         {
             // Skip if tile index invalid (blank tile)
-            const int tile = tileMap->getIndex(i++);
-            if (!tileIndex->isValidIndex(tile))
+            const int tile = tilemap->getIndex(i++);
+            if (!tileindex->isValidIndex(tile))
                 continue;
 
             // Index tiles from top-left
-            source.x = tileIndex->getIndexCol(tile) * source.w;
-            source.y = tileIndex->getIndexRow(tile) * source.h;
+            source.x = tileindex->getIndexCol(tile) * source.w;
+            source.y = tileindex->getIndexRow(tile) * source.h;
 
             // Draw tilemap from top-left
             target.x = originX + int(x * floatW);

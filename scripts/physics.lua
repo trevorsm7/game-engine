@@ -116,10 +116,27 @@ canvases[4]:setVisible(false)
 canvases[4]:setPaused(true)
 
 reset[4] = function(canvas)
-    local center = addPhysicsBox(canvas, -1, 1, 1):setVelocity(2, 0)
-    canvas:setCenter(center)
-    function center:update()
+    local speed = 4
+    local center = addPhysicsBox(canvas, -1, 1, 1):setVelocity(speed, 0)
+    --canvas:setCenter(center)
+    --[[function center:update()
         canvas:setCenter(self)
+    end]]--
+    -- note 0 is up, winding is cw
+    local angle = -45
+    local winding = 360
+    function canvas:update(tick)
+        local freq = speed / 8
+        angle = angle + tick * freq * winding
+        if angle > 405 then
+            angle = 810 - angle
+            winding = -winding
+        elseif angle < -45 then
+            angle = -90 - angle
+            winding = -winding
+        end
+        local rad = math.rad(angle)
+        self:setCenter(math.sin(rad), math.cos(rad))
     end
 
     addPhysicsBox(canvas, -1, 2, 1)
@@ -134,16 +151,16 @@ reset[4] = function(canvas)
     addPhysicsBox(canvas, -2, -1, 1)
     addStaticBox(canvas, -2-5, -1)
 
-    addPhysicsBox(canvas, -2, 1, 1):setVelocity(-2, 0)
+    addPhysicsBox(canvas, -2, 1, 1):setVelocity(-speed, 0)
     addStaticBox(canvas, -2-5, 1)
 
-    addPhysicsBox(canvas, 1, 2+2, 1):setVelocity(0, -2)
+    addPhysicsBox(canvas, 1, 2+2, 1):setVelocity(0, -speed)
     addStaticBox(canvas, 1, 2+3)
 
-    addPhysicsBox(canvas, 2+4, -1, 1):setVelocity(-2, 0)
+    addPhysicsBox(canvas, 2+4, -1, 1):setVelocity(-speed, 0)
     addStaticBox(canvas, 2+5, -1)
 
-    addPhysicsBox(canvas, -1, -2-6, 1):setVelocity(0, 2)
+    addPhysicsBox(canvas, -1, -2-6, 1):setVelocity(0, speed)
     addStaticBox(canvas, -1, -2-7)
 end
 

@@ -103,8 +103,11 @@ void Actor::construct(lua_State* L)
     if (lua_rawget(L, 1) != LUA_TNIL)
     {
         m_graphics = IGraphics::checkUserdata(L, -1);
+        if (m_graphics->m_actor != nullptr)
+            m_graphics->m_actor->m_graphics = nullptr;
+        else
+            m_graphics->refAdded(L, -1);
         m_graphics->m_actor = this;
-        m_graphics->refAdded(L, -1);
     }
     lua_pop(L, 1);
 
@@ -112,8 +115,11 @@ void Actor::construct(lua_State* L)
     if (lua_rawget(L, 1) != LUA_TNIL)
     {
         m_collider = ICollider::checkUserdata(L, -1);
+        if (m_collider->m_actor != nullptr)
+            m_collider->m_actor->m_collider = nullptr;
+        else
+            m_collider->refAdded(L, -1);
         m_collider->m_actor = this;
-        m_collider->refAdded(L, -1);
     }
     lua_pop(L, 1);
 

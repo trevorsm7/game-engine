@@ -5,6 +5,8 @@
 
 #include <string>
 
+class TileMap;
+
 class IRenderer
 {
 public:
@@ -19,7 +21,7 @@ public:
 
     virtual void setColor(float red, float green, float blue) = 0;
     virtual void drawSprite(const std::string& name) = 0;
-    virtual void drawTiles(const std::string& name) = 0;
+    virtual void drawTiles(TileMap* tilemap) = 0;
 
     virtual void popModelTransform() = 0;
     virtual void popCameraTransform() = 0;

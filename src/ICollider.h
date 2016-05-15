@@ -108,11 +108,15 @@ void TCollider<T>::initMetatable(lua_State* L)
     lua_rawset(L, -3);
 
     // Push interface methods
-    /*lua_pushliteral(L, "methods");
-    lua_rawget(L, -2);
-    assert(lua_type(L, -1) == LUA_TTABLE);
-    luaL_setfuncs(L, TCollider<T>::METHODS, 0);
-    lua_pop(L, 1);*/
+    // NOTE compiler should trim this if sublcass doesn't define T::METHODS
+    if (T::METHODS != TCollider<T>::METHODS)
+    {
+        lua_pushliteral(L, "methods");
+        lua_rawget(L, -2);
+        assert(lua_type(L, -1) == LUA_TTABLE);
+        luaL_setfuncs(L, TCollider<T>::METHODS, 0);
+        lua_pop(L, 1);
+    }
 
     // Pop the metatable and method table from the stack
     lua_pop(L, 1);

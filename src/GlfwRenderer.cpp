@@ -192,20 +192,13 @@ void GlfwRenderer::drawSprite(const std::string& name)
     glBindVertexArray(0);
 }
 
-void GlfwRenderer::drawTiles(const std::string& name)
+void GlfwRenderer::drawTiles(TileMap* tilemap)
 {
-    // Load the tile map
-    TileMapPtr tileMap = TileMap::loadTileMap(m_resources, name);
-    if (!tileMap)
-        return;
-
-    // Load the tile index
-    TileIndexPtr tileIndex = TileIndex::loadTileIndex(m_resources, tileMap->getIndexFile());
-    if (!tileIndex)
-        return;
+    assert(tilemap != nullptr);
+    TileIndex* tileindex = tilemap->getTileIndex();
 
     // Get texture resource
-    GlfwTexturePtr texture = GlfwTexture::loadTexture(m_resources, tileIndex->getImageFile());
+    GlfwTexturePtr texture = GlfwTexture::loadTexture(m_resources, tileindex->getImageFile());
     if (!texture)
         return; // TODO: we should at least have a placeholder instead of null; assert here?
 
@@ -214,31 +207,31 @@ void GlfwRenderer::drawTiles(const std::string& name)
     glBindVertexArray(m_spriteVAO);
 
     // Compute and set texture size of one tile
-    const float tileW = 1.f / tileIndex->getCols();
-    const float tileH = 1.f / tileIndex->getRows();
+    const float tileW = 1.f / tileindex->getCols();
+    const float tileH = 1.f / tileindex->getRows();
     glUniform2f(m_textureScale, tileW, tileH);
 
     // Compute and set model size of one tile
-    const float modelW = m_model.getW() / tileMap->getCols();
-    const float modelH = m_model.getH() / tileMap->getRows();
+    const float modelW = m_model.getW() / tilemap->getCols();
+    const float modelH = m_model.getH() / tilemap->getRows();
     glUniform2f(m_modelScale, modelW, modelH);
 
     const float originY = m_model.getY() + m_model.getH() - modelH;
 
     // Iterate over tile (x, y) indices
     int i = 0;
-    for (int y = 0; y < tileMap->getRows(); ++y)
+    for (int y = 0; y < tilemap->getRows(); ++y)
     {
-        for (int x = 0; x < tileMap->getCols(); ++x)
+        for (int x = 0; x < tilemap->getCols(); ++x)
         {
             // Skip if tile index invalid (blank tile)
-            const int tile = tileMap->getIndex(i++);
-            if (!tileIndex->isValidIndex(tile))
+            const int tile = tilemap->getIndex(i++);
+            if (!tileindex->isValidIndex(tile))
                 continue;
 
             // Index tiles from top-left
-            const float tileX = tileIndex->getIndexCol(tile) * tileW;
-            const float tileY = 1.f - (tileIndex->getIndexRow(tile) + 1) * tileH;
+            const float tileX = tileindex->getIndexCol(tile) * tileW;
+            const float tileY = 1.f - (tileindex->getIndexRow(tile) + 1) * tileH;
             glUniform2f(m_textureOffset, tileX, tileY);
 
             // Draw tilemap from top-left

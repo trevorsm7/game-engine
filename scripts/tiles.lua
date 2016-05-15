@@ -1,22 +1,64 @@
 game = Canvas({20, 20}, false)
 
+local map = TileMap
+{
+    index = TileIndex
+    {
+        sprite = "tiles.tga",
+        size = {2, 2},
+        data =
+        {
+            0, 0,
+            1, 1
+        }
+    },
+    size = {7, 7},
+    data =
+    {
+        3, 3, 4, 3, 3, 3, 3,
+        3, 1, 1, 1, 1, 1, 3,
+        4, 1, 2, 1, 1, 1, 3,
+        3, 1, 1, 1, 1, 3, 0,
+        3, 3, 1, 3, 3, 0, 0,
+        0, 4, 1, 4, 0, 0, 0,
+        0, 3, 1, 3, 0, 0, 0
+    }
+}
+
 tiles = Actor
 {
-    graphics = TiledGraphics{tilemap="tiles.map"},
-    collider = TiledCollider{tilemap="tiles.map"},
+    graphics = TiledGraphics{tilemap=map},
+    collider = TiledCollider{tilemap=map},
     position = {-1, -1},
-    scale = {7, 7}
+    scale = {7, 7} -- map:getSize()
 }
 game:addActor(tiles)
 game:setCenter(2, 2)
 
+local heropad = TileMap
+{
+    index = TileIndex
+    {
+        sprite = "hero.tga",
+        size = {1, 1},
+        data = {1}
+    },
+    size = {3, 3},
+    data =
+    {
+        0, 1, 0,
+        1, 1, 1,
+        0, 1, 0
+    }
+}
+
 --player = Actor{sprite="hero.tga", collider=true}
 player = Actor
 {
-    graphics = TiledGraphics{tilemap="heropad.map"},
-    collider = TiledCollider{tilemap="heropad.map"},
+    graphics = TiledGraphics{tilemap=heropad},
+    collider = TiledCollider{tilemap=heropad},
     position = {-2, -2},
-    scale = {3, 3}
+    scale = {3, 3} -- heropad:getSize()
 }
 game:addActor(player)
 

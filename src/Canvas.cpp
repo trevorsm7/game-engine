@@ -29,6 +29,11 @@ void Canvas::update(lua_State *L, float delta)
     if (m_paused)
         return;
 
+    // Call user-defined update method
+    // TODO use preUpdate and postUpdate instead?
+    lua_pushnumber(L, delta);
+    pcall(L, "update", 1, 0);
+
     updatePhysics(L, delta);
 
     // Order of update dispatch doesn't really matter; choose bottom to top
@@ -345,9 +350,8 @@ const luaL_Reg Canvas::METHODS[];
 void Canvas::construct(lua_State* L)
 {
     // Add empty table as uservalue for storage of runtime variables
-    // NOTE uncomment if we'd like to have data members in canvases
-    //lua_newtable(L);
-    //lua_setuservalue(L, -2);
+    lua_newtable(L);
+    lua_setuservalue(L, -2);
 
     // Validate arguments
     // TODO better to validate arguments before userdata is created/constructor is called?

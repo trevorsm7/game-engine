@@ -102,14 +102,15 @@ void TGraphics<T>::initMetatable(lua_State* L)
     lua_rawset(L, -3);
 
     // Push interface methods
-    /*if (T::METHODS != TGraphics<T>::METHODS)
+    // NOTE compiler should trim this if sublcass doesn't define T::METHODS
+    if (T::METHODS != TGraphics<T>::METHODS)
     {
         lua_pushliteral(L, "methods");
         lua_rawget(L, -2);
         assert(lua_type(L, -1) == LUA_TTABLE);
         luaL_setfuncs(L, TGraphics<T>::METHODS, 0);
         lua_pop(L, 1);
-    }*/
+    }
 
     // Pop the metatable and method table from the stack
     lua_pop(L, 1);

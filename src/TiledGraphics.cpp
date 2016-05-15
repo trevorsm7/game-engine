@@ -1,4 +1,5 @@
 #include "TiledGraphics.h"
+#include "TileMap.h"
 #include "IRenderer.h"
 #include "Actor.h"
 
@@ -33,7 +34,33 @@ void TiledGraphics::construct(lua_State* L)
     TGraphics<TiledGraphics>::construct(L);
 
     lua_pushliteral(L, "tilemap");
-    luaL_argcheck(L, (lua_rawget(L, 1) == LUA_TSTRING), 1, "{tilemap = filename} is required");
-    m_tilemap = lua_tostring(L, -1);
+    luaL_argcheck(L, (lua_rawget(L, 1) == LUA_TUSERDATA), 1, "tilemap userdata required");
+    m_tilemap = TileMap::checkUserdata(L, -1);
+    m_tilemap->refAdded(L, -1);
     lua_pop(L, 1);
+}
+
+void TiledGraphics::destroy(lua_State* L)
+{
+    if (m_tilemap)
+    {
+        m_tilemap->refRemoved(L);
+        m_tilemap = nullptr;
+    }
+}
+
+// NOTE constexpr declaration requires a definition
+const luaL_Reg TiledGraphics::METHODS[];
+
+int TiledGraphics::script_getTileMap(lua_State* L)
+{
+    // Validate function arguments
+    TiledGraphics* graphics = TUserdata<TiledGraphics>::checkUserdata(L, 1);
+
+    // TODO if we allow a null tilemap later, remove the assert and return 0
+    TileMap* tilemap = graphics->m_tilemap;
+    assert(tilemap != nullptr);
+    tilemap->pushUserdata(L);
+
+    return 1;
 }

@@ -5,7 +5,125 @@
 #include <iterator>
 #include <algorithm>
 
-TileMapPtr TileMap::loadTileMap(ResourceManager& manager, const std::string& filename)
+void TileIndex::construct(lua_State* L)
+{
+    luaL_checktype(L, 1, LUA_TTABLE);
+
+    lua_pushliteral(L, "sprite");
+    luaL_argcheck(L, (lua_rawget(L, 1) == LUA_TSTRING), 1, "{sprite = filename} is required");
+    m_image = lua_tostring(L, -1);
+    lua_pop(L, 1);
+
+    lua_pushliteral(L, "size");
+    //if (lua_rawget(L, 1) != LUA_TNIL)
+    luaL_argcheck(L, (lua_rawget(L, 1) == LUA_TTABLE), 1, "size required");
+    {
+        //luaL_checktype(L, -1, LUA_TTABLE);
+        lua_rawgeti(L, -1, 1);
+        lua_rawgeti(L, -2, 2);
+        m_cols = luaL_checknumber(L, -2);
+        m_rows = luaL_checknumber(L, -1);
+        m_flags.resize(m_cols * m_rows);
+        lua_pop(L, 2);
+    }
+    lua_pop(L, 1);
+
+    lua_pushliteral(L, "data");
+    //if (lua_rawget(L, 1) != LUA_TNIL)
+    luaL_argcheck(L, (lua_rawget(L, 1) == LUA_TTABLE), 1, "data required");
+    {
+        const int size = m_cols * m_rows;
+        luaL_argcheck(L, (lua_rawlen(L, -1) == size), 1, "data must match size");
+        //luaL_checktype(L, -1, LUA_TTABLE);
+        for (int i = 0; i < size; ++i)
+        {
+            lua_rawgeti(L, -1, i + 1);
+            m_flags[i] = luaL_checknumber(L, -1);
+            lua_pop(L, 1);
+        }
+    }
+    lua_pop(L, 1);
+}
+
+// NOTE constexpr declaration requires a definition
+const luaL_Reg TileIndex::METHODS[];
+
+int TileIndex::script_getSize(lua_State* L)
+{
+    // Validate function arguments
+    TileIndex* index = TileIndex::checkUserdata(L, 1);
+
+    lua_pushnumber(L, index->m_cols);
+    lua_pushnumber(L, index->m_rows);
+
+    return 2;
+}
+
+void TileMap::construct(lua_State* L)
+{
+    luaL_checktype(L, 1, LUA_TTABLE);
+
+    lua_pushliteral(L, "index");
+    luaL_argcheck(L, (lua_rawget(L, 1) == LUA_TUSERDATA), 1, "index userdata required");
+    m_index = TileIndex::checkUserdata(L, -1);
+    m_index->refAdded(L, -1);
+    lua_pop(L, 1);
+
+    lua_pushliteral(L, "size");
+    //if (lua_rawget(L, 1) != LUA_TNIL)
+    luaL_argcheck(L, (lua_rawget(L, 1) == LUA_TTABLE), 1, "size required");
+    {
+        //luaL_checktype(L, -1, LUA_TTABLE);
+        lua_rawgeti(L, -1, 1);
+        lua_rawgeti(L, -2, 2);
+        m_cols = luaL_checknumber(L, -2);
+        m_rows = luaL_checknumber(L, -1);
+        m_map.resize(m_cols * m_rows);
+        lua_pop(L, 2);
+    }
+    lua_pop(L, 1);
+
+    lua_pushliteral(L, "data");
+    //if (lua_rawget(L, 1) != LUA_TNIL)
+    luaL_argcheck(L, (lua_rawget(L, 1) == LUA_TTABLE), 1, "data required");
+    {
+        const int size = m_cols * m_rows;
+        luaL_argcheck(L, (lua_rawlen(L, -1) == size), 1, "data must match size");
+        //luaL_checktype(L, -1, LUA_TTABLE);
+        for (int i = 0; i < size; ++i)
+        {
+            lua_rawgeti(L, -1, i + 1);
+            m_map[i] = luaL_checknumber(L, -1);
+            lua_pop(L, 1);
+        }
+    }
+    lua_pop(L, 1);
+}
+
+void TileMap::destroy(lua_State* L)
+{
+    if (m_index)
+    {
+        m_index->refRemoved(L);
+        m_index = nullptr;
+    }
+}
+
+// NOTE constexpr declaration requires a definition
+const luaL_Reg TileMap::METHODS[];
+
+int TileMap::script_getSize(lua_State* L)
+{
+    // Validate function arguments
+    TileMap* tilemap = TileMap::checkUserdata(L, 1);
+
+    lua_pushnumber(L, tilemap->m_cols);
+    lua_pushnumber(L, tilemap->m_rows);
+
+    return 2;
+}
+
+/*TileMapPtr TileMap::loadTileMap(ResourceManager& manager, const std::string& filename)
 {
     // Return the resource if it is cached
     IResourcePtr resource = manager.getResource(filename);
@@ -41,9 +159,9 @@ TileMapPtr TileMap::loadTileMap(ResourceManager& manager, const std::string& fil
     // Cache the resource and return it
     manager.bindResource(filename, tilemap);
     return tilemap;
-}
+}*/
 
-TileIndexPtr TileIndex::loadTileIndex(ResourceManager& manager, const std::string& filename)
+/*TileIndexPtr TileIndex::loadTileIndex(ResourceManager& manager, const std::string& filename)
 {
     // Return the resource if it is cached
     IResourcePtr resource = manager.getResource(filename);
@@ -79,4 +197,4 @@ TileIndexPtr TileIndex::loadTileIndex(ResourceManager& manager, const std::strin
     // Cache the resource and return it
     manager.bindResource(filename, tileindex);
     return tileindex;
-}
+}*/

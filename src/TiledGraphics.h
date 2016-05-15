@@ -6,12 +6,13 @@
 #include <string>
 
 class IRenderer;
+class TileMap;
 
 class TiledGraphics : public TGraphics<TiledGraphics>
 {
-    std::string m_tilemap;
+    TileMap* m_tilemap;
 
-    TiledGraphics() {}
+    TiledGraphics(): m_tilemap(nullptr) {}
 
 public:
     ~TiledGraphics() override {}
@@ -25,10 +26,15 @@ private:
     friend class TGraphics<TiledGraphics>;
     friend class TUserdata<TiledGraphics>;
     void construct(lua_State* L);
-    void destroy(lua_State* L) {}
+    void destroy(lua_State* L);
 
     static constexpr const char* const METATABLE = "TiledGraphics";
-    //static constexpr const luaL_Reg METHODS[] = {};
+    static int script_getTileMap(lua_State* L);
+    static constexpr const luaL_Reg METHODS[] =
+    {
+        {"getTileMap", script_getTileMap},
+        {nullptr, nullptr}
+    };
 };
 
 #endif

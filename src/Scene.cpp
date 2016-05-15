@@ -3,6 +3,7 @@
 #include "Actor.h"
 #include "IRenderer.h"
 
+#include "TileMap.h"
 #include "SpriteGraphics.h"
 #include "TiledGraphics.h"
 #include "AabbCollider.h"
@@ -28,6 +29,8 @@ bool Scene::load(const char *filename)
     // Initialize objects and methods
     Canvas::initMetatable(m_L);
     Actor::initMetatable(m_L);
+    TileIndex::initMetatable(m_L);
+    TileMap::initMetatable(m_L);
     SpriteGraphics::initMetatable(m_L);
     TiledGraphics::initMetatable(m_L);
     AabbCollider::initMetatable(m_L);

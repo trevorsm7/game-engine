@@ -6,12 +6,13 @@
 #include <string>
 
 class Actor;
+class TileMap;
 
 class TiledCollider : public TCollider<TiledCollider>
 {
-    std::string m_tilemap;
+    TileMap* m_tilemap;
 
-    TiledCollider() {}
+    TiledCollider(): m_tilemap(nullptr) {}
 
 public:
     ~TiledCollider() override {}
@@ -31,10 +32,15 @@ private:
     friend class TCollider<TiledCollider>;
     friend class TUserdata<TiledCollider>;
     void construct(lua_State* L);
-    void destroy(lua_State* L) {}
+    void destroy(lua_State* L);
 
     static constexpr const char* const METATABLE = "TiledCollider";
-    //static constexpr const luaL_Reg METHODS[] = {};
+    static int script_getTileMap(lua_State* L);
+    static constexpr const luaL_Reg METHODS[] =
+    {
+        {"getTileMap", script_getTileMap},
+        {nullptr, nullptr}
+    };
 };
 
 #endif
