@@ -140,32 +140,6 @@ local function newNerd(canvas, x, y)
     return nerd
 end
 
-local function newWall(canvas, x, y, w, h)
-    local wall = Actor
-    {
-        graphics = SpriteGraphics{sprite="square.tga"},
-        collider = AabbCollider{},
-        position = {x, y},
-        scale = {w, h}
-    }
-    canvas:addActor(wall)
-
-    return wall
-end
-
-local function newFloor(canvas, x, y, w, h)
-    local floor = Actor
-    {
-        graphics = SpriteGraphics{sprite="square.tga", color=darkGrey},
-        position = {x, y},
-        scale = {w, h},
-        layer = -1
-    }
-    canvas:addActor(floor)
-
-    return floor
-end
-
 local function newDoor(canvas, x, y)
     local door = Actor
     {
@@ -209,11 +183,45 @@ registerControl("down", player:keyDown(player.move, {0, -1}))
 registerControl("up", player:keyDown(player.move, {0, 1}))
 registerControl("action", player:keyDown(player.idle))
 
-newFloor(game, 1, 1, 4, 4)
-newWall(game, 0, 0, 6, 1)
-newWall(game, 0, 5, 6, 1)
-newWall(game, 0, 1, 1, 4)
-newWall(game, 5, 1, 1, 3)
-newDoor(game, 5, 4)
+local map = TileMap
+{
+    index = TileIndex
+    {
+        sprite = "tiles.tga",
+        size = {2, 2},
+        data =
+        {
+            0, 0,
+            1, 1
+        }
+    },
+    size = {6, 6},
+    data =
+    {
+        3, 4, 3, 3, 4, 3,
+        4, 1, 1, 1, 1, 4,
+        3, 1, 2, 1, 1, 1,
+        3, 1, 1, 1, 1, 3,
+        4, 1, 1, 1, 1, 4,
+        3, 4, 3, 3, 4, 3,
+    }
+}
+--[[map:setTiles(0, 0, 6, 1, 3)
+map:setTiles(0, 5, 6, 1, 3)
+map:setTiles(0, 1, 1, 4, 3)
+map:setTiles(5, 1, 1, 4, 3)
+map:setTiles(1, 1, 4, 4, 1)--]]
+tiles = Actor
+{
+    graphics = TiledGraphics{tilemap=map},
+    collider = TiledCollider{tilemap=map},
+    position = {0, 0},
+    scale = {6, 6}, -- map:getSize()
+    layer = -1
+}
+game:addActor(tiles)
+--TODO should y axis be inverted for 2D canvas?
+map:setTiles(5, 2, 1, 1, 1)
+newDoor(game, 5, 3)
 
 newNerd(game, 10, 10)

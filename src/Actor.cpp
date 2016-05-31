@@ -176,6 +176,7 @@ void Actor::construct(lua_State* L)
         luaL_checktype(L, -1, LUA_TTABLE);
         lua_rawgeti(L, -1, 1);
         lua_rawgeti(L, -2, 2);
+        // TODO let graphics/collider define the base size and use this as a scaling factor
         m_transform.setW(luaL_checknumber(L, -2));
         m_transform.setH(luaL_checknumber(L, -1));
         lua_pop(L, 2);
@@ -185,8 +186,7 @@ void Actor::construct(lua_State* L)
     lua_pushliteral(L, "layer");
     if (lua_rawget(L, 1) != LUA_TNIL)
     {
-        luaL_checktype(L, -1, LUA_TNUMBER);
-        setLayer(lua_tointeger(L, -1));
+        setLayer(luaL_checkinteger(L, -1));
     }
     lua_pop(L, 1);
 }

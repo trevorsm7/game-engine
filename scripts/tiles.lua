@@ -44,13 +44,16 @@ local heropad = TileMap
         data = {1}
     },
     size = {3, 3},
-    data =
+    --[[data =
     {
         0, 1, 0,
         1, 1, 1,
         0, 1, 0
-    }
+    }--]]
 }
+heropad:setTiles(0, 0, 3, 3, 0)
+heropad:setTiles(0, 1, 3, 1, 1)
+heropad:setTiles(1, 0, 1, 3, 1)
 
 --player = Actor{sprite="hero.tga", collider=true}
 player = Actor
