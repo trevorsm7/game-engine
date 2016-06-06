@@ -349,23 +349,27 @@ const luaL_Reg Canvas::METHODS[];
 
 void Canvas::construct(lua_State* L)
 {
-    // Add empty table as uservalue for storage of runtime variables
-    lua_newtable(L);
-    lua_setuservalue(L, -2);
-
-    // Validate arguments
-    // TODO better to validate arguments before userdata is created/constructor is called?
     float w = 20.f, h = 15.f;
-    if (lua_istable(L, 1))
+    lua_pushliteral(L, "size");
+    if (lua_rawget(L, 1) != LUA_TNIL)
     {
-        lua_rawgeti(L, 1, 1);
-        w = static_cast<float>(luaL_checknumber(L, -1));
-        lua_rawgeti(L, 1, 2);
+        luaL_checktype(L, -1, LUA_TTABLE);
+        lua_rawgeti(L, -1, 1);
+        lua_rawgeti(L, -2, 2);
+        w = static_cast<float>(luaL_checknumber(L, -2));
         h = static_cast<float>(luaL_checknumber(L, -1));
         lua_pop(L, 2);
     }
+    lua_pop(L, 1);
 
-    bool fixed = lua_isboolean(L, 2) && lua_toboolean(L, 2);
+    bool fixed = false;
+    lua_pushliteral(L, "fixed");
+    if (lua_rawget(L, 1) != LUA_TNIL)
+    {
+        luaL_checktype(L, -1, LUA_TBOOLEAN);
+        fixed = lua_toboolean(L, -1);
+    }
+    lua_pop(L, 1);
 
     m_camera = ICameraPtr(new BasicCamera(w, h, fixed));
 

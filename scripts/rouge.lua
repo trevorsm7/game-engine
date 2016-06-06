@@ -174,7 +174,11 @@ end
 -- set a fresh random seed when we start up
 math.randomseed(os.time())
 
-game = Canvas({20, 20}, false)
+game = Canvas
+{
+    size = {20, 20},
+    fixed = false
+}
 
 player = newPlayer(game, 1, 1)
 registerControl("left", player:keyDown(player.move, {-1, 0}))

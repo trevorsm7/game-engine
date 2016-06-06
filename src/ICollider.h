@@ -126,8 +126,6 @@ void TCollider<T>::initMetatable(lua_State* L)
 template <class T>
 void TCollider<T>::construct(lua_State* L)
 {
-    luaL_checktype(L, 1, LUA_TTABLE);
-
     lua_pushliteral(L, "group");
     if (lua_rawget(L, 1) != LUA_TNIL)
     {

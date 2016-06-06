@@ -1,4 +1,8 @@
-game = Canvas({20, 20}, false)
+game = Canvas
+{
+    size = {20, 20},
+    fixed = false
+}
 
 local map = TileMap
 {
@@ -34,6 +38,11 @@ tiles = Actor
 }
 game:addActor(tiles)
 game:setCenter(2, 2)
+
+--[[derp = {[1] = 'foo'}
+tiles[derp] = 'herp'
+print(tiles[derp])
+print(derp[1])--]]
 
 local heropad = TileMap
 {
@@ -103,6 +112,20 @@ nerd = Actor
 {
     graphics = SpriteGraphics{sprite="nerd.tga"},
     collider = AabbCollider{},
-    position = {4, 4}
+    position = {4, 4},
+    members = {test = "hello", val = 5}
 }
 game:addActor(nerd)
+
+tiles:getGraphics().herp = 'derp'
+tiles.num = 5
+tiles.str = "hello"
+tiles.bool = true
+tiles.asdf = nil
+function tiles:derp()
+    print 'hi'
+end
+tiles.tab = {1, 2, 3}
+tiles.player = player
+tiles.nerd = nerd
+tiles:serialize()

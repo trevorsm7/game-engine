@@ -91,18 +91,11 @@ const luaL_Reg Actor::METHODS[];
 
 void Actor::construct(lua_State* L)
 {
-    // Add empty table as uservalue for storage of runtime variables
-    lua_newtable(L);
-    lua_setuservalue(L, -2);
-
-    // Create the Actor object
-    // TODO: what about looping of given params instead of checking all?
-    luaL_checktype(L, 1, LUA_TTABLE);
-
     lua_pushliteral(L, "graphics");
     if (lua_rawget(L, 1) != LUA_TNIL)
     {
         m_graphics = IGraphics::checkUserdata(L, -1);
+        // TODO we should probably either treat this as an error or ultimately allow components to be shared
         if (m_graphics->m_actor != nullptr)
             m_graphics->m_actor->m_graphics = nullptr;
         else
@@ -206,6 +199,43 @@ void Actor::destroy(lua_State* L)
         m_collider->refRemoved(L);
         m_collider = nullptr;
     }
+}
+
+void Actor::serialize(lua_State* L, Serializer* serializer)
+{
+    if (m_graphics)
+    {
+        printf("%*sgraphics = ", serializer->indent, "");
+        m_graphics->pushUserdata(L);
+        serializer->serializeUserdata(L, -1);
+        printf(",\n");
+        lua_pop(L, 1);
+    }
+
+    if (m_collider)
+    {
+        printf("%*scollider = ", serializer->indent, "");
+        m_collider->pushUserdata(L);
+        serializer->serializeUserdata(L, -1);
+        printf(",\n");
+        lua_pop(L, 1);
+    }
+
+    // TODO physics
+
+    printf("%*sposition = {%f, %f},\n", serializer->indent, "", m_transform.getX(), m_transform.getY());
+    printf("%*sscale = {%f, %f},\n", serializer->indent, "", m_transform.getW(), m_transform.getH());
+    printf("%*slayer = %d,\n", serializer->indent, "", m_layer);
+}
+
+int Actor::actor_serialize(lua_State* L)
+{
+    // Validate function arguments
+    Actor::checkUserdata(L, 1);
+    Serializer serializer;
+    serializer.serializeUserdata(L, 1);
+    printf("\n");
+    return 0;
 }
 
 int Actor::actor_getCanvas(lua_State* L)

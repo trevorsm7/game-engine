@@ -56,8 +56,6 @@ int TileIndex::script_getSize(lua_State* L)
 
 void TileMap::construct(lua_State* L)
 {
-    luaL_checktype(L, 1, LUA_TTABLE);
-
     lua_pushliteral(L, "index");
     luaL_argcheck(L, (lua_rawget(L, 1) == LUA_TUSERDATA), 1, "index userdata required");
     m_index = TileIndex::checkUserdata(L, -1);

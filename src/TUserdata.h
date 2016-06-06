@@ -1,6 +1,8 @@
 #ifndef __TUSERDATA_H__
 #define __TUSERDATA_H__
 
+#include "Serializer.h"
+
 #include <new>
 #include <cassert>
 #include "lua.hpp"
@@ -21,6 +23,13 @@ public:
     void refAdded(lua_State* L, int index);
     void refRemoved(lua_State* L);
 
+    // NOTE derived class must implement the following:
+    //void construct(lua_State* L);
+    //void destroy(lua_State* L);
+    void serialize(lua_State* L, Serializer* serializer); // generic template?
+    //static const char* const METATABLE;
+    //static const luaL_Reg METHODS[];
+
 protected:
     bool pcall(lua_State* L, const char* method, int in, int out);
 
@@ -29,6 +38,7 @@ private:
     static int script_newindex(lua_State* L);
     static int script_create(lua_State* L);
     static int script_delete(lua_State* L);
+    static int script_serialize(lua_State* L);
 };
 
 template <class T>
@@ -58,6 +68,11 @@ void TUserdata<T>::initMetatable(lua_State* L)
     // Make sure to call destructor when the object is GC'd
     lua_pushliteral(L, "__gc");
     lua_pushcfunction(L, script_delete);
+    lua_rawset(L, -3);
+
+    // Add serialization functionality to all userdata types
+    lua_pushliteral(L, "serialize");
+    lua_pushcfunction(L, script_serialize);
     lua_rawset(L, -3);
 
     // Prevent metatable from being accessed directly
@@ -133,8 +148,12 @@ bool TUserdata<T>::pcall(lua_State* L, const char* method, int in, int out)
     }
 
     // Push uservalue on stack ([in] udata uvalue)
-    lua_getuservalue(L, -1);
-    assert(lua_type(L, -1) == LUA_TTABLE);
+    if (lua_getuservalue(L, -1) != LUA_TTABLE)
+    {
+        // NOTE this is not an error so don't spam error messages about it!
+        lua_pop(L, in + 2);
+        return false;
+    }
 
     // Push function on stack ([in] udata uvalue function)
     lua_pushstring(L, method); // TODO this is unsafe if it fails (out of memory error)
@@ -203,15 +222,23 @@ int TUserdata<T>::script_newindex(lua_State* L)
             luaL_error(L, "field %s is read-only!", lua_tostring(L, 2));
     }
 
-    // Get the uservalue from Actor and index it with the 2nd argument
-    if (lua_getuservalue(L, 1) == LUA_TTABLE)
+    // Get the uservalue table; initialize if it doesn't exist
+    if (lua_getuservalue(L, 1) != LUA_TTABLE)
     {
-        lua_pushvalue(L, 2);
-        lua_pushvalue(L, 3);
-        lua_rawset(L, -3);
+        // Remove the nil from the stack
+        assert(lua_type(L, -1) == LUA_TNIL);
+        lua_pop(L, 1);
+
+        // Create a new uservalue table; leave a copy on the stack
+        lua_newtable(L);
+        lua_pushvalue(L, -1);
+        lua_setuservalue(L, 1);
     }
-    else
-        luaL_error(L, "class %s is read-only!", T::METATABLE);
+
+    // Index the uservalue table with [key] = value
+    lua_pushvalue(L, 2);
+    lua_pushvalue(L, 3);
+    lua_rawset(L, -3);
 
     return 0;
 }
@@ -219,6 +246,9 @@ int TUserdata<T>::script_newindex(lua_State* L)
 template <class T>
 int TUserdata<T>::script_create(lua_State* L)
 {
+    // Validate constructor arguments
+    luaL_checktype(L, 1, LUA_TTABLE);
+
     // Check metatable first
     luaL_getmetatable(L, T::METATABLE);
     assert(lua_type(L, -1) == LUA_TTABLE);
@@ -229,6 +259,34 @@ int TUserdata<T>::script_create(lua_State* L)
     // Rearrange userdata and metatable, then set metatable to userdata
     lua_insert(L, -2);
     lua_setmetatable(L, -2);
+
+    // Copy the member table if specified
+    lua_pushliteral(L, "members");
+    if (lua_rawget(L, 1) != LUA_TNIL)
+    {
+        luaL_checktype(L, -1, LUA_TTABLE);
+
+        // Create a new uservalue table; leave a copy on the stack
+        lua_newtable(L);
+        lua_pushvalue(L, -1);
+        lua_setuservalue(L, -4);
+
+        // Iterate over table, copying key/value pairs into the uservalue table
+        lua_pushnil(L);
+        while (lua_next(L, -3))
+        {
+            luaL_argcheck(L, lua_type(L, -2) == LUA_TSTRING, 1, "member tables keys must be strings");
+
+            // Duplicate key, set key/value, leave key on stack for next iteration of lua_next
+            lua_pushvalue(L, -2);
+            lua_insert(L, -2);
+            lua_rawset(L, -4);
+        }
+
+        // Pop the uservalue table
+        lua_pop(L, 1);
+    }
+    lua_pop(L, 1);
 
     // Lastly, initialize the object with arguments passed from Lua
     new(ptr) T();
@@ -247,6 +305,57 @@ int TUserdata<T>::script_delete(lua_State* L)
     ptr->destroy(L);
     ptr->~T();
 
+    return 0;
+}
+
+template <class T>
+void TUserdata<T>::serialize(lua_State* L, Serializer* serializer)
+{
+    printf("%*s<generic>\n", serializer->indent, "");
+}
+
+template <class T>
+int TUserdata<T>::script_serialize(lua_State* L)
+{
+    // Validate userdata
+    T* ptr = checkUserdata(L, 1);
+    Serializer* serializer = Serializer::checkSerializer(L, 2);
+
+    //printf("%*s%s {\n", spacing, "", T::METATABLE);
+    printf("%s {\n", T::METATABLE); // should be appended to the end of a line, so doesn't need spaces before
+    serializer->indent++;
+    ptr->serialize(L, serializer);
+
+    if (lua_getuservalue(L, 1) == LUA_TTABLE)
+    {
+        // TODO if we want this to be generic behavior, it should be added to script_create
+
+        lua_pushnil(L);
+        if (lua_next(L, -2))
+        {
+            printf("%*smembers = {\n", (serializer->indent)++, "");
+            do
+            {
+                /*if (lua_type(L, -1) == LUA_TNIL)
+                {
+                    lua_pop(L, 1);
+                    continue;
+                }*/
+
+                // TODO require keys to be strings?
+                printf("%*s%s = ", serializer->indent, "", luaL_checkstring(L, -2));
+                serializer->serialize(L, -1);
+
+                // Remove value, leaving key on top for next iteration of lua_next
+                lua_pop(L, 1);
+            }
+            while (lua_next(L, -2));
+            printf("%*s}\n", --(serializer->indent), "");
+        }
+    }
+    lua_pop(L, 1);
+
+    printf("%*s}", --(serializer->indent), "");
     return 0;
 }
 
