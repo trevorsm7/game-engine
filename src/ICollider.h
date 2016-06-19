@@ -40,17 +40,28 @@ public:
     void setMask(uint32_t mask) {m_colliderMask = mask;}
     bool isMasked(const ICollider* other) const {assert(other); return m_colliderGroup & other->m_colliderMask;}
 
-    static ICollider* checkUserdata(lua_State* L, int index)
+    static ICollider* testUserdata(lua_State* L, int index)
     {
+        ICollider* collider = nullptr;
+
+        // NOTE getmetafield pushes nothing when LUA_TNIL is returned
         if (luaL_getmetafield(L, index, INTERFACE) != LUA_TNIL)
         {
             lua_pop(L, 1);
-            ICollider* ptr = reinterpret_cast<ICollider*>(lua_touserdata(L, index));
-            if (ptr) return ptr;
+            collider = reinterpret_cast<ICollider*>(lua_touserdata(L, index));
         }
 
-        luaL_error(L, "expected userdata with interface %s", INTERFACE);
-        return nullptr;
+        return collider;
+    }
+
+    static ICollider* checkUserdata(lua_State* L, int index)
+    {
+        ICollider* collider = testUserdata(L, index);
+
+        if (!collider)
+            luaL_error(L, "expected userdata with interface %s", INTERFACE);
+
+        return collider;
     }
 
     // Virtual functions to be implemented by TGraphics template

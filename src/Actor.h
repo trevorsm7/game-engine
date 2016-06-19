@@ -2,8 +2,6 @@
 #define __ACTOR_H__
 
 #include "TUserdata.h"
-#include "IGraphics.h"
-#include "ICollider.h"
 #include "Physics.h"
 #include "Transform.h"
 #include "Event.h"
@@ -15,8 +13,12 @@ class Canvas;
 class IRenderer;
 class ResourceManager;
 
+class IGraphics;
+class ICollider;
+
 class Actor : public TUserdata<Actor>
 {
+    // TODO either make into a component or add directly to class
     typedef std::unique_ptr<Physics> PhysicsPtr;
 
 public:
@@ -53,6 +55,10 @@ public:
     bool testCollision(float x, float y) const;
 
 private:
+    void setGraphics(lua_State* L, int index);
+    void setCollider(lua_State* L, int index);
+
+private:
     friend class TUserdata<Actor>;
     void construct(lua_State* L);
     void destroy(lua_State* L);
@@ -62,7 +68,9 @@ private:
     static int actor_serialize(lua_State* L);
     static int actor_getCanvas(lua_State* L);
     static int actor_getGraphics(lua_State* L);
+    static int actor_setGraphics(lua_State* L);
     static int actor_getCollider(lua_State* L);
+    static int actor_setCollider(lua_State* L);
     static int actor_getPosition(lua_State* L);
     static int actor_setPosition(lua_State* L);
     static int actor_setScale(lua_State* L);
@@ -76,7 +84,9 @@ private:
         {"serialize", actor_serialize},
         {"getCanvas", actor_getCanvas},
         {"getGraphics", actor_getGraphics},
+        {"setGraphics", actor_setGraphics},
         {"getCollider", actor_getCollider},
+        {"setCollider", actor_setCollider},
         {"getPosition", actor_getPosition},
         {"setPosition", actor_setPosition},
         {"setScale", actor_setScale},

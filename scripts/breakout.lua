@@ -47,11 +47,13 @@ end
 -- TODO make paddle a top edge only collider
 paddle = Actor
 {
-    graphics = SpriteGraphics{sprite = "square.tga"},
-    collider = AabbCollider{group = 2, mask = 5},
+    --graphics = SpriteGraphics{sprite = "square.tga"},
+    --collider = AabbCollider{group = 2, mask = 5},
     physics = {mass = math.huge},
     scale = {4, 1}
 }
+paddle:setGraphics(SpriteGraphics{sprite = "square.tga"})
+paddle:setCollider(AabbCollider{group = 2, mask = 5})
 game:addActor(paddle)
 
 paddle.vel = 0

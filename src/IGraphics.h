@@ -30,17 +30,28 @@ public:
     void setVisible(bool visible) {m_isVisible = visible;}
     void setColor(float r, float g, float b) {m_color = {r, g, b};}
 
-    static IGraphics* checkUserdata(lua_State* L, int index)
+    static IGraphics* testUserdata(lua_State* L, int index)
     {
+        IGraphics* graphics = nullptr;
+
+        // NOTE getmetafield pushes nothing when LUA_TNIL is returned
         if (luaL_getmetafield(L, index, INTERFACE) != LUA_TNIL)
         {
             lua_pop(L, 1);
-            IGraphics* ptr = reinterpret_cast<IGraphics*>(lua_touserdata(L, index));
-            if (ptr) return ptr;
+            graphics = reinterpret_cast<IGraphics*>(lua_touserdata(L, index));
         }
 
-        luaL_error(L, "expected userdata with interface %s", INTERFACE);
-        return nullptr;
+        return graphics;
+    }
+
+    static IGraphics* checkUserdata(lua_State* L, int index)
+    {
+        IGraphics* graphics = testUserdata(L, index);
+
+        if (!graphics)
+            luaL_error(L, "expected userdata with interface %s", INTERFACE);
+
+        return graphics;
     }
 
     // Virtual functions to be implemented by TGraphics template

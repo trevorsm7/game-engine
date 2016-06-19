@@ -82,6 +82,78 @@ bool Actor::testCollision(float x, float y) const
     return m_collider->testCollision(x, y);
 }
 
+// TODO could be templated at some point (esp. if we store components in a generic array)
+// TODO also could make generic addComponent w/ sequential testGraphics, testCollider, etc
+void Actor::setGraphics(lua_State* L, int index)
+{
+    IGraphics* graphics = IGraphics::checkUserdata(L, index);
+
+    // Do nothing if we already own the component
+    if (m_graphics == graphics)
+        return;
+
+    // Clear old component first
+    if (m_graphics != nullptr)
+    {
+        assert(m_graphics->m_actor == this);
+        m_graphics->m_actor = nullptr;
+        m_graphics->refRemoved(L);
+        //m_graphics = nullptr;
+    }
+
+    // If component already owned, remove from owner
+    // TODO treat as an error or allow components to be shared?
+    Actor* const oldActor = graphics->m_actor;
+    if (oldActor != nullptr)
+    {
+        //oldActor->m_graphics->refRemoved(L); // <-
+        oldActor->m_graphics = nullptr;
+    }
+    else // Only increase ref if we don't recycle from an old owner
+        graphics->refAdded(L, index); // <-
+
+    // Add component to new actor
+    //graphics->refAdded(L, index); // <-
+    m_graphics = graphics;
+    graphics->m_actor = this;
+}
+
+// TODO could be templated at some point (esp. if we store components in a generic array)
+// TODO also could make generic addComponent w/ sequential testGraphics, testCollider, etc
+void Actor::setCollider(lua_State* L, int index)
+{
+    ICollider* collider = ICollider::checkUserdata(L, index);
+
+    // Do nothing if we already own the component
+    if (m_collider == collider)
+        return;
+
+    // Clear old component first
+    if (m_collider != nullptr)
+    {
+        assert(m_collider->m_actor == this);
+        m_collider->m_actor = nullptr;
+        m_collider->refRemoved(L);
+        //m_collider = nullptr;
+    }
+
+    // If component already owned, remove from owner
+    // TODO treat as an error or allow components to be shared?
+    Actor* const oldActor = collider->m_actor;
+    if (oldActor != nullptr)
+    {
+        //oldActor->m_collider->refRemoved(L); // <-
+        oldActor->m_collider = nullptr;
+    }
+    else // Only increase ref if we don't recycle from an old owner
+        collider->refAdded(L, index); // <-
+
+    // Add component to new actor
+    //collider->refAdded(L, index); // <-
+    m_collider = collider;
+    collider->m_actor = this;
+}
+
 // =============================================================================
 // Lua library functions
 // =============================================================================
@@ -93,27 +165,12 @@ void Actor::construct(lua_State* L)
 {
     lua_pushliteral(L, "graphics");
     if (lua_rawget(L, 1) != LUA_TNIL)
-    {
-        m_graphics = IGraphics::checkUserdata(L, -1);
-        // TODO we should probably either treat this as an error or ultimately allow components to be shared
-        if (m_graphics->m_actor != nullptr)
-            m_graphics->m_actor->m_graphics = nullptr;
-        else
-            m_graphics->refAdded(L, -1);
-        m_graphics->m_actor = this;
-    }
+        setGraphics(L, -1);
     lua_pop(L, 1);
 
     lua_pushliteral(L, "collider");
     if (lua_rawget(L, 1) != LUA_TNIL)
-    {
-        m_collider = ICollider::checkUserdata(L, -1);
-        if (m_collider->m_actor != nullptr)
-            m_collider->m_actor->m_collider = nullptr;
-        else
-            m_collider->refAdded(L, -1);
-        m_collider->m_actor = this;
-    }
+        setCollider(L, -1);
     lua_pop(L, 1);
 
     lua_pushliteral(L, "physics");
@@ -178,9 +235,7 @@ void Actor::construct(lua_State* L)
 
     lua_pushliteral(L, "layer");
     if (lua_rawget(L, 1) != LUA_TNIL)
-    {
         setLayer(luaL_checkinteger(L, -1));
-    }
     lua_pop(L, 1);
 }
 
@@ -268,6 +323,16 @@ int Actor::actor_getGraphics(lua_State* L)
     return 0;
 }
 
+int Actor::actor_setGraphics(lua_State* L)
+{
+    // Validate function arguments
+    Actor* actor = Actor::checkUserdata(L, 1);
+
+    actor->setGraphics(L, 2);
+
+    return 0;
+}
+
 int Actor::actor_getCollider(lua_State* L)
 {
     // Validate function arguments
@@ -280,6 +345,16 @@ int Actor::actor_getCollider(lua_State* L)
     }
 
     // NOTE will implicitly return nil, correct?
+    return 0;
+}
+
+int Actor::actor_setCollider(lua_State* L)
+{
+    // Validate function arguments
+    Actor* actor = Actor::checkUserdata(L, 1);
+
+    actor->setCollider(L, 2);
+
     return 0;
 }
 
