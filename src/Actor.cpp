@@ -256,31 +256,27 @@ void Actor::destroy(lua_State* L)
     }
 }
 
-void Actor::serialize(lua_State* L, Serializer* serializer)
+void Actor::serialize(lua_State* L, Serializer* serializer, size_t store)
 {
     if (m_graphics)
     {
-        printf("%*sgraphics = ", serializer->indent, "");
         m_graphics->pushUserdata(L);
-        serializer->serializeUserdata(L, -1);
-        printf(",\n");
+        serializer->setAttrib(store, "setGraphics", L, -1);
         lua_pop(L, 1);
     }
 
     if (m_collider)
     {
-        printf("%*scollider = ", serializer->indent, "");
         m_collider->pushUserdata(L);
-        serializer->serializeUserdata(L, -1);
-        printf(",\n");
+        serializer->setAttrib(store, "setCollider", L, -1);
         lua_pop(L, 1);
     }
 
     // TODO physics
 
-    printf("%*sposition = {%f, %f},\n", serializer->indent, "", m_transform.getX(), m_transform.getY());
-    printf("%*sscale = {%f, %f},\n", serializer->indent, "", m_transform.getW(), m_transform.getH());
-    printf("%*slayer = %d,\n", serializer->indent, "", m_layer);
+    serializer->setAttribArray<float>(store, "position", m_transform.getX(), m_transform.getY());
+    serializer->setAttribArray<float>(store, "scale", m_transform.getW(), m_transform.getH());
+    serializer->setAttribScalar<int>(store, "layer", m_layer);
 }
 
 int Actor::actor_serialize(lua_State* L)
@@ -289,7 +285,7 @@ int Actor::actor_serialize(lua_State* L)
     Actor::checkUserdata(L, 1);
     Serializer serializer;
     serializer.serializeUserdata(L, 1);
-    printf("\n");
+    serializer.print();
     return 0;
 }
 
@@ -304,7 +300,6 @@ int Actor::actor_getCanvas(lua_State* L)
         return 1;
     }
 
-    // NOTE will implicitly return nil, correct?
     return 0;
 }
 
@@ -344,7 +339,6 @@ int Actor::actor_getCollider(lua_State* L)
         return 1;
     }
 
-    // NOTE will implicitly return nil, correct?
     return 0;
 }
 

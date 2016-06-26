@@ -26,7 +26,7 @@ public:
     // NOTE derived class must implement the following:
     //void construct(lua_State* L);
     //void destroy(lua_State* L);
-    void serialize(lua_State* L, Serializer* serializer); // generic template?
+    void serialize(lua_State* L, Serializer* serializer, size_t store); // generic template?
     //static const char* const METATABLE;
     //static const luaL_Reg METHODS[];
 
@@ -93,17 +93,10 @@ void TUserdata<T>::initMetatable(lua_State* L)
 template <class T>
 bool TUserdata<T>::pushUserdata(lua_State* L)
 {
-    lua_pushlightuserdata(L, this);
-    lua_rawget(L, LUA_REGISTRYINDEX);
     // NOTE this pointer will not always == the base address of the userdata!
-    // TODO could store the TUserdata<T> this pointer as light udata in uservalue?
-    assert(luaL_testudata(L, -1, T::METATABLE));
+    lua_pushlightuserdata(L, this); // TODO use real base ptr; this->m_base
+    lua_rawget(L, LUA_REGISTRYINDEX);
     //assert(lua_touserdata(L, -1) == this);
-    /*if (lua_touserdata(L, -1) != this)
-    {
-        fprintf(stderr, "Userdata pointer in registry doesn't match\n");
-        return false;
-    }*/
 
     return true;
 }
@@ -115,8 +108,8 @@ void TUserdata<T>::refAdded(lua_State* L, int index)
     // Add userdata to the registry while it is ref'd by engine
     if (m_refCount++ == 0)
     {
-        lua_pushlightuserdata(L, this);
-        // TODO assert that full userdata pointer matches this?
+        //assert(lua_touserdata(L, index) == this);
+        lua_pushlightuserdata(L, this); // TODO use real base ptr; this->m_base
         lua_pushvalue(L, (index < 0) ? index - 1 : index); // adjust relative offset
         lua_rawset(L, LUA_REGISTRYINDEX);
     }
@@ -129,8 +122,7 @@ void TUserdata<T>::refRemoved(lua_State* L)
     // Remove from registry if reference count drops to zero
     if (--m_refCount == 0)
     {
-        //printf("removing %s(%p) from registry\n", T::METATABLE, this);
-        lua_pushlightuserdata(L, this);
+        lua_pushlightuserdata(L, this); // TODO use real base ptr; this->m_base
         lua_pushnil(L);
         lua_rawset(L, LUA_REGISTRYINDEX);
     }
@@ -309,9 +301,9 @@ int TUserdata<T>::script_delete(lua_State* L)
 }
 
 template <class T>
-void TUserdata<T>::serialize(lua_State* L, Serializer* serializer)
+void TUserdata<T>::serialize(lua_State* L, Serializer* serializer, size_t store)
 {
-    printf("%*s<generic>\n", serializer->indent, "");
+    printf("Class %s has no custom serializer\n", T::METATABLE);
 }
 
 template <class T>
@@ -321,41 +313,15 @@ int TUserdata<T>::script_serialize(lua_State* L)
     T* ptr = checkUserdata(L, 1);
     Serializer* serializer = Serializer::checkSerializer(L, 2);
 
-    //printf("%*s%s {\n", spacing, "", T::METATABLE);
-    printf("%s {\n", T::METATABLE); // should be appended to the end of a line, so doesn't need spaces before
-    serializer->indent++;
-    ptr->serialize(L, serializer);
+    // NOTE will lua_topointer give a different result from checkUserdata?
+    size_t store = serializer->addUserdataStore(lua_topointer(L, 1), T::METATABLE);
+
+    ptr->serialize(L, serializer, store);
 
     if (lua_getuservalue(L, 1) == LUA_TTABLE)
-    {
-        // TODO if we want this to be generic behavior, it should be added to script_create
-
-        lua_pushnil(L);
-        if (lua_next(L, -2))
-        {
-            printf("%*smembers = {\n", (serializer->indent)++, "");
-            do
-            {
-                /*if (lua_type(L, -1) == LUA_TNIL)
-                {
-                    lua_pop(L, 1);
-                    continue;
-                }*/
-
-                // TODO require keys to be strings?
-                printf("%*s%s = ", serializer->indent, "", luaL_checkstring(L, -2));
-                serializer->serialize(L, -1);
-
-                // Remove value, leaving key on top for next iteration of lua_next
-                lua_pop(L, 1);
-            }
-            while (lua_next(L, -2));
-            printf("%*s}\n", --(serializer->indent), "");
-        }
-    }
+        serializer->setAttrib(store, "members", L, -1);
     lua_pop(L, 1);
 
-    printf("%*s}", --(serializer->indent), "");
     return 0;
 }
 
