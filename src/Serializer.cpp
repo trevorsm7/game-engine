@@ -1,183 +1,289 @@
 #include "Serializer.h"
 
+#include <list>
+#include <algorithm>
 #include <cassert>
 
-size_t Serializer::addUserdataStore(const void* userdata, const char* name)
+UserdataStore* Serializer::addUserdataStore(const void* userdata, int depth)
 {
-    size_t index = m_userdataList.size();
-    m_userdataList.emplace_back(name);
-    m_userdataMap[userdata] = index;
-    return index;
+    assert(getUserdataStore(userdata) == nullptr);
+    UserdataStore* ptr = new UserdataStore(depth);
+    //m_userdataMap.emplace(userdata, ptr);
+    m_userdataMap[userdata] = UserdataStorePtr(ptr);
+    return ptr;
 }
 
-/*UserdataStore* Serializer::getUserdataStore(const void* userdata)
+UserdataStore* Serializer::getUserdataStore(const void* userdata)
 {
     auto it = m_userdataMap.find(userdata);
     if (it == m_userdataMap.end())
         return nullptr;
 
-    return &m_userdataList[it->second];
-}*/
-
-bool Serializer::hasUserdataStore(const void* userdata)
-{
-    auto it = m_userdataMap.find(userdata);
-    return (it != m_userdataMap.end());
+    return it->second.get();
 }
 
-void Serializer::setAttrib(size_t store, const char* name_, lua_State* L, int index)
+void Serializer::setAttrib(UserdataStore* store, const char* name, const char* setter, lua_State* L, int index)
 {
-    std::string name = std::string(name_);
     int type = lua_type(L, index);
     switch (type)
     {
     case LUA_TNUMBER:
         // NOTE this will modify the value on the stack
         lua_pushvalue(L, index);
-        m_userdataList[store].immAttribs.emplace_back(name, std::string(lua_tostring(L, -1)));
+        store->immAttribs.emplace_back(std::string(name), std::string(lua_tostring(L, -1)));
         lua_pop(L, 1);
         break;
     case LUA_TSTRING:
         {
             std::string str = std::string("\"") + lua_tostring(L, index) + "\"";
-            m_userdataList[store].immAttribs.emplace_back(name, str);
-            //m_userdataList[store].immAttribs.emplace_back(name, std::string(lua_tostring(L, index)));
+            store->immAttribs.emplace_back(std::string(name), str);
         }
         break;
     case LUA_TBOOLEAN:
-        m_userdataList[store].immAttribs.emplace_back(name, std::string(lua_toboolean(L, index) ? "true" : "false"));
+        store->immAttribs.emplace_back(std::string(name), std::string(lua_toboolean(L, index) ? "true" : "false"));
         break;
     case LUA_TFUNCTION:
         // TODO serialize binary dump? don't forget upvalues
-        m_userdataList[store].immAttribs.emplace_back(name, std::string("<function>"));
+        store->immAttribs.emplace_back(std::string(name), std::string("<function>"));
         break;
     case LUA_TTABLE:
-        // TODO we should be able to treat tables effectively the same as userdata
-        {
-            const void* ptr = serializeTable(L, index);
-            m_userdataList[store].mutAttribs.emplace_back(name, ptr);
-        }
-        break;
     case LUA_TUSERDATA:
-        // NOTE mut attribs will have a different form... needs to take setter func name?
-        // NOTE should these be pushed to a list in the Serializer rather than in the data store?
-        {
-            const void* ptr = serializeUserdata(L, index);
-            m_userdataList[store].mutAttribs.emplace_back(name, ptr);
-        }
+        serializeMutable(store, name, setter, L, index);
         break;
     default:
         // NOTE light userdata, thread?
-        printf("can't set attrib %s: unsupported type %s,\n", name_, lua_typename(L, type));
+        printf("can't set attrib %s: unsupported type %s,\n", name, lua_typename(L, type));
         break;
     }
 }
 
-const void* Serializer::serializeUserdata(lua_State* L, int index)
+void Serializer::serializeMutable(UserdataStore* parent, const char* name, const char* setter, lua_State* L, int index)
 {
-    // Get userdata base pointer
-    // TODO move topointer up to setAttrib?
+    // Get userdata pointer and data store
     const void* ptr = lua_topointer(L, index);
     assert(ptr != nullptr);
+    UserdataStore* store = getUserdataStore(ptr);
 
-    // Break cycle if this has already been serialized
-    if (hasUserdataStore(ptr))
-        return ptr;
-
-    // Get userdata serialize function
-    luaL_getmetafield(L, index, "serialize");
-    assert(lua_type(L, -1) == LUA_TFUNCTION);
-
-    // Push the userdata after the function
-    lua_pushvalue(L, (index < 0) ? index - 1 : index); // adjust relative offset
-    lua_pushlightuserdata(L, this);
-
-    // Do a protected call; pops function and udata
-    // TODO use a regular call instead of a pcall?
-    if (lua_pcall(L, 2, 0, 0) != 0)
+    // Check if data store already exists
+    if (store)
     {
-        fprintf(stderr, "%s\n", lua_tostring(L, -1));
-        lua_pop(L, 1); // remove the error string from the stack
-        ptr = nullptr;
+        store->refCount++;
+
+        // Break cycle if this has already been serialized
+        if (store->onStack)
+        {
+            if (parent)
+            {
+                // TODO use a flag instead?
+                std::string key = std::string(1, ':') + setter;
+                if (key.length() == 1)
+                    key = std::string(1, '.') + name;
+                parent->cycleAttribs.emplace_back(key, ptr);
+            }
+            else // HACK
+                m_root = store;
+
+            return;
+        }
+    }
+    else
+    {
+        // Create the data store
+        const int depth = parent ? parent->refDepth + 1 : 0;
+        store = addUserdataStore(ptr, depth);
+
+        const int type = lua_type(L, index);
+        assert(type == LUA_TUSERDATA || type == LUA_TTABLE);
+
+        // Handle userdata and tables separately
+        if (type == LUA_TUSERDATA)
+        {
+            // Get userdata serialize function
+            luaL_getmetafield(L, index, "serialize");
+            assert(lua_type(L, -1) == LUA_TFUNCTION);
+
+            // Push the userdata after the function
+            lua_pushvalue(L, (index < 0) ? index - 1 : index); // adjust relative offset
+            lua_pushlightuserdata(L, this);
+
+            // Do a regular call; pops function and udata
+            lua_call(L, 2, 0);
+        }
+        else
+        {
+            // Iterate over table key/value pairs
+            // TODO it might be too overflow the Lua stack if we have a chain of tables; break this up with lua_call as with userdata?
+            lua_pushnil(L);
+            const int adjIndex = (index < 0) ? index - 1 : index;
+            while (lua_next(L, adjIndex))
+            {
+                // Handle different key types
+                int type = lua_type(L, -2);
+                switch (type)
+                {
+                case LUA_TNUMBER:
+                    {
+                        lua_pushvalue(L, -2);
+                        std::string str = std::string("[") + lua_tostring(L, -1) + "]";
+                        lua_pop(L, 1);
+                        setAttrib(store, str.c_str(), "", L, -1);
+                    }
+                    break;
+                case LUA_TSTRING:
+                    setAttrib(store, lua_tostring(L, -2), "", L, -1);
+                    break;
+                case LUA_TBOOLEAN:
+                    {
+                        const char* key = lua_toboolean(L, -2) ? "[true]" : "[false]";
+                        setAttrib(store, key, "", L, -1);
+                    }
+                    break;
+                // TODO handling these cases may be a little trickier
+                case LUA_TFUNCTION:
+                case LUA_TTABLE:
+                case LUA_TUSERDATA:
+                default:
+                    printf("unsupported table key type: %s", lua_typename(L, type));
+                    break;
+                }
+
+                // Remove value, leaving key on top for next iteration of lua_next
+                lua_pop(L, 1);
+            }
+        }
     }
 
-    return ptr;
+    // Clear the onStack flag
+    assert(store != nullptr);
+    store->onStack = false;
+
+    // Propagate depth balancing down to parent
+    if (parent)
+    {
+        if (parent->refDepth >= store->refDepth)
+            parent->refDepth = store->refDepth - 1;
+
+        parent->mutAttribs.emplace_back(std::string(name), ptr);
+    }
+    else // HACK
+        m_root = store;
 }
 
-const void* Serializer::serializeTable(lua_State* L, int index)
+void Serializer::printObject(UserdataStore* ptr, int indent)
 {
-    // Get table base pointer
-    // TODO move topointer up to setAttrib?
-    const void* ptr = lua_topointer(L, index);
-    assert(ptr != nullptr);
+    const int nested = indent + 2;
+    printf("%s\n%*s{\n", ptr->className.c_str(), indent, "");
+    //printf("%*s--debug: refCount = %d, refDepth = %d\n", nested, "", ptr->refCount, ptr->refDepth);
 
-    // Break cycle if this has already been serialized
-    if (hasUserdataStore(ptr))
-        return ptr;
+    bool firstLine = true;
 
-    // TODO refactor shared code with serializeUserdata?
-    // **** Start of code unique to table ****
-
-    size_t store = addUserdataStore(ptr, "");
-
-    lua_pushnil(L);
-    while (lua_next(L, (index < 0) ? index - 1 : index))
+    // Print immutable attributes
+    for (auto& attrib : ptr->immAttribs)
     {
-        int type = lua_type(L, -2);
-        switch (type)
-        {
-        case LUA_TNUMBER:
-            {
-                lua_pushvalue(L, -2);
-                std::string str = std::string("[") + lua_tostring(L, -1) + "]";
-                lua_pop(L, 1);
-                setAttrib(store, str.c_str(), L, -1);
-            }
-            break;
-        case LUA_TSTRING:
-            setAttrib(store, lua_tostring(L, -2), L, -1);
-            break;
-        default:
-            printf("unsupported table key type: %s", lua_typename(L, type));
-            break;
-        }
+        if (!firstLine)
+            printf(",\n");
+        firstLine = false;
 
-        // Remove value, leaving key on top for next iteration of lua_next
-        lua_pop(L, 1);
+        printf("%*s%s = %s", nested, "", attrib.first.c_str(), attrib.second.c_str());
     }
 
-    // **** End of code unique to table *****
+    // Iterate over mutable refs without cycles
+    for (auto& attrib : ptr->mutAttribs)
+    {
+        if (!firstLine)
+            printf(",\n");
+        firstLine = false;
 
-    return ptr;
+        // Get the data store from the pointer
+        auto it = m_userdataMap.find(attrib.second);
+        if (it == m_userdataMap.end())
+        {
+            printf("warning! store[%d].%s bad ref\n", ptr->index, attrib.first.c_str());
+            continue;
+        }
+
+        // Handle nested objects recursively
+        if (it->second->index == 0)
+        {
+            printf("%*s%s = ", nested, "", attrib.first.c_str());
+            printObject(it->second.get(), nested);
+            continue;
+        }
+
+        printf("%*s%s = store[%d]", nested, "", attrib.first.c_str(), it->second->index);
+    }
+
+    // NOTE newline added by caller
+    // TODO collapse to {} if no attributes set
+    printf("\n%*s}", indent, "");
 }
 
 void Serializer::print()
 {
-    const size_t count = m_userdataList.size();
-    for (size_t i = 0; i < count; ++i)
+    // TODO clean this up!
+    // TODO write to buffer/file instead of printf
+
+    std::list<UserdataStore*> ordered;
+
+    // Sort data stores into list by ref depth, descending order
+    for (auto& pair : m_userdataMap)
     {
-        UserdataStore& store = m_userdataList[i];
-        printf("store[%ld] = %s\n{\n", i + 1, store.className.c_str());
-        for (auto& attrib : store.immAttribs)
-        {
-            printf("  %s = %s,\n", attrib.first.c_str(), attrib.second.c_str());
-        }
-        printf("}\n");
+        // Reset index before ordering
+        pair.second->index = 0;
+
+        // Find first index with lower ref depth
+        int depth = pair.second->refDepth;
+        auto it2 = std::find_if(ordered.begin(), ordered.end(),
+            [depth](UserdataStore* ptr) {return ptr->refDepth < depth;});
+
+        // Insert before index with lower ref depth
+        ordered.insert(it2, pair.second.get());
     }
 
-    for (size_t i = 0; i < count; ++i)
+    printf("store = {}\n");
+
+    int index = 1;
+    for (auto& ptr : ordered)
     {
-        UserdataStore& store = m_userdataList[i];
-        for (auto& attrib : store.mutAttribs)
+        // Skip inlinable objects (do not increment index!)
+        // TODO print the root after store{}, before cycles; could be inlined there
+        // HACK m_root is a hack anyway...
+        if (ptr->refCount == 1 && ptr->cycleAttribs.empty() && ptr != m_root)
         {
+            //printf("--skipping inlinable %p\n", ptr);
+            continue;
+        }
+
+        ptr->index = index++;
+
+        // Print object
+        printf("store[%d] = ", ptr->index);
+        printObject(ptr, 0);
+        printf("\n");
+    }
+
+    // Iterate over mutable refs with cycles
+    for (auto& ptr : ordered)
+    {
+        for (auto& attrib : ptr->cycleAttribs)
+        {
+            // Get the data store from the pointer
             auto it = m_userdataMap.find(attrib.second);
             if (it == m_userdataMap.end())
             {
-                printf("warning! store[%ld]:%s(?)\n", i + 1, attrib.first.c_str());
+                printf("warning! store[%d]%s bad ref\n", ptr->index, attrib.first.c_str());
                 continue;
             }
 
-            printf("store[%ld]:%s(store[%ld])\n", i + 1, attrib.first.c_str(), it->second + 1);
+            // Use different formatting for setter functions
+            if (attrib.first[0] == ':')
+                printf("store[%d]%s(store[%d])\n", ptr->index, attrib.first.c_str(), it->second->index);
+            else if (attrib.first[0] == '.')
+                printf("store[%d]%s = store[%d]\n", ptr->index, attrib.first.c_str(), it->second->index);
+            else
+                printf("warning! store[%d]%s expected . or :\n", ptr->index, attrib.first.c_str());
         }
     }
+
+    printf("store = nil\n");
 }

@@ -62,7 +62,7 @@ private:
     friend class TUserdata<Actor>;
     void construct(lua_State* L);
     void destroy(lua_State* L);
-    void serialize(lua_State* L, Serializer* serializer, size_t store);
+    void serialize(lua_State* L, Serializer* serializer, UserdataStore* store);
 
     static constexpr const char* const METATABLE = "Actor";
     static int actor_serialize(lua_State* L);

@@ -39,11 +39,6 @@ tiles = Actor
 game:addActor(tiles)
 game:setCenter(2, 2)
 
---[[derp = {[1] = 'foo'}
-tiles[derp] = 'herp'
-print(tiles[derp])
-print(derp[1])--]]
-
 local heropad = TileMap
 {
     index = TileIndex
@@ -117,7 +112,7 @@ nerd = Actor
 }
 game:addActor(nerd)
 
-tiles:getGraphics().herp = 'derp'
+--[[tiles:getGraphics().herp = 'derp'
 tiles.num = 5
 tiles.str = "hello"
 tiles.bool = true
@@ -127,5 +122,20 @@ function tiles:derp()
 end
 tiles.tab = {1, 2, 3}
 tiles.player = player
-tiles.nerd = nerd
+tiles.nerd = nerd--]]
+
+--tiles.cycle = {num = 5, [true] = false, cycle = tiles}
+
+--[[e = {}
+d = {e=e}
+c = {d=d}
+b = {e=e}
+a = {b=b, c=c}
+e.a = a
+tiles.a = a--]]
+
+tiles[1] = nerd:getGraphics()
+tiles[1].cycle = nerd
+tiles[2] = nerd
+
 tiles:serialize()

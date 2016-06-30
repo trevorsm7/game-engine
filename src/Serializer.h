@@ -4,55 +4,62 @@
 #include "lua.hpp"
 #include <map>
 #include <vector>
-//#include <list>
+#include <memory>
 #include <utility>
 #include <string>
 
-typedef std::pair<std::string, std::string> ImmutableAttrib;
-typedef std::pair<std::string, const void*> MutableAttrib;
+typedef std::pair<std::string, std::string> ImmutableAttrib; // [first] = [second]
+typedef std::pair<std::string, const void*> MutableAttrib; // id[.first] = [second] or id[:first]([second])
 
 struct UserdataStore
 {
-    std::string className; // use "" for tables so we can reuse?
-    std::vector<ImmutableAttrib> immAttribs; // {..., [first] = [second], ...}
-    std::vector<MutableAttrib> mutAttribs; // id:[first]([second])? id.[first] = second?
+    std::string className; // can use "" for tables
+    std::vector<ImmutableAttrib> immAttribs;
+    std::vector<MutableAttrib> mutAttribs;
+    std::vector<MutableAttrib> cycleAttribs;
+    int refCount, refDepth;
+    int index;
+    bool onStack; // for cycle detection
 
-    UserdataStore(std::string name): className(name), immAttribs(), mutAttribs() {}
+    UserdataStore(int depth): refCount(1), refDepth(depth), onStack(true) {}
 };
+
+typedef std::unique_ptr<UserdataStore> UserdataStorePtr;
 
 class Serializer
 {
 private:
-    std::vector<UserdataStore> m_userdataList;
-    std::map<const void*, size_t> m_userdataMap;
+    std::map<const void*, UserdataStorePtr> m_userdataMap;
+    UserdataStore* m_root;
 
 public:
-    size_t addUserdataStore(const void* userdata, const char* name);
-    //UserdataStore* getUserdataStore(const void* userdata);
-    bool hasUserdataStore(const void* userdata);
+    Serializer(): m_root(nullptr) {}
 
-    // NOTE need to be mindful of what userdata ptr is given virtual hierarchy
-    void setAttrib(size_t store, const char* name, lua_State* L, int index);
-    void setAttrib(size_t store, const char* name, std::string& value)
-        {m_userdataList[store].immAttribs.emplace_back(name, value);}
+    UserdataStore* addUserdataStore(const void* userdata, int depth);
+    UserdataStore* getUserdataStore(const void* userdata);
+
+    void setAttrib(UserdataStore* store, const char* name, const char* setter, lua_State* L, int index);
+
+    void setAttrib(UserdataStore* store, const char* name, std::string& value)
+        {store->immAttribs.emplace_back(name, value);}
 
     template <class T>
-    void setAttribScalar(size_t store, const char* name, T value)
+    void setAttribScalar(UserdataStore* store, const char* name, T value)
     {
         std::string strVal = std::to_string(value);
         setAttrib(store, name, strVal);
     }
 
     template <class T>
-    void setAttribArray(size_t store, const char* name, T val1, T val2)
+    void setAttribArray(UserdataStore* store, const char* name, T val1, T val2)
     {
         std::string val = std::string("{") + std::to_string(val1) + ", " + std::to_string(val2) + "}";
         setAttrib(store, name, val);
     }
 
-    const void* serializeUserdata(lua_State* L, int index);
-    const void* serializeTable(lua_State* L, int index);
+    void serializeMutable(UserdataStore* parent, const char* name, const char* setter, lua_State* L, int index);
 
+    void printObject(UserdataStore* ptr, int indent);
     void print();
 
     static Serializer* checkSerializer(lua_State* L, int index)

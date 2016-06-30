@@ -256,19 +256,21 @@ void Actor::destroy(lua_State* L)
     }
 }
 
-void Actor::serialize(lua_State* L, Serializer* serializer, size_t store)
+void Actor::serialize(lua_State* L, Serializer* serializer, UserdataStore* store)
 {
     if (m_graphics)
     {
         m_graphics->pushUserdata(L);
-        serializer->setAttrib(store, "setGraphics", L, -1);
+        //serializer->setAttrib(store, "graphics", "setGraphics", L, -1);
+        serializer->serializeMutable(store, "graphics", "setGraphics", L, -1);
         lua_pop(L, 1);
     }
 
     if (m_collider)
     {
         m_collider->pushUserdata(L);
-        serializer->setAttrib(store, "setCollider", L, -1);
+        //serializer->setAttrib(store, "collider", "setCollider", L, -1);
+        serializer->serializeMutable(store, "collider", "setCollider", L, -1);
         lua_pop(L, 1);
     }
 
@@ -284,7 +286,7 @@ int Actor::actor_serialize(lua_State* L)
     // Validate function arguments
     Actor::checkUserdata(L, 1);
     Serializer serializer;
-    serializer.serializeUserdata(L, 1);
+    serializer.serializeMutable(nullptr, "", "", L, 1);
     serializer.print();
     return 0;
 }
