@@ -112,30 +112,36 @@ nerd = Actor
 }
 game:addActor(nerd)
 
---[[tiles:getGraphics().herp = 'derp'
-tiles.num = 5
+---[[
+tiles:getGraphics().herp = 'derp'
 tiles.str = "hello"
+tiles.num = 5
+tiles[3] = "num key"
 tiles.bool = true
-tiles.asdf = nil
-function tiles:derp()
-    print 'hi'
-end
-tiles.tab = {1, 2, 3}
+tiles[false] = "bool key"
+tiles.asdf = nil -- nop!
+tiles.table = {1, 2, 3}
 tiles.player = player
-tiles.nerd = nerd--]]
+tiles.nerd = nerd
+--]]
 
---tiles.cycle = {num = 5, [true] = false, cycle = tiles}
+--tiles.cycle = tiles
+tiles.cycle = {cycle = tiles}
 
---[[e = {}
+--[[
+e = {}
 d = {e=e}
 c = {d=d}
 b = {e=e}
 a = {b=b, c=c}
 e.a = a
-tiles.a = a--]]
+tiles.a = a
+--]]
 
+--[[
 tiles[1] = nerd:getGraphics()
 tiles[1].cycle = nerd
 tiles[2] = nerd
+--]]
 
 tiles:serialize()

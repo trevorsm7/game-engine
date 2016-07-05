@@ -2,95 +2,124 @@
 
 #include <list>
 #include <algorithm>
-#include <cassert>
 
-UserdataStore* Serializer::addUserdataStore(const void* userdata, int depth)
+void ObjectRef::setImmediate(std::string table, std::string key, std::string value)
 {
-    assert(getUserdataStore(userdata) == nullptr);
-    UserdataStore* ptr = new UserdataStore(depth);
-    //m_userdataMap.emplace(userdata, ptr);
-    m_userdataMap[userdata] = UserdataStorePtr(ptr);
-    return ptr;
+    // Alphabetical search from the end by subtable name
+    auto it = std::find_if(m_immediates.rbegin(), m_immediates.rend(),
+        [&table](ImmediateVal& val) {return table.compare(val.table) >= 0;});
+
+    // Insert alphabetically after entires with same subtable name
+    ImmediateVal val = {table, key, value};
+    m_immediates.insert(it.base(), val);
+    //m_immediates.emplace_back(table, name, value);
 }
 
-UserdataStore* Serializer::getUserdataStore(const void* userdata)
+void ObjectRef::setObjectDirect(std::string table, std::string key, const void* ptr)
 {
-    auto it = m_userdataMap.find(userdata);
-    if (it == m_userdataMap.end())
+    // Alphabetical search from the end by subtable name
+    auto it = std::find_if(m_directObjs.rbegin(), m_directObjs.rend(),
+        [&table](ObjectDirect& val) {return table.compare(val.table) >= 0;});
+
+    // Insert alphabetically after entires with same subtable name
+    ObjectDirect val = {table, key, ptr};
+    m_directObjs.insert(it.base(), val);
+    //m_directObjs.emplace_back(table, key, ptr);
+}
+
+void ObjectRef::setObjectCycle(std::string key, std::string setter, const void* ptr)
+{
+    // TODO use a flag instead?
+    std::string fullName = std::string(1, ':') + setter;
+    if (fullName.length() == 1)
+        fullName = std::string(1, '.') + key;
+    ObjectCycle val = {fullName, ptr};
+    m_cyclicObjs.push_back(val);
+    //m_cyclicObjs.emplace_back(key, ptr);
+}
+
+ObjectRef* Serializer::addObjectRef(const void* ptr, int depth)
+{
+    assert(getObjectRef(ptr) == nullptr);
+    ObjectRef* ref = new ObjectRef(depth);
+    //m_objectRefs.emplace(userdata, ptr);
+    m_objectRefs[ptr] = ObjectRefPtr(ref); // take ownership of bare ptr
+    return ref;
+}
+
+ObjectRef* Serializer::getObjectRef(const void* ptr)
+{
+    auto it = m_objectRefs.find(ptr);
+    if (it == m_objectRefs.end())
         return nullptr;
 
     return it->second.get();
 }
 
-void Serializer::setAttrib(UserdataStore* store, const char* name, const char* setter, lua_State* L, int index)
+void Serializer::serializeValue(ObjectRef* parent, const char* table, const char* key, const char* setter, lua_State* L, int index)
 {
     int type = lua_type(L, index);
     switch (type)
     {
     case LUA_TNUMBER:
-        // NOTE this will modify the value on the stack
+        // NOTE this will convert the value on the stack, so push a copy first
         lua_pushvalue(L, index);
-        store->immAttribs.emplace_back(std::string(name), std::string(lua_tostring(L, -1)));
+        parent->setImmediate(table, key, lua_tostring(L, -1));
         lua_pop(L, 1);
         break;
     case LUA_TSTRING:
         {
             std::string str = std::string("\"") + lua_tostring(L, index) + "\"";
-            store->immAttribs.emplace_back(std::string(name), str);
+            parent->setImmediate(table, key, str);
         }
         break;
     case LUA_TBOOLEAN:
-        store->immAttribs.emplace_back(std::string(name), std::string(lua_toboolean(L, index) ? "true" : "false"));
+        parent->setImmediate(table, key, lua_toboolean(L, index) ? "true" : "false");
         break;
     case LUA_TFUNCTION:
         // TODO serialize binary dump? don't forget upvalues
-        store->immAttribs.emplace_back(std::string(name), std::string("<function>"));
+        parent->setImmediate(table, key, "<TODO: function>");
         break;
     case LUA_TTABLE:
     case LUA_TUSERDATA:
-        serializeMutable(store, name, setter, L, index);
+        serializeObject(parent, table, key, setter, L, index);
         break;
     default:
         // NOTE light userdata, thread?
-        printf("can't set attrib %s: unsupported type %s,\n", name, lua_typename(L, type));
+        printf("can't set attrib %s: unsupported type %s,\n", key, lua_typename(L, type));
         break;
     }
 }
 
-void Serializer::serializeMutable(UserdataStore* parent, const char* name, const char* setter, lua_State* L, int index)
+void Serializer::serializeObject(ObjectRef* parent, const char* table, const char* key, const char* setter, lua_State* L, int index)
 {
     // Get userdata pointer and data store
     const void* ptr = lua_topointer(L, index);
     assert(ptr != nullptr);
-    UserdataStore* store = getUserdataStore(ptr);
+    ObjectRef* ref = getObjectRef(ptr);
 
-    // Check if data store already exists
-    if (store)
+    // Check if object ref already exists
+    if (ref)
     {
-        store->refCount++;
+        ref->m_count++;
 
-        // Break cycle if this has already been serialized
-        if (store->onStack)
+        // Break cycle if object is already on the stack
+        if (ref->m_onStack)
         {
             if (parent)
-            {
-                // TODO use a flag instead?
-                std::string key = std::string(1, ':') + setter;
-                if (key.length() == 1)
-                    key = std::string(1, '.') + name;
-                parent->cycleAttribs.emplace_back(key, ptr);
-            }
+                parent->setObjectCycle(key, setter, ptr);
             else // HACK
-                m_root = store;
+                m_root = ref;
 
             return;
         }
     }
     else
     {
-        // Create the data store
-        const int depth = parent ? parent->refDepth + 1 : 0;
-        store = addUserdataStore(ptr, depth);
+        // Create a new object ref
+        const int depth = parent ? (parent->m_depth + 1) : 0;
+        ref = addObjectRef(ptr, depth);
+        assert(ref != nullptr);
 
         const int type = lua_type(L, index);
         assert(type == LUA_TUSERDATA || type == LUA_TTABLE);
@@ -103,119 +132,74 @@ void Serializer::serializeMutable(UserdataStore* parent, const char* name, const
             assert(lua_type(L, -1) == LUA_TFUNCTION);
 
             // Push the userdata after the function
-            lua_pushvalue(L, (index < 0) ? index - 1 : index); // adjust relative offset
+            const int adjIndex = (index < 0) ? index - 1 : index;
+            lua_pushvalue(L, adjIndex);
             lua_pushlightuserdata(L, this);
 
             // Do a regular call; pops function and udata
             lua_call(L, 2, 0);
         }
         else
-        {
-            // Iterate over table key/value pairs
-            // TODO it might be too overflow the Lua stack if we have a chain of tables; break this up with lua_call as with userdata?
-            lua_pushnil(L);
-            const int adjIndex = (index < 0) ? index - 1 : index;
-            while (lua_next(L, adjIndex))
-            {
-                // Handle different key types
-                int type = lua_type(L, -2);
-                switch (type)
-                {
-                case LUA_TNUMBER:
-                    {
-                        lua_pushvalue(L, -2);
-                        std::string str = std::string("[") + lua_tostring(L, -1) + "]";
-                        lua_pop(L, 1);
-                        setAttrib(store, str.c_str(), "", L, -1);
-                    }
-                    break;
-                case LUA_TSTRING:
-                    setAttrib(store, lua_tostring(L, -2), "", L, -1);
-                    break;
-                case LUA_TBOOLEAN:
-                    {
-                        const char* key = lua_toboolean(L, -2) ? "[true]" : "[false]";
-                        setAttrib(store, key, "", L, -1);
-                    }
-                    break;
-                // TODO handling these cases may be a little trickier
-                case LUA_TFUNCTION:
-                case LUA_TTABLE:
-                case LUA_TUSERDATA:
-                default:
-                    printf("unsupported table key type: %s", lua_typename(L, type));
-                    break;
-                }
-
-                // Remove value, leaving key on top for next iteration of lua_next
-                lua_pop(L, 1);
-            }
-        }
+            serializeFromTable(ref, "", L, index);
     }
 
-    // Clear the onStack flag
-    assert(store != nullptr);
-    store->onStack = false;
-
-    // Propagate depth balancing down to parent
     if (parent)
     {
-        if (parent->refDepth >= store->refDepth)
-            parent->refDepth = store->refDepth - 1;
+        // Rebalance parent depth
+        if (parent->m_depth >= ref->m_depth)
+            parent->m_depth = ref->m_depth - 1;
 
-        parent->mutAttribs.emplace_back(std::string(name), ptr);
+        // Add ref to parent
+        parent->setObjectDirect(table, key, ptr);
     }
     else // HACK
-        m_root = store;
+        m_root = ref;
+
+    // Clear the onStack flag
+    ref->m_onStack = false;
 }
 
-void Serializer::printObject(UserdataStore* ptr, int indent)
+// TODO possible to overflow the Lua stack if we have a chain of tables; break this up with lua_call as with userdata?
+void Serializer::serializeFromTable(ObjectRef* ref, const char* table, lua_State* L, int index)
 {
-    const int nested = indent + 2;
-    printf("%s\n%*s{\n", ptr->className.c_str(), indent, "");
-    //printf("%*s--debug: refCount = %d, refDepth = %d\n", nested, "", ptr->refCount, ptr->refDepth);
+    assert(lua_type(L, index) == LUA_TTABLE);
 
-    bool firstLine = true;
-
-    // Print immutable attributes
-    for (auto& attrib : ptr->immAttribs)
+    // Iterate over table key/value pairs
+    lua_pushnil(L);
+    if (index < 0) --index; // adjust relative indices
+    while (lua_next(L, index))
     {
-        if (!firstLine)
-            printf(",\n");
-        firstLine = false;
-
-        printf("%*s%s = %s", nested, "", attrib.first.c_str(), attrib.second.c_str());
-    }
-
-    // Iterate over mutable refs without cycles
-    for (auto& attrib : ptr->mutAttribs)
-    {
-        if (!firstLine)
-            printf(",\n");
-        firstLine = false;
-
-        // Get the data store from the pointer
-        auto it = m_userdataMap.find(attrib.second);
-        if (it == m_userdataMap.end())
+        // Handle different key types
+        int type = lua_type(L, -2);
+        switch (type)
         {
-            printf("warning! store[%d].%s bad ref\n", ptr->index, attrib.first.c_str());
-            continue;
+        case LUA_TNUMBER:
+            {
+                // NOTE this will convert the value on the stack, so push a copy first
+                lua_pushvalue(L, -2);
+                std::string key = std::string("[") + lua_tostring(L, -1) + "]";
+                lua_pop(L, 1);
+                serializeValue(ref, table, key.c_str(), "", L, -1);
+            }
+            break;
+        case LUA_TSTRING:
+            serializeValue(ref, table, lua_tostring(L, -2), "", L, -1);
+            break;
+        case LUA_TBOOLEAN:
+            serializeValue(ref, table, lua_toboolean(L, -2) ? "[true]" : "[false]", "", L, -1);
+            break;
+        // TODO handling these cases may be a little trickier
+        case LUA_TFUNCTION:
+        case LUA_TTABLE:
+        case LUA_TUSERDATA:
+        default:
+            printf("unsupported table key type: %s", lua_typename(L, type));
+            break;
         }
 
-        // Handle nested objects recursively
-        if (it->second->index == 0)
-        {
-            printf("%*s%s = ", nested, "", attrib.first.c_str());
-            printObject(it->second.get(), nested);
-            continue;
-        }
-
-        printf("%*s%s = store[%d]", nested, "", attrib.first.c_str(), it->second->index);
+        // Remove value, leaving key on top for next iteration of lua_next
+        lua_pop(L, 1);
     }
-
-    // NOTE newline added by caller
-    // TODO collapse to {} if no attributes set
-    printf("\n%*s}", indent, "");
 }
 
 void Serializer::print()
@@ -223,67 +207,169 @@ void Serializer::print()
     // TODO clean this up!
     // TODO write to buffer/file instead of printf
 
-    std::list<UserdataStore*> ordered;
+    std::list<ObjectRef*> ordered;
 
-    // Sort data stores into list by ref depth, descending order
-    for (auto& pair : m_userdataMap)
+    // Sort object refs into list by ref depth, descending order
+    for (auto& pair : m_objectRefs)
     {
         // Reset index before ordering
-        pair.second->index = 0;
+        pair.second->m_index = 0;
 
         // Find first index with lower ref depth
-        int depth = pair.second->refDepth;
-        auto it2 = std::find_if(ordered.begin(), ordered.end(),
-            [depth](UserdataStore* ptr) {return ptr->refDepth < depth;});
+        int depth = pair.second->m_depth;
+        auto it = std::find_if(ordered.begin(), ordered.end(),
+            [depth](ObjectRef* ptr) {return ptr->m_depth < depth;});
 
         // Insert before index with lower ref depth
-        ordered.insert(it2, pair.second.get());
+        ordered.insert(it, pair.second.get());
     }
 
-    printf("store = {}\n");
+    printf("temp = {}\n");
 
     int index = 1;
-    for (auto& ptr : ordered)
+    for (auto& ref : ordered)
     {
         // Skip inlinable objects (do not increment index!)
-        // TODO print the root after store{}, before cycles; could be inlined there
+        // TODO print the root after temp{}, before cycles; could be inlined there
         // HACK m_root is a hack anyway...
-        if (ptr->refCount == 1 && ptr->cycleAttribs.empty() && ptr != m_root)
+        if (ref->m_count == 1 && ref->m_cyclicObjs.empty() && ref != m_root)
         {
             //printf("--skipping inlinable %p\n", ptr);
             continue;
         }
 
-        ptr->index = index++;
+        ref->m_index = index++;
 
         // Print object
-        printf("store[%d] = ", ptr->index);
-        printObject(ptr, 0);
+        printf("temp[%d] = ", ref->m_index);
+        printObject(ref, 0);
         printf("\n");
     }
 
-    // Iterate over mutable refs with cycles
-    for (auto& ptr : ordered)
+    // Iterate over object refs with cycles
+    for (auto& parent : ordered)
     {
-        for (auto& attrib : ptr->cycleAttribs)
+        for (auto& cycle : parent->m_cyclicObjs)
         {
-            // Get the data store from the pointer
-            auto it = m_userdataMap.find(attrib.second);
-            if (it == m_userdataMap.end())
+            // Get the object ref from the pointer
+            auto it = m_objectRefs.find(cycle.ptr);
+            if (it == m_objectRefs.end())
             {
-                printf("warning! store[%d]%s bad ref\n", ptr->index, attrib.first.c_str());
+                printf("warning! temp[%d]%s bad ref\n", parent->m_index, cycle.setter.c_str());
                 continue;
             }
+            ObjectRef* ref = it->second.get();
 
             // Use different formatting for setter functions
-            if (attrib.first[0] == ':')
-                printf("store[%d]%s(store[%d])\n", ptr->index, attrib.first.c_str(), it->second->index);
-            else if (attrib.first[0] == '.')
-                printf("store[%d]%s = store[%d]\n", ptr->index, attrib.first.c_str(), it->second->index);
+            if (cycle.setter[0] == ':')
+                printf("temp[%d]%s(temp[%d])\n", parent->m_index, cycle.setter.c_str(), ref->m_index);
+            else if (cycle.setter[0] == '.')
+                printf("temp[%d]%s = temp[%d]\n", parent->m_index, cycle.setter.c_str(), ref->m_index);
             else
-                printf("warning! store[%d]%s expected . or :\n", ptr->index, attrib.first.c_str());
+                printf("warning! temp[%d]%s expected . or :\n", parent->m_index, cycle.setter.c_str());
         }
     }
 
-    printf("store = nil\n");
+    printf("temp = nil\n");
+}
+
+void Serializer::printObject(ObjectRef* ref, int indent)
+{
+    printf("%s", ref->m_constructor.c_str());
+    //printf("%*s--debug: refCount = %d, refDepth = %d\n", nested, "", ptr->refCount, ptr->refDepth);
+    /*for (auto& attrib : ref->m_immediates)
+        printf("\n--debug: %s.%s = %s", attrib.table.c_str(), attrib.key.c_str(), attrib.value.c_str());
+    for (auto& attrib : ref->m_directObjs)
+        printf("\n--debug: %s.%s = %p", attrib.table.c_str(), attrib.key.c_str(), attrib.ptr);*/
+
+    bool firstLine = true;
+    std::string lastTable;
+
+    auto immIt = ref->m_immediates.begin();
+    auto immEnd = ref->m_immediates.end();
+
+    auto objIt = ref->m_directObjs.begin();
+    auto objEnd = ref->m_directObjs.end();
+
+    // Loop while attributes remain
+    while (immIt != immEnd || objIt != objEnd)
+    {
+        // Alternate between immediates and objects at subtable boundaries
+        bool immTurn = immIt != immEnd &&
+            (objIt == objEnd || immIt->table.compare(objIt->table) <= 0);
+
+        // Handle change of subtable formatting
+        std::string& curTable = immTurn ? immIt->table : objIt->table;
+        bool tableChanged = (lastTable.compare(curTable) != 0);
+
+        // Close previous subtable
+        if (tableChanged && !lastTable.empty())
+        {
+            indent -= 2;
+            printf("\n%*s}", indent, "");
+        }
+
+        // Handle end of line formatting
+        if (firstLine)
+        {
+            printf("\n%*s{\n", indent, "");
+            indent += 2;
+            firstLine = false;
+        }
+        else
+            printf(",\n");
+
+        // Open new subtable
+        if (tableChanged)
+        {
+            printf("%*s%s =\n%*s{\n", indent, "", curTable.c_str(), indent, "");
+            indent += 2;
+
+            lastTable = curTable;
+        }
+
+        // Print the next line
+        if (immTurn)
+        {
+            printf("%*s%s = %s", indent, "", immIt->key.c_str(), immIt->value.c_str());
+
+            ++immIt;
+        }
+        else
+        {
+            // Get the object ref from the pointer
+            auto it = m_objectRefs.find(objIt->ptr);
+            if (it == m_objectRefs.end())
+            {
+                printf("error! temp[%d].%s bad ref\n", ref->m_index, objIt->key.c_str());
+                return;
+            }
+
+            // Handle nested objects recursively
+            if (it->second->m_index == 0)
+            {
+                printf("%*s%s = ", indent, "", objIt->key.c_str());
+                printObject(it->second.get(), indent);
+            }
+            else
+                printf("%*s%s = temp[%d]", indent, "", objIt->key.c_str(), it->second->m_index);
+
+            ++objIt;
+        }
+    }
+
+    // Add closing braces (newline added by caller)
+    if (!firstLine)
+    {
+        if (!lastTable.empty())
+        {
+            indent -= 2;
+            printf("\n%*s}", indent, "");
+        }
+
+        indent -= 2;
+        printf("\n%*s}", indent, "");
+    }
+    else
+        printf("{}");
 }

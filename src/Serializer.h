@@ -5,62 +5,84 @@
 #include <map>
 #include <vector>
 #include <memory>
-#include <utility>
 #include <string>
+#include <cassert>
 
-typedef std::pair<std::string, std::string> ImmutableAttrib; // [first] = [second]
-typedef std::pair<std::string, const void*> MutableAttrib; // id[.first] = [second] or id[:first]([second])
-
-struct UserdataStore
+class ObjectRef
 {
-    std::string className; // can use "" for tables
-    std::vector<ImmutableAttrib> immAttribs;
-    std::vector<MutableAttrib> mutAttribs;
-    std::vector<MutableAttrib> cycleAttribs;
-    int refCount, refDepth;
-    int index;
-    bool onStack; // for cycle detection
+    friend class Serializer;
 
-    UserdataStore(int depth): refCount(1), refDepth(depth), onStack(true) {}
+    // TODO map<table> -> vector<key, value> instead?
+    struct ImmediateVal {std::string table, key, value;};
+    struct ObjectDirect {std::string table, key; const void* ptr;};
+    struct ObjectCycle {std::string setter; const void* ptr;};
+
+private:
+    std::string m_constructor; // can use "" for tables
+    std::vector<ImmediateVal> m_immediates;
+    std::vector<ObjectDirect> m_directObjs;
+    std::vector<ObjectCycle> m_cyclicObjs;
+    int m_count, m_depth;
+    int m_index;
+    bool m_onStack; // for cycle detection
+
+public:
+    ObjectRef(int depth): m_count(1), m_depth(depth), m_onStack(true) {}
+
+    void setConstructor(const char* constructor)
+    {
+        assert(m_constructor.empty());
+        m_constructor = std::string(constructor);
+    }
+
+    void setImmediate(std::string table, std::string key, std::string value);
+    void setObjectDirect(std::string table, std::string key, const void* ptr);
+    void setObjectCycle(std::string key, std::string setter, const void* ptr);
+
+    template <class T>
+    void setType(std::string table, std::string key, T value)
+    {
+        // TODO override for char*, bool, others?
+        // TODO use this in serializeValue
+        std::string str = std::to_string(value);
+        setImmediate(table, key, str);
+    }
+
+    template <class T>
+    void setArray(std::string table, std::string key, T* value, int length)
+    {
+        std::string str = std::string("{");
+        for (int i = 0; i < length; ++i)
+        {
+            if (i > 0)
+                str += ", ";
+            str += std::to_string(*(value++));
+        }
+        str += std::string("}");
+        setImmediate(table, key, str);
+    }
 };
 
-typedef std::unique_ptr<UserdataStore> UserdataStorePtr;
+typedef std::unique_ptr<ObjectRef> ObjectRefPtr;
 
 class Serializer
 {
 private:
-    std::map<const void*, UserdataStorePtr> m_userdataMap;
-    UserdataStore* m_root;
+    std::map<const void*, ObjectRefPtr> m_objectRefs;
+    ObjectRef* m_root;
 
 public:
     Serializer(): m_root(nullptr) {}
 
-    UserdataStore* addUserdataStore(const void* userdata, int depth);
-    UserdataStore* getUserdataStore(const void* userdata);
+    ObjectRef* addObjectRef(const void* ptr, int depth);
+    ObjectRef* getObjectRef(const void* ptr);
 
-    void setAttrib(UserdataStore* store, const char* name, const char* setter, lua_State* L, int index);
+    void serializeValue(ObjectRef* parent, const char* table, const char* key, const char* setter, lua_State* L, int index);
+    void serializeObject(ObjectRef* parent, const char* table, const char* key, const char* setter, lua_State* L, int index);
+    void serializeFromTable(ObjectRef* ref, const char* table, lua_State* L, int index);
 
-    void setAttrib(UserdataStore* store, const char* name, std::string& value)
-        {store->immAttribs.emplace_back(name, value);}
-
-    template <class T>
-    void setAttribScalar(UserdataStore* store, const char* name, T value)
-    {
-        std::string strVal = std::to_string(value);
-        setAttrib(store, name, strVal);
-    }
-
-    template <class T>
-    void setAttribArray(UserdataStore* store, const char* name, T val1, T val2)
-    {
-        std::string val = std::string("{") + std::to_string(val1) + ", " + std::to_string(val2) + "}";
-        setAttrib(store, name, val);
-    }
-
-    void serializeMutable(UserdataStore* parent, const char* name, const char* setter, lua_State* L, int index);
-
-    void printObject(UserdataStore* ptr, int indent);
     void print();
+    void printObject(ObjectRef* ref, int indent);
 
     static Serializer* checkSerializer(lua_State* L, int index)
     {

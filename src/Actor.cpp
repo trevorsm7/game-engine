@@ -256,37 +256,41 @@ void Actor::destroy(lua_State* L)
     }
 }
 
-void Actor::serialize(lua_State* L, Serializer* serializer, UserdataStore* store)
+void Actor::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
 {
     if (m_graphics)
     {
         m_graphics->pushUserdata(L);
-        //serializer->setAttrib(store, "graphics", "setGraphics", L, -1);
-        serializer->serializeMutable(store, "graphics", "setGraphics", L, -1);
+        serializer->serializeObject(ref, "", "graphics", "setGraphics", L, -1);
         lua_pop(L, 1);
     }
 
     if (m_collider)
     {
         m_collider->pushUserdata(L);
-        //serializer->setAttrib(store, "collider", "setCollider", L, -1);
-        serializer->serializeMutable(store, "collider", "setCollider", L, -1);
+        serializer->serializeObject(ref, "", "collider", "setCollider", L, -1);
         lua_pop(L, 1);
     }
 
-    // TODO physics
+    // TODO physics; move into Physics?
 
-    serializer->setAttribArray<float>(store, "position", m_transform.getX(), m_transform.getY());
-    serializer->setAttribArray<float>(store, "scale", m_transform.getW(), m_transform.getH());
-    serializer->setAttribScalar<int>(store, "layer", m_layer);
+    // TODO move into Transform?
+    // TODO using subtable for testing; maybe keep this way though?
+    float position[2] = {m_transform.getX(), m_transform.getY()};
+    ref->setArray<float>("transform", "position", position, 2);
+    float scale[2] = {m_transform.getW(), m_transform.getH()};
+    ref->setArray<float>("transform", "scale", scale, 2);
+
+    ref->setType<float>("", "layer", m_layer);
 }
 
+// TODO remove this; should be global and use global table as root
 int Actor::actor_serialize(lua_State* L)
 {
     // Validate function arguments
     Actor::checkUserdata(L, 1);
     Serializer serializer;
-    serializer.serializeMutable(nullptr, "", "", L, 1);
+    serializer.serializeObject(nullptr, "", "", "", L, 1);
     serializer.print();
     return 0;
 }

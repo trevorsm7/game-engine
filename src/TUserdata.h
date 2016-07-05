@@ -26,7 +26,7 @@ public:
     // NOTE derived class must implement the following:
     //void construct(lua_State* L);
     //void destroy(lua_State* L);
-    void serialize(lua_State* L, Serializer* serializer, UserdataStore* store); // generic template?
+    void serialize(lua_State* L, Serializer* serializer, ObjectRef* ref); // generic template?
     //static const char* const METATABLE;
     //static const luaL_Reg METHODS[];
 
@@ -301,7 +301,7 @@ int TUserdata<T>::script_delete(lua_State* L)
 }
 
 template <class T>
-void TUserdata<T>::serialize(lua_State* L, Serializer* serializer, UserdataStore* store)
+void TUserdata<T>::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
 {
     // TODO remove generic template; want compile time error if sublcass doesn't specialize
     printf("Class %s has no custom serializer\n", T::METATABLE);
@@ -314,16 +314,17 @@ int TUserdata<T>::script_serialize(lua_State* L)
     T* ptr = checkUserdata(L, 1);
     Serializer* serializer = Serializer::checkSerializer(L, 2);
 
-    // Get the data store and update the class name
-    UserdataStore* store = serializer->getUserdataStore(ptr);
-    assert(store != nullptr);
-    assert(store->className.empty());
-    store->className = std::string(T::METATABLE);
+    // Get the object ref and update the constructor name
+    ObjectRef* ref = serializer->getObjectRef(ptr);
+    assert(ref != nullptr);
+    ref->setConstructor(T::METATABLE);
 
-    ptr->serialize(L, serializer, store);
+    // Call specialized helper function
+    ptr->serialize(L, serializer, ref);
 
+    // Serialize members subtable
     if (lua_getuservalue(L, 1) == LUA_TTABLE)
-        serializer->setAttrib(store, "members", "", L, -1);
+        serializer->serializeFromTable(ref, "members", L, -1);
     lua_pop(L, 1);
 
     return 0;
