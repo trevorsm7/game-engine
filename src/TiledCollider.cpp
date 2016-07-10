@@ -9,9 +9,8 @@
 bool TiledCollider::testCollision(float x, float y) const
 {
     assert(m_actor != nullptr);
-    assert(m_tilemap != nullptr);
 
-    if (!isCollidable())
+    if (!isCollidable() || !m_tilemap)
         return false;
 
     // Reject if outside of tilemap bounds
@@ -36,9 +35,8 @@ bool TiledCollider::testCollision(float x, float y) const
 bool TiledCollider::testCollision(const Aabb& aabb) const
 {
     assert(m_actor != nullptr);
-    assert(m_tilemap != nullptr);
 
-    if (!isCollidable())
+    if (!isCollidable() || !m_tilemap)
         return false;
 
     // Translate AABB relative to transform; reject if no overlap
@@ -79,15 +77,16 @@ bool TiledCollider::testCollision(const Aabb& aabb) const
 bool TiledCollider::testCollision(float deltaX, float deltaY, const ICollider* other) const
 {
     assert(m_actor != nullptr);
-    assert(m_tilemap != nullptr);
     assert(other != nullptr);
 
-    if (!isCollidableWith(other))
+    if (!isCollidableWith(other) || !m_tilemap)
         return false;
 
     // Reject early if there is no overlap with the map bounds
     const Transform& transform = m_actor->getTransform();
-    if (!other->testCollision(transform.getAabb()))
+    Aabb bounds = transform.getAabb();
+    bounds.addOffset(deltaX, deltaY);
+    if (!other->testCollision(bounds))
         return false;
 
     TileIndex* tileIndex = m_tilemap->getTileIndex();
@@ -136,14 +135,31 @@ bool TiledCollider::getCollisionTime(float velX, float velY, const ICollider* ot
     return false;
 }
 
+// TODO refactor with other similar functions
+void TiledCollider::setTileMap(lua_State* L, int index)
+{
+    TileMap* tilemap = TileMap::checkUserdata(L, index);
+
+    // Do nothing if we already own the component
+    if (m_tilemap == tilemap)
+        return;
+
+    // Clear old component first
+    if (m_tilemap != nullptr)
+        m_tilemap->refRemoved(L);
+
+    // Add component to new actor
+    tilemap->refAdded(L, index);
+    m_tilemap = tilemap;
+}
+
 void TiledCollider::construct(lua_State* L)
 {
     TCollider<TiledCollider>::construct(L);
 
     lua_pushliteral(L, "tilemap");
-    luaL_argcheck(L, (lua_rawget(L, 1) == LUA_TUSERDATA), 1, "tilemap userdata required");
-    m_tilemap = TileMap::checkUserdata(L, -1);
-    m_tilemap->refAdded(L, -1);
+    if (lua_rawget(L, 1) != LUA_TNIL)
+        setTileMap(L, -1);
     lua_pop(L, 1);
 }
 
@@ -164,10 +180,20 @@ int TiledCollider::script_getTileMap(lua_State* L)
     // Validate function arguments
     TiledCollider* collider = TUserdata<TiledCollider>::checkUserdata(L, 1);
 
-    // TODO if we allow a null tilemap later, remove the assert and return 0
     TileMap* tilemap = collider->m_tilemap;
-    assert(tilemap != nullptr);
-    tilemap->pushUserdata(L);
+    if (!tilemap)
+        return 0;
 
+    tilemap->pushUserdata(L);
     return 1;
+}
+
+int TiledCollider::script_setTileMap(lua_State* L)
+{
+    // Validate function arguments
+    TiledCollider* collider = TUserdata<TiledCollider>::checkUserdata(L, 1);
+
+    collider->setTileMap(L, 2);
+
+    return 0;
 }

@@ -23,6 +23,9 @@ public:
     bool testBounds(float x, float y) const override;
 
 private:
+    void setTileMap(lua_State* L, int index);
+
+private:
     friend class TGraphics<TiledGraphics>;
     friend class TUserdata<TiledGraphics>;
     void construct(lua_State* L);
@@ -30,9 +33,11 @@ private:
 
     static constexpr const char* const METATABLE = "TiledGraphics";
     static int script_getTileMap(lua_State* L);
+    static int script_setTileMap(lua_State* L);
     static constexpr const luaL_Reg METHODS[] =
     {
         {"getTileMap", script_getTileMap},
+        {"setTileMap", script_setTileMap},
         {nullptr, nullptr}
     };
 };

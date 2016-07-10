@@ -48,7 +48,7 @@ class TileMap : public TUserdata<TileMap>
     std::vector<int> m_map;
     int m_cols, m_rows;
 
-    TileMap() {}
+    TileMap(): m_index(nullptr) {}
 
 public:
     ~TileMap() {}
@@ -65,20 +65,26 @@ public:
 private:
     int toIndex(int x, int y) const {return y * m_cols + x;}
 
+    void setTileIndex(lua_State* L, int index);
+
 private:
     friend class TUserdata<TileMap>;
     void construct(lua_State* L);
     void destroy(lua_State* L);
 
     static constexpr const char* const METATABLE = "TileMap";
+    static int script_setTileIndex(lua_State* L);
     static int script_getSize(lua_State* L);
     static int script_setSize(lua_State* L);
     static int script_setTiles(lua_State* L);
+    static int script_getTile(lua_State* L);
     static constexpr const luaL_Reg METHODS[] =
     {
+        {"setTileIndex", script_setTileIndex},
         {"getSize", script_getSize},
         {"setSize", script_setSize},
         {"setTiles", script_setTiles},
+        {"getTile", script_getTile},
         {nullptr, nullptr}
     };
 };

@@ -10,6 +10,7 @@
 #include "TiledCollider.h"
 
 #include <cassert>
+#include <cstring>
 
 bool Scene::load(const char *filename)
 {
@@ -38,6 +39,9 @@ bool Scene::load(const char *filename)
 
     lua_pushcfunction(m_L, scene_registerControl);
     lua_setglobal(m_L, "registerControl");
+
+    lua_pushcfunction(m_L, scene_setPortraitHint);
+    lua_setglobal(m_L, "setPortraitHint");
 
     lua_pushcfunction(m_L, scene_quit);
     lua_setglobal(m_L, "quit");
@@ -173,6 +177,16 @@ int Scene::scene_registerControl(lua_State* L)
 
     lua_pushboolean(L, registered);
     return 1;
+}
+
+int Scene::scene_setPortraitHint(lua_State* L)
+{
+    Scene* scene = Scene::checkScene(L);
+    luaL_checktype(L, 1, LUA_TBOOLEAN);
+
+    scene->m_isPortraitHint = lua_toboolean(L, 1);
+
+    return 0;
 }
 
 int Scene::scene_quit(lua_State* L)

@@ -29,6 +29,9 @@ public:
     bool getCollisionTime(float velX, float velY, const ICollider* other, float& start, float& end, float& normX, float& normY) const override;
 
 private:
+    void setTileMap(lua_State* L, int index);
+
+private:
     friend class TCollider<TiledCollider>;
     friend class TUserdata<TiledCollider>;
     void construct(lua_State* L);
@@ -36,9 +39,11 @@ private:
 
     static constexpr const char* const METATABLE = "TiledCollider";
     static int script_getTileMap(lua_State* L);
+    static int script_setTileMap(lua_State* L);
     static constexpr const luaL_Reg METHODS[] =
     {
         {"getTileMap", script_getTileMap},
+        {"setTileMap", script_setTileMap},
         {nullptr, nullptr}
     };
 };

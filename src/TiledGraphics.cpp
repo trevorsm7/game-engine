@@ -5,7 +5,7 @@
 
 void TiledGraphics::render(IRenderer* renderer)
 {
-    if (!isVisible())
+    if (!isVisible() || !m_tilemap)
         return;
 
     renderer->setColor(m_color.r, m_color.g, m_color.b);
@@ -29,14 +29,31 @@ bool TiledGraphics::testBounds(float x, float y) const
     return (x >= left && x < right && y >= bottom && y < top);
 }
 
+// TODO refactor with other similar functions
+void TiledGraphics::setTileMap(lua_State* L, int index)
+{
+    TileMap* tilemap = TileMap::checkUserdata(L, index);
+
+    // Do nothing if we already own the component
+    if (m_tilemap == tilemap)
+        return;
+
+    // Clear old component first
+    if (m_tilemap != nullptr)
+        m_tilemap->refRemoved(L);
+
+    // Add component to new actor
+    tilemap->refAdded(L, index);
+    m_tilemap = tilemap;
+}
+
 void TiledGraphics::construct(lua_State* L)
 {
     TGraphics<TiledGraphics>::construct(L);
 
     lua_pushliteral(L, "tilemap");
-    luaL_argcheck(L, (lua_rawget(L, 1) == LUA_TUSERDATA), 1, "tilemap userdata required");
-    m_tilemap = TileMap::checkUserdata(L, -1);
-    m_tilemap->refAdded(L, -1);
+    if (lua_rawget(L, 1) != LUA_TNIL)
+        setTileMap(L, -1);
     lua_pop(L, 1);
 }
 
@@ -57,10 +74,20 @@ int TiledGraphics::script_getTileMap(lua_State* L)
     // Validate function arguments
     TiledGraphics* graphics = TUserdata<TiledGraphics>::checkUserdata(L, 1);
 
-    // TODO if we allow a null tilemap later, remove the assert and return 0
     TileMap* tilemap = graphics->m_tilemap;
-    assert(tilemap != nullptr);
-    tilemap->pushUserdata(L);
+    if (!tilemap)
+        return 0;
 
+    tilemap->pushUserdata(L);
     return 1;
+}
+
+int TiledGraphics::script_setTileMap(lua_State* L)
+{
+    // Validate function arguments
+    TiledGraphics* graphics = TUserdata<TiledGraphics>::checkUserdata(L, 1);
+
+    graphics->setTileMap(L, 2);
+
+    return 0;
 }

@@ -110,6 +110,7 @@ bool SdlInstance::init(const char* script)
         fprintf(stderr, "Failed to create SDL window: %s\n", SDL_GetError());
         return false;
     }
+#endif
 
     m_renderer = IRendererPtr(new SdlRenderer(m_window, m_resources));
     if (!m_renderer->init())
@@ -128,10 +129,13 @@ bool SdlInstance::init(const char* script)
     if (!m_scene->load(script))
         return false;
 
+    // TODO default window size??
+    if (m_scene->isPortraitHint())
+        SDL_SetWindowSize(m_window, 480, 640);
+
     int width, height;
     reinterpret_cast<SdlRenderer*>(m_renderer.get())->getSize(width, height);
     m_scene->resize(width, height);
-#endif
 
     //SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Testing", "Hello world", m_window);
 

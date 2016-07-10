@@ -54,12 +54,29 @@ int TileIndex::script_getSize(lua_State* L)
     return 2;
 }
 
+// TODO refactor with similar functions in Actor? move template to TUserdata?
+void TileMap::setTileIndex(lua_State* L, int index)
+{
+    TileIndex* tileIndex = TileIndex::checkUserdata(L, index);
+
+    // Do nothing if we already own the component
+    if (m_index == tileIndex)
+        return;
+
+    // Clear old component first
+    if (m_index != nullptr)
+        m_index->refRemoved(L);
+
+    // Add component to new actor
+    tileIndex->refAdded(L, index);
+    m_index = tileIndex;
+}
+
 void TileMap::construct(lua_State* L)
 {
     lua_pushliteral(L, "index");
-    luaL_argcheck(L, (lua_rawget(L, 1) == LUA_TUSERDATA), 1, "index userdata required");
-    m_index = TileIndex::checkUserdata(L, -1);
-    m_index->refAdded(L, -1);
+    if (lua_rawget(L, 1) != LUA_TNIL)
+        setTileIndex(L, -1);
     lua_pop(L, 1);
 
     lua_pushliteral(L, "size");
@@ -98,6 +115,16 @@ void TileMap::destroy(lua_State* L)
 
 // NOTE constexpr declaration requires a definition
 const luaL_Reg TileMap::METHODS[];
+
+int TileMap::script_setTileIndex(lua_State* L)
+{
+    // Validate function arguments
+    TileMap* tilemap = TileMap::checkUserdata(L, 1);
+
+    tilemap->setTileIndex(L, 2);
+
+    return 0;
+}
 
 int TileMap::script_getSize(lua_State* L)
 {
@@ -214,5 +241,23 @@ int TileMap::script_setTiles(lua_State* L)
 
     // Return self userdata
     lua_pushvalue(L, 1);
+    return 1;
+}
+
+int TileMap::script_getTile(lua_State* L)
+{
+    // Validate function arguments
+    TileMap* tilemap = TileMap::checkUserdata(L, 1);
+    const int x = luaL_checkinteger(L, 2);
+    const int y = luaL_checkinteger(L, 3);
+
+    const int cols = tilemap->m_cols;
+    const int rows = tilemap->m_rows;
+
+    luaL_argcheck(L, (x >= 0 && x < cols), 2, "x is out of bounds");
+    luaL_argcheck(L, (y >= 0 && y < rows), 3, "y is out of bounds");
+
+    lua_pushinteger(L, tilemap->getIndex(x, y));
+
     return 1;
 }

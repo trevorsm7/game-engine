@@ -23,6 +23,7 @@ class Scene
     QuitCallback m_quitCallback;
     RegisterControlCallback m_registerControlCallback;
     lua_State *m_L;
+    bool m_isPortraitHint;
 
 public:
     Scene(ResourceManager& resources): m_resources(resources), m_L(nullptr) {}
@@ -31,6 +32,8 @@ public:
     bool load(const char *filename);
     void setQuitCallback(QuitCallback cb) {m_quitCallback = cb;}
     void setRegisterControlCallback(RegisterControlCallback cb) {m_registerControlCallback = cb;}
+
+    bool isPortraitHint() {return m_isPortraitHint;}
 
     ResourceManager& getResourceManager() {return m_resources;}
 
@@ -45,6 +48,7 @@ public:
     static void addCanvas(lua_State* L, int index);
 
     static int scene_registerControl(lua_State* L);
+    static int scene_setPortraitHint(lua_State* L);
     static int scene_quit(lua_State* L);
 };
 

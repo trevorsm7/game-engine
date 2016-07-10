@@ -103,6 +103,10 @@ bool GlfwInstance::init(const char* script)
     if (!m_scene->load(script))
         return false;
 
+    // TODO default window size??
+    if (m_scene->isPortraitHint())
+        glfwSetWindowSize(m_window, 480, 640);
+
     // Send an initial resize notification to scene
     int width, height;
     glfwGetWindowSize(m_window, &width, &height);
