@@ -1,7 +1,9 @@
-#include "AabbCollider.h"
-#include "Actor.h"
+#include "AabbCollider.hpp"
+#include "Actor.hpp"
 
 #include <cassert>
+
+const luaL_Reg AabbCollider::METHODS[];
 
 bool AabbCollider::testCollision(float x, float y) const
 {
@@ -87,8 +89,3 @@ bool AabbCollider::getCollisionTime(float velX, float velY, const ICollider* oth
     bool result = other->getCollisionTime(bounds, velX, velY, start, end, normX, normY);
     return result;
 }
-
-/*void AabbCollider::construct(lua_State* L)
-{
-    TCollider<AabbCollider>::construct(L);
-}*/

@@ -1,7 +1,10 @@
-#include "TiledGraphics.h"
-#include "TileMap.h"
+#include "TiledGraphics.hpp"
+#include "Serializer.h"
 #include "IRenderer.h"
-#include "Actor.h"
+#include "TileMap.hpp"
+#include "Actor.hpp"
+
+const luaL_Reg TiledGraphics::METHODS[];
 
 void TiledGraphics::render(IRenderer* renderer)
 {
@@ -49,8 +52,6 @@ void TiledGraphics::setTileMap(lua_State* L, int index)
 
 void TiledGraphics::construct(lua_State* L)
 {
-    TGraphics<TiledGraphics>::construct(L);
-
     lua_pushliteral(L, "tilemap");
     if (lua_rawget(L, 1) != LUA_TNIL)
         setTileMap(L, -1);
@@ -66,13 +67,20 @@ void TiledGraphics::destroy(lua_State* L)
     }
 }
 
-// NOTE constexpr declaration requires a definition
-const luaL_Reg TiledGraphics::METHODS[];
+void TiledGraphics::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
+{
+    if (m_tilemap)
+    {
+        m_tilemap->pushUserdata(L);
+        serializer->serializeObject(ref, "", "tilemap", "setTilemap", L, -1);
+        lua_pop(L, 1);
+    }
+}
 
 int TiledGraphics::script_getTileMap(lua_State* L)
 {
     // Validate function arguments
-    TiledGraphics* graphics = TUserdata<TiledGraphics>::checkUserdata(L, 1);
+    TiledGraphics* graphics = TiledGraphics::checkUserdata(L, 1);
 
     TileMap* tilemap = graphics->m_tilemap;
     if (!tilemap)
@@ -85,7 +93,7 @@ int TiledGraphics::script_getTileMap(lua_State* L)
 int TiledGraphics::script_setTileMap(lua_State* L)
 {
     // Validate function arguments
-    TiledGraphics* graphics = TUserdata<TiledGraphics>::checkUserdata(L, 1);
+    TiledGraphics* graphics = TiledGraphics::checkUserdata(L, 1);
 
     graphics->setTileMap(L, 2);
 

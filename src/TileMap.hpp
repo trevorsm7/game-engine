@@ -1,19 +1,19 @@
-#ifndef __TILEMAP_H__
-#define __TILEMAP_H__
+#ifndef __TILEMAP_HPP__
+#define __TILEMAP_HPP__
 
-#include "TUserdata.h"
+#include "IUserdata.hpp"
 
-#include <memory>
 #include <string>
 #include <vector>
+#include <cstdint>
 
 class TileIndex : public TUserdata<TileIndex>
 {
     std::string m_image;
-    std::vector<char> m_flags;
+    std::vector<uint8_t> m_flags;
     int m_cols, m_rows;
 
-    TileIndex() {}
+    TileIndex(): m_cols(0), m_rows(0) {}
 
 public:
     ~TileIndex() {}
@@ -32,9 +32,11 @@ private:
     friend class TUserdata<TileIndex>;
     void construct(lua_State* L);
     void destroy(lua_State* L) {}
+    void serialize(lua_State* L, Serializer* serializer, ObjectRef* ref);
 
-    static constexpr const char* const METATABLE = "TileIndex";
     static int script_getSize(lua_State* L);
+
+    static constexpr const char* const CLASS_NAME = "TileIndex";
     static constexpr const luaL_Reg METHODS[] =
     {
         {"getSize", script_getSize},
@@ -71,13 +73,15 @@ private:
     friend class TUserdata<TileMap>;
     void construct(lua_State* L);
     void destroy(lua_State* L);
+    void serialize(lua_State* L, Serializer* serializer, ObjectRef* ref);
 
-    static constexpr const char* const METATABLE = "TileMap";
     static int script_setTileIndex(lua_State* L);
     static int script_getSize(lua_State* L);
     static int script_setSize(lua_State* L);
     static int script_setTiles(lua_State* L);
     static int script_getTile(lua_State* L);
+
+    static constexpr const char* const CLASS_NAME = "TileMap";
     static constexpr const luaL_Reg METHODS[] =
     {
         {"setTileIndex", script_setTileIndex},

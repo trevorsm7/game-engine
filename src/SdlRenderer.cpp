@@ -1,6 +1,6 @@
 #include "SdlRenderer.h"
 #include "SdlTexture.h"
-#include "TileMap.h"
+#include "TileMap.hpp"
 
 bool SdlRenderer::init()
 {

@@ -1,8 +1,11 @@
-#include "SpriteGraphics.h"
+#include "SpriteGraphics.hpp"
+#include "Serializer.h"
 #include "IRenderer.h"
-#include "Actor.h"
+#include "Actor.hpp"
 
 #include <cassert>
+
+const luaL_Reg SpriteGraphics::METHODS[];
 
 void SpriteGraphics::render(IRenderer* renderer)
 {
@@ -32,10 +35,13 @@ bool SpriteGraphics::testBounds(float x, float y) const
 
 void SpriteGraphics::construct(lua_State* L)
 {
-    TGraphics<SpriteGraphics>::construct(L);
-
     lua_pushliteral(L, "sprite");
     luaL_argcheck(L, (lua_rawget(L, 1) == LUA_TSTRING), 1, "{sprite = filename} is required");
     m_filename = lua_tostring(L, -1);
     lua_pop(L, 1);
+}
+
+void SpriteGraphics::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
+{
+    ref->setType<const char*>("", "sprite", m_filename.c_str());
 }

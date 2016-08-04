@@ -1,9 +1,16 @@
-#include "TileMap.h"
+#include "TileMap.hpp"
+#include "Serializer.h"
 #include "ResourceManager.h"
 
-#include <sstream>
-#include <iterator>
+//#include <iterator>
 #include <algorithm>
+
+const luaL_Reg TileIndex::METHODS[];
+const luaL_Reg TileMap::METHODS[];
+
+// =============================================================================
+// TileIndex
+// =============================================================================
 
 void TileIndex::construct(lua_State* L)
 {
@@ -40,8 +47,13 @@ void TileIndex::construct(lua_State* L)
     lua_pop(L, 1);
 }
 
-// NOTE constexpr declaration requires a definition
-const luaL_Reg TileIndex::METHODS[];
+void TileIndex::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
+{
+    ref->setType<const char*>("", "sprite", m_image.c_str());
+    int size[] = {m_cols, m_rows};
+    ref->setArray<int>("", "size", size, 2);
+    ref->setArray<uint8_t>("", "data", m_flags.data(), m_cols * m_rows);
+}
 
 int TileIndex::script_getSize(lua_State* L)
 {
@@ -50,9 +62,12 @@ int TileIndex::script_getSize(lua_State* L)
 
     lua_pushnumber(L, index->m_cols);
     lua_pushnumber(L, index->m_rows);
-
     return 2;
 }
+
+// =============================================================================
+// TileMap
+// =============================================================================
 
 // TODO refactor with similar functions in Actor? move template to TUserdata?
 void TileMap::setTileIndex(lua_State* L, int index)
@@ -113,8 +128,19 @@ void TileMap::destroy(lua_State* L)
     }
 }
 
-// NOTE constexpr declaration requires a definition
-const luaL_Reg TileMap::METHODS[];
+void TileMap::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
+{
+    if (m_index)
+    {
+        m_index->pushUserdata(L);
+        serializer->serializeObject(ref, "", "index", "setTileIndex", L, -1);
+        lua_pop(L, 1);
+    }
+
+    int size[] = {m_cols, m_rows};
+    ref->setArray<int>("", "size", size, 2);
+    ref->setArray<int>("", "data", m_map.data(), m_cols * m_rows);
+}
 
 int TileMap::script_setTileIndex(lua_State* L)
 {
@@ -133,7 +159,6 @@ int TileMap::script_getSize(lua_State* L)
 
     lua_pushnumber(L, tilemap->m_cols);
     lua_pushnumber(L, tilemap->m_rows);
-
     return 2;
 }
 
@@ -203,9 +228,7 @@ int TileMap::script_setSize(lua_State* L)
     if (newEnd < oldEnd)
         std::fill(i + newEnd, i + oldEnd, 0);
 
-    // Return self userdata
-    lua_pushvalue(L, 1);
-    return 1;
+    return 0;
 }
 
 int TileMap::script_setTiles(lua_State* L)
@@ -239,9 +262,7 @@ int TileMap::script_setTiles(lua_State* L)
         index += cols;
     }
 
-    // Return self userdata
-    lua_pushvalue(L, 1);
-    return 1;
+    return 0;
 }
 
 int TileMap::script_getTile(lua_State* L)
@@ -258,6 +279,5 @@ int TileMap::script_getTile(lua_State* L)
     luaL_argcheck(L, (y >= 0 && y < rows), 3, "y is out of bounds");
 
     lua_pushinteger(L, tilemap->getIndex(x, y));
-
     return 1;
 }

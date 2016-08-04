@@ -1,15 +1,17 @@
-#include "Actor.h"
-#include "Canvas.h"
+#include "Actor.hpp"
+#include "Canvas.hpp"
 #include "IRenderer.h"
-#include "SpriteGraphics.h"
-#include "AabbCollider.h"
-#include "TiledGraphics.h"
-#include "TiledCollider.h"
+#include "SpriteGraphics.hpp"
+#include "AabbCollider.hpp"
+#include "TiledGraphics.hpp"
+#include "TiledCollider.hpp"
 #include "Physics.h"
 
 #include <limits>
 #include <cstdint>
 #include <cassert>
+
+const luaL_Reg Actor::METHODS[];
 
 ResourceManager* Actor::getResourceManager() const
 {
@@ -86,7 +88,7 @@ bool Actor::testCollision(float x, float y) const
 // TODO also could make generic addComponent w/ sequential testGraphics, testCollider, etc
 void Actor::setGraphics(lua_State* L, int index)
 {
-    IGraphics* graphics = IGraphics::checkUserdata(L, index);
+    IGraphics* graphics = IGraphics::checkInterface(L, index);
 
     // Do nothing if we already own the component
     if (m_graphics == graphics)
@@ -122,7 +124,7 @@ void Actor::setGraphics(lua_State* L, int index)
 // TODO also could make generic addComponent w/ sequential testGraphics, testCollider, etc
 void Actor::setCollider(lua_State* L, int index)
 {
-    ICollider* collider = ICollider::checkUserdata(L, index);
+    ICollider* collider = ICollider::checkInterface(L, index);
 
     // Do nothing if we already own the component
     if (m_collider == collider)
@@ -157,9 +159,6 @@ void Actor::setCollider(lua_State* L, int index)
 // =============================================================================
 // Lua library functions
 // =============================================================================
-
-// NOTE constexpr declaration requires a definition
-const luaL_Reg Actor::METHODS[];
 
 void Actor::construct(lua_State* L)
 {
@@ -289,9 +288,11 @@ int Actor::actor_serialize(lua_State* L)
 {
     // Validate function arguments
     Actor::checkUserdata(L, 1);
+
     Serializer serializer;
     serializer.serializeObject(nullptr, "", "", "", L, 1);
     serializer.print();
+
     return 0;
 }
 
@@ -320,7 +321,6 @@ int Actor::actor_getGraphics(lua_State* L)
         return 1;
     }
 
-    // NOTE will implicitly return nil, correct?
     return 0;
 }
 
@@ -365,8 +365,6 @@ int Actor::actor_getPosition(lua_State* L)
 
     lua_pushnumber(L, actor->m_transform.getX());
     lua_pushnumber(L, actor->m_transform.getY());
-    // TODO: return Z?
-
     return 2;
 }
 
@@ -380,9 +378,7 @@ int Actor::actor_setPosition(lua_State* L)
     actor->m_transform.setX(x);
     actor->m_transform.setY(y);
 
-    // Return self userdata
-    lua_pushvalue(L, 1);
-    return 1;
+    return 0;
 }
 
 int Actor::actor_setScale(lua_State* L)
@@ -395,9 +391,7 @@ int Actor::actor_setScale(lua_State* L)
     actor->m_transform.setW(w);
     actor->m_transform.setH(h);
 
-    // Return self userdata
-    lua_pushvalue(L, 1);
-    return 1;
+    return 0;
 }
 
 int Actor::actor_testCollision(lua_State* L)
@@ -412,7 +406,6 @@ int Actor::actor_testCollision(lua_State* L)
         result = actor->m_canvas->testCollision(deltaX, deltaY, actor);
 
     lua_pushboolean(L, result);
-
     return 1;
 }
 
@@ -454,9 +447,7 @@ int Actor::actor_setVelocity(lua_State* L)
         actor->m_physics->setVelY(y);
     }
 
-    // Return self userdata
-    lua_pushvalue(L, 1);
-    return 1;
+    return 0;
 }
 
 int Actor::actor_getVelocity(lua_State* L)
@@ -492,7 +483,5 @@ int Actor::actor_addAcceleration(lua_State* L)
         actor->m_physics->addAccY(y);
     }
 
-    // Return self userdata
-    lua_pushvalue(L, 1);
-    return 1;
+    return 0;
 }

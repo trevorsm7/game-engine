@@ -1,7 +1,7 @@
-#ifndef __CANVAS_H__
-#define __CANVAS_H__
+#ifndef __CANVAS_HPP__
+#define __CANVAS_HPP__
 
-#include "TUserdata.h"
+#include "IUserdata.hpp"
 #include "Event.h"
 #include "ICamera.h"
 
@@ -28,8 +28,9 @@ class Canvas : public TUserdata<Canvas>
     bool m_paused, m_visible;
     bool m_actorRemoved;
 
-public:
     Canvas(): m_scene(nullptr), m_paused(false), m_visible(true), m_actorRemoved(false) {}
+
+public:
     ~Canvas() {}
 
     ResourceManager* getResourceManager() const;
@@ -54,8 +55,8 @@ private:
     friend class TUserdata<Canvas>;
     void construct(lua_State* L);
     void destroy(lua_State* L);
+    void serialize(lua_State* L, Serializer* serializer, ObjectRef* ref);
 
-    static constexpr const char* const METATABLE = "Canvas";
     static int canvas_addActor(lua_State* L);
     static int canvas_removeActor(lua_State* L);
     static int canvas_clear(lua_State* L);
@@ -63,6 +64,8 @@ private:
     static int canvas_getCollision(lua_State* L);
     static int canvas_setPaused(lua_State* L);
     static int canvas_setVisible(lua_State* L);
+
+    static constexpr const char* const CLASS_NAME = "Canvas";
     static constexpr const luaL_Reg METHODS[] =
     {
         {"addActor", canvas_addActor},

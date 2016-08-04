@@ -1,10 +1,13 @@
-#include "TiledCollider.h"
-#include "Actor.h"
-#include "TileMap.h"
+#include "TiledCollider.hpp"
+#include "Serializer.h"
+#include "Actor.hpp"
+#include "TileMap.hpp"
 
 #include <cmath>
 #include <algorithm>
 #include <cassert>
+
+const luaL_Reg TiledCollider::METHODS[];
 
 bool TiledCollider::testCollision(float x, float y) const
 {
@@ -155,8 +158,6 @@ void TiledCollider::setTileMap(lua_State* L, int index)
 
 void TiledCollider::construct(lua_State* L)
 {
-    TCollider<TiledCollider>::construct(L);
-
     lua_pushliteral(L, "tilemap");
     if (lua_rawget(L, 1) != LUA_TNIL)
         setTileMap(L, -1);
@@ -172,13 +173,20 @@ void TiledCollider::destroy(lua_State* L)
     }
 }
 
-// NOTE constexpr declaration requires a definition
-const luaL_Reg TiledCollider::METHODS[];
+void TiledCollider::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
+{
+    if (m_tilemap)
+    {
+        m_tilemap->pushUserdata(L);
+        serializer->serializeObject(ref, "", "tilemap", "setTilemap", L, -1);
+        lua_pop(L, 1);
+    }
+}
 
 int TiledCollider::script_getTileMap(lua_State* L)
 {
     // Validate function arguments
-    TiledCollider* collider = TUserdata<TiledCollider>::checkUserdata(L, 1);
+    TiledCollider* collider = TiledCollider::checkUserdata(L, 1);
 
     TileMap* tilemap = collider->m_tilemap;
     if (!tilemap)
@@ -191,7 +199,7 @@ int TiledCollider::script_getTileMap(lua_State* L)
 int TiledCollider::script_setTileMap(lua_State* L)
 {
     // Validate function arguments
-    TiledCollider* collider = TUserdata<TiledCollider>::checkUserdata(L, 1);
+    TiledCollider* collider = TiledCollider::checkUserdata(L, 1);
 
     collider->setTileMap(L, 2);
 

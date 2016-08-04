@@ -1,13 +1,18 @@
-#include "Canvas.h"
+#include "Canvas.hpp"
 #include "Scene.h"
-#include "Actor.h"
+#include "Actor.hpp"
 #include "BasicCamera.h"
-#include "ICollider.h"
+#include "ICollider.hpp"
 #include "Physics.h"
 
 #include <algorithm>
 #include <limits>
 #include <cmath>
+#include <string>
+
+using namespace std::string_literals;
+
+const luaL_Reg Canvas::METHODS[];
 
 ResourceManager* Canvas::getResourceManager() const
 {
@@ -344,9 +349,6 @@ bool Canvas::getEarliestCollision(const Actor* actor1, ActorIterator it, ActorIt
 // Lua library functions
 // =============================================================================
 
-// NOTE constexpr declaration requires a definition
-const luaL_Reg Canvas::METHODS[];
-
 void Canvas::construct(lua_State* L)
 {
     float w = 20.f, h = 15.f;
@@ -396,6 +398,25 @@ void Canvas::destroy(lua_State* L)
 
         actor->refRemoved(L);
     }
+}
+
+void Canvas::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
+{
+    printf("TODO Canvas::serialize\n");
+    // TODO serialize camera
+    // TODO must gurantee that order of all Actors is preserved?
+    int i = 1;
+    for (auto& actor : m_actors)
+    {
+        if (actor->m_canvas != this)
+            continue;
+
+        std::string index = "["s + std::to_string(i++) + "]"s;
+        actor->pushUserdata(L);
+        serializer->serializeObject(ref, "actors", index.c_str(), "addActor", L, -1);
+        lua_pop(L, 1);
+    }
+    // TODO serialize added queue separately?
 }
 
 int Canvas::canvas_addActor(lua_State *L)
@@ -530,8 +551,7 @@ int Canvas::canvas_getCollision(lua_State* L)
         }
     }
 
-    lua_pushnil(L);
-    return 1;
+    return 0;
 }
 
 int Canvas::canvas_setPaused(lua_State *L)

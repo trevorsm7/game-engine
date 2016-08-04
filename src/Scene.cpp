@@ -1,13 +1,13 @@
 #include "Scene.h"
-#include "Canvas.h"
-#include "Actor.h"
+#include "Canvas.hpp"
+#include "Actor.hpp"
 #include "IRenderer.h"
 
-#include "TileMap.h"
-#include "SpriteGraphics.h"
-#include "TiledGraphics.h"
-#include "AabbCollider.h"
-#include "TiledCollider.h"
+#include "TileMap.hpp"
+#include "SpriteGraphics.hpp"
+#include "TiledGraphics.hpp"
+#include "AabbCollider.hpp"
+#include "TiledCollider.hpp"
 
 #include <cassert>
 #include <cstring>

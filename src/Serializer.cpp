@@ -3,6 +3,21 @@
 #include <list>
 #include <algorithm>
 
+using namespace std::string_literals;
+
+template <>
+void ObjectRef::setType<bool>(std::string table, std::string key, bool value)
+{
+    setImmediate(table, key, value ? "true"s : "false"s);
+}
+
+template <>
+void ObjectRef::setType<const char*>(std::string table, std::string key, const char* value)
+{
+    std::string str = "\""s + value + "\""s;
+    setImmediate(table, key, str);
+}
+
 void ObjectRef::setImmediate(std::string table, std::string key, std::string value)
 {
     // Alphabetical search from the end by subtable name

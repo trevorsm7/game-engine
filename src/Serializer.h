@@ -36,8 +36,6 @@ public:
     }
 
     void setImmediate(std::string table, std::string key, std::string value);
-    void setObjectDirect(std::string table, std::string key, const void* ptr);
-    void setObjectCycle(std::string key, std::string setter, const void* ptr);
 
     template <class T>
     void setType(std::string table, std::string key, T value)
@@ -61,7 +59,17 @@ public:
         str += std::string("}");
         setImmediate(table, key, str);
     }
+
+private:
+    void setObjectDirect(std::string table, std::string key, const void* ptr);
+    void setObjectCycle(std::string key, std::string setter, const void* ptr);
 };
+
+template <>
+void ObjectRef::setType<bool>(std::string table, std::string key, bool value);
+
+template <>
+void ObjectRef::setType<const char*>(std::string table, std::string key, const char* value);
 
 typedef std::unique_ptr<ObjectRef> ObjectRefPtr;
 

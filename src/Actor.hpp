@@ -1,20 +1,18 @@
-#ifndef __ACTOR_H__
-#define __ACTOR_H__
+#ifndef __ACTOR_HPP__
+#define __ACTOR_HPP__
 
-#include "TUserdata.h"
+#include "IUserdata.hpp"
 #include "Physics.h"
 #include "Transform.h"
-#include "Event.h"
 
 #include <memory>
 #include "lua.hpp"
 
 class Canvas;
-class IRenderer;
-class ResourceManager;
-
 class IGraphics;
 class ICollider;
+class IRenderer;
+class ResourceManager;
 
 class Actor : public TUserdata<Actor>
 {
@@ -64,7 +62,6 @@ private:
     void destroy(lua_State* L);
     void serialize(lua_State* L, Serializer* serializer, ObjectRef* ref);
 
-    static constexpr const char* const METATABLE = "Actor";
     static int actor_serialize(lua_State* L);
     static int actor_getCanvas(lua_State* L);
     static int actor_getGraphics(lua_State* L);
@@ -79,6 +76,8 @@ private:
     static int actor_setVelocity(lua_State* L);
     static int actor_getVelocity(lua_State* L);
     static int actor_addAcceleration(lua_State* L);
+
+    static constexpr const char* const CLASS_NAME = "Actor";
     static constexpr const luaL_Reg METHODS[] =
     {
         {"serialize", actor_serialize},

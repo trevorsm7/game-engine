@@ -1,14 +1,13 @@
-#ifndef __TILEDGRAPHICS_H__
-#define __TILEDGRAPHICS_H__
+#ifndef __TILEDGRAPHICS_HPP__
+#define __TILEDGRAPHICS_HPP__
 
-#include "IGraphics.h"
+#include "IGraphics.hpp"
 
 #include <string>
 
-class IRenderer;
 class TileMap;
 
-class TiledGraphics : public TGraphics<TiledGraphics>
+class TiledGraphics : public TUserdata<TiledGraphics, IGraphics>
 {
     TileMap* m_tilemap;
 
@@ -26,14 +25,15 @@ private:
     void setTileMap(lua_State* L, int index);
 
 private:
-    friend class TGraphics<TiledGraphics>;
-    friend class TUserdata<TiledGraphics>;
+    friend class TUserdata<TiledGraphics, IGraphics>;
     void construct(lua_State* L);
     void destroy(lua_State* L);
+    void serialize(lua_State* L, Serializer* serializer, ObjectRef* ref);
 
-    static constexpr const char* const METATABLE = "TiledGraphics";
     static int script_getTileMap(lua_State* L);
     static int script_setTileMap(lua_State* L);
+
+    static constexpr const char* const CLASS_NAME = "TiledGraphics";
     static constexpr const luaL_Reg METHODS[] =
     {
         {"getTileMap", script_getTileMap},

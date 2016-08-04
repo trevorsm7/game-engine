@@ -1,10 +1,10 @@
-#ifndef __AABBCOLLIDER_H__
-#define __AABBCOLLIDER_H__
+#ifndef __AABBCOLLIDER_HPP__
+#define __AABBCOLLIDER_HPP__
 
-#include "ICollider.h"
+#include "ICollider.hpp"
 #include "Aabb.h"
 
-class AabbCollider : public TCollider<AabbCollider>
+class AabbCollider : public TUserdata<AabbCollider, ICollider>
 {
     AabbCollider() {}
 
@@ -21,13 +21,13 @@ public:
     bool getCollisionTime(float velX, float velY, const ICollider* other, float& start, float& end, float& normX, float& normY) const override;
 
 private:
-    friend class TCollider<AabbCollider>;
-    friend class TUserdata<AabbCollider>;
-    //void construct(lua_State* L);
-    void destroy(lua_State* L) {}
+    friend class TUserdata<AabbCollider, ICollider>;
+    //void construct(lua_State* L) {}
+    //void destroy(lua_State* L) {}
+    //void serialize(lua_State* L, Serializer* serializer, ObjectRef* ref) {}
 
-    static constexpr const char* const METATABLE = "AabbCollider";
-    //static constexpr const luaL_Reg METHODS[] = {};
+    static constexpr const char* const CLASS_NAME = "AabbCollider";
+    static constexpr const luaL_Reg METHODS[] = {{nullptr, nullptr}};
 };
 
 #endif

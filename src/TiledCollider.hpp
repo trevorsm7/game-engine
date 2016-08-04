@@ -1,14 +1,11 @@
-#ifndef __TILEDCOLLIDER_H__
-#define __TILEDCOLLIDER_H__
+#ifndef __TILEDCOLLIDER_HPP__
+#define __TILEDCOLLIDER_HPP__
 
-#include "ICollider.h"
+#include "ICollider.hpp"
 
-#include <string>
-
-class Actor;
 class TileMap;
 
-class TiledCollider : public TCollider<TiledCollider>
+class TiledCollider : public TUserdata<TiledCollider, ICollider>
 {
     TileMap* m_tilemap;
 
@@ -32,14 +29,15 @@ private:
     void setTileMap(lua_State* L, int index);
 
 private:
-    friend class TCollider<TiledCollider>;
-    friend class TUserdata<TiledCollider>;
+    friend class TUserdata<TiledCollider, ICollider>;
     void construct(lua_State* L);
     void destroy(lua_State* L);
+    void serialize(lua_State* L, Serializer* serializer, ObjectRef* ref);
 
-    static constexpr const char* const METATABLE = "TiledCollider";
     static int script_getTileMap(lua_State* L);
     static int script_setTileMap(lua_State* L);
+
+    static constexpr const char* const CLASS_NAME = "TiledCollider";
     static constexpr const luaL_Reg METHODS[] =
     {
         {"getTileMap", script_getTileMap},
