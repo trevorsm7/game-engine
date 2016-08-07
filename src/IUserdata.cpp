@@ -2,21 +2,22 @@
 
 void IUserdata::pushUserdata(lua_State* L)
 {
-    // NOTE this pointer will not always == the base address of the userdata!
-    lua_pushlightuserdata(L, this); // TODO use real base ptr; this->m_base
+    // NOTE IUserdata::this != base address; only use as a registry key
+    lua_pushlightuserdata(L, this);
     lua_rawget(L, LUA_REGISTRYINDEX);
-    assert(lua_type(L, -1) == LUA_TUSERDATA);
-    //assert(lua_touserdata(L, -1) == this);
+    //assert(lua_type(L, -1) == LUA_TUSERDATA);
+    assert(testInterface(L, -1) == this); // upcast to IUserdata
 }
 
 void IUserdata::refAdded(lua_State* L, int index)
 {
+    //assert(lua_type(L, index) == LUA_TUSERDATA);
+    assert(testInterface(L, index) == this); // upcast to IUserdata
     // TODO use get rid of ref counting? make a container to manage these?
     // Add userdata to the registry while it is ref'd by engine
     if (m_refCount++ == 0)
     {
-        //assert(lua_touserdata(L, index) == this);
-        lua_pushlightuserdata(L, this); // TODO use real base ptr; this->m_base
+        lua_pushlightuserdata(L, this);
         lua_pushvalue(L, (index < 0) ? index - 1 : index); // adjust relative offset
         lua_rawset(L, LUA_REGISTRYINDEX);
     }
@@ -28,7 +29,7 @@ void IUserdata::refRemoved(lua_State* L)
     // Remove from registry if reference count drops to zero
     if (--m_refCount == 0)
     {
-        lua_pushlightuserdata(L, this); // TODO use real base ptr; this->m_base
+        lua_pushlightuserdata(L, this);
         lua_pushnil(L);
         lua_rawset(L, LUA_REGISTRYINDEX);
     }
@@ -73,10 +74,7 @@ bool IUserdata::pcall(lua_State* L, const char* method, int in, int out)
 
 void IUserdata::initInterface(lua_State* L)
 {
-    //setInterface(L, "IUserdata");
     //setMethods(L, METHODS);//T::METHODS);
-
-    // NOTE setMethods pushes to "methods" -- metamethods must go into metatable instead
 
     // Member reads come either from method table or uservalue table
     lua_pushliteral(L, "__index");
@@ -126,6 +124,30 @@ void IUserdata::serializeHelper(lua_State* L, IUserdata* ptr, Serializer* serial
     if (lua_getuservalue(L, 1) == LUA_TTABLE)
         serializer->serializeFromTable(ref, "members", L, -1);
     lua_pop(L, 1);
+}
+
+void* IUserdata::testInterfaceBase(lua_State* L, int index, void* className)
+{
+    // Get userdata upcast function
+    luaL_getmetafield(L, index, "upcast");
+    if (lua_type(L, -1) != LUA_TFUNCTION)
+        return nullptr;
+
+    // Push the userdata and pointer as arguments
+    const int adjIndex = (index < 0) ? index - 1 : index;
+    lua_pushvalue(L, adjIndex);
+    //lua_pushstring(L, className);
+    lua_pushlightuserdata(L, className);
+
+    // Do a regular call; pops function and arguments
+    // TODO use pcall? see script_upcast behavior
+    lua_call(L, 2, 1);
+
+    // Retrieve the upcast pointer (safe to reinterpret_cast)
+    void* ptr = lua_touserdata(L, -1);
+    lua_pop(L, 1);
+
+    return ptr;
 }
 
 int IUserdata::script_index(lua_State* L)

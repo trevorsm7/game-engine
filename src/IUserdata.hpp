@@ -17,14 +17,29 @@ class IUserdata
 {
     int m_refCount;
 
-public:
+protected:
     IUserdata(): m_refCount(0) {}
+
+    static constexpr const char* const CLASS_NAME = "IUserdata";
 
 public:
     void pushUserdata(lua_State* L);
     // NOTE should be protected? Wrap in unique_ptr-like class?
     void refAdded(lua_State* L, int index);
     void refRemoved(lua_State* L);
+
+    static IUserdata* testInterface(lua_State* L, int index)
+    {
+        void* ptr = testInterfaceBase(L, index, const_cast<char*>(CLASS_NAME));
+        return reinterpret_cast<IUserdata*>(ptr);
+    }
+
+    static IUserdata* checkInterface(lua_State* L, int index)
+    {
+        void* ptr = testInterfaceBase(L, index, const_cast<char*>(CLASS_NAME));
+        luaL_argcheck(L, ptr, index, "expected IUserdata subtype");
+        return reinterpret_cast<IUserdata*>(ptr);
+    }
 
 protected:
     bool pcall(lua_State* L, const char* method, int in, int out);
@@ -34,6 +49,16 @@ protected:
     static void constructHelper(lua_State* L, IUserdata* ptr);
     static void destroyHelper(lua_State* L, IUserdata* ptr) {}
     static void serializeHelper(lua_State* L, IUserdata* ptr, Serializer* serializer, ObjectRef* ref);
+
+    static void* testInterfaceBase(lua_State* L, int index, void* className);
+    static void* upcastHelper(IUserdata* ptr, void* className)//const char* className)
+    {
+        //if (strcmp(className, CLASS_NAME) == 0)
+        if (className == CLASS_NAME)
+            return ptr;
+
+        return nullptr;
+    }
 
 private:
     static int script_index(lua_State* L);
@@ -49,32 +74,28 @@ protected:
     //static const luaL_Reg METHODS[];
 
 public:
-    // TODO merge checkUserdata and checkInterface
-    // TODO add testUserdata method as well
+    static T* testUserdata(lua_State* L, int index)
+    {
+        return reinterpret_cast<T*>(luaL_testudata(L, index, T::CLASS_NAME));
+    }
+
     static T* checkUserdata(lua_State* L, int index)
     {
         return reinterpret_cast<T*>(luaL_checkudata(L, index, T::CLASS_NAME));
     }
 
+    static T* testInterface(lua_State* L, int index)
+    {
+        void* ptr = B::testInterfaceBase(L, index, const_cast<char*>(T::CLASS_NAME));
+        return reinterpret_cast<T*>(ptr);
+    }
+
     static T* checkInterface(lua_State* L, int index)
     {
-        bool valid = false;
-
-        // NOTE getmetafield pushes nothing when LUA_TNIL is returned
-        if (luaL_getmetafield(L, index, T::CLASS_NAME) != LUA_TNIL)
-        {
-            if (lua_type(L, -1) == LUA_TBOOLEAN && lua_toboolean(L, -1))
-                valid = true;
-
-            lua_pop(L, 1);
-        }
-
-        if (!valid)
-            luaL_error(L, "expected userdata with interface %s", T::CLASS_NAME);
-
-        // TODO should cast to IUserdata, then dynamic_cast down?
-        // TODO should reinterpret_cast to the real type, then static_cast up?
-        return reinterpret_cast<T*>(lua_touserdata(L, index));
+        void* ptr = B::testInterfaceBase(L, index, const_cast<char*>(T::CLASS_NAME));
+        // TODO generate a "expected "..T::CLASS_NAME.." subtype" literal
+        luaL_argcheck(L, ptr, index, T::CLASS_NAME);
+        return reinterpret_cast<T*>(ptr);
     }
 
     static void initMetatable(lua_State* L);
@@ -83,12 +104,6 @@ protected:
     static void initInterface(lua_State* L)
     {
         B::initInterface(L);
-
-        //B::setInterface(L, CLASS_NAME);
-        // Tag metatable as an instance of IUserdata
-        lua_pushstring(L, T::CLASS_NAME);
-        lua_pushboolean(L, true);
-        lua_rawset(L, -3);
 
         //B::setMethods(L, METHODS);//T::METHODS);
         lua_pushliteral(L, "methods");
@@ -110,7 +125,9 @@ protected:
     void destroy(lua_State* L) {} // child inherits no-op
     static void destroyHelper(lua_State* L, T* ptr)
     {
+        int top = lua_gettop(L);
         ptr->destroy(L); // if T::destroy is protected, requires friend class
+        assert(top == lua_gettop(L));
         B::destroyHelper(L, ptr);
     }
 
@@ -121,6 +138,16 @@ protected:
         int top = lua_gettop(L);
         ptr->serialize(L, serializer, ref); // if T::serialize is protected, requires friend class
         assert(top == lua_gettop(L));
+    }
+
+    static void* upcastHelper(T* ptr, void* className)//const char* className)
+    {
+        //if (strcmp(className, T::CLASS_NAME) == 0)
+        if (className == T::CLASS_NAME)
+            return ptr;
+
+        // Implicitly static_cast up to parent type
+        return B::upcastHelper(ptr, className);
     }
 
 private:
@@ -145,7 +172,9 @@ private:
 
     static int script_destroy(lua_State* L)
     {
-        T* ptr = checkUserdata(L, 1); // TODO assert instead?
+        // Validate userdata
+        T* ptr = testUserdata(L, 1);
+        assert(ptr != nullptr);
 
         destroyHelper(L, ptr);
         ptr->~T(); // non-virtual
@@ -156,7 +185,8 @@ private:
     static int script_serialize(lua_State* L)
     {
         // Validate userdata
-        T* ptr = checkUserdata(L, 1); // TODO assert instead?
+        T* ptr = testUserdata(L, 1);
+        assert(ptr != nullptr);
         Serializer* serializer = Serializer::checkSerializer(L, 2);
 
         // Get the object ref and update the constructor name
@@ -168,6 +198,21 @@ private:
         serializeHelper(L, ptr, serializer, ref);
 
         return 0;
+    }
+
+    static int script_upcast(lua_State* L)
+    {
+        // Validate userdata
+        T* ptr = testUserdata(L, 1);
+        assert(ptr != nullptr);
+        //const char* className = luaL_checkstring(L, 2);
+        void* className = lua_touserdata(L, 2);
+
+        void* cast = upcastHelper(ptr, className);
+        //printf("upcast %s(%p) to %s(%p)\n", T::CLASS_NAME, ptr, reinterpret_cast<const char*>(className), cast);
+        lua_pushlightuserdata(L, cast);
+
+        return 1;
     }
 };
 
@@ -208,6 +253,11 @@ void TUserdata<T, B>::initMetatable(lua_State* L)
     // Add serialization functionality to all userdata types
     lua_pushliteral(L, "serialize");
     lua_pushcfunction(L, script_serialize);
+    lua_rawset(L, -3);
+
+    // Add upcast converter needed for testInterface
+    lua_pushliteral(L, "upcast");
+    lua_pushcfunction(L, script_upcast);
     lua_rawset(L, -3);
 
     // Pop the metatable from the stack
