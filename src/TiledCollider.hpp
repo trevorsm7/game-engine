@@ -1,5 +1,4 @@
-#ifndef __TILEDCOLLIDER_HPP__
-#define __TILEDCOLLIDER_HPP__
+#pragma once
 
 #include "ICollider.hpp"
 
@@ -45,5 +44,3 @@ private:
         {nullptr, nullptr}
     };
 };
-
-#endif

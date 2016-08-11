@@ -1,6 +1,6 @@
 #include "SpriteGraphics.hpp"
-#include "Serializer.h"
-#include "IRenderer.h"
+#include "Serializer.hpp"
+#include "IRenderer.hpp"
 #include "Actor.hpp"
 
 #include <cassert>

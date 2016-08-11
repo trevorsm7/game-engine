@@ -1,4 +1,4 @@
-#include "Aabb.h"
+#include "Aabb.hpp"
 
 #include <limits>
 #include <algorithm>

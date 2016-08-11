@@ -1,8 +1,7 @@
-#ifndef __GLFWGAMEPAD_H__
-#define __GLFWGAMEPAD_H__
+#pragma once
 
-#include "Event.h"
-#include "Scene.h"
+#include "Event.hpp"
+#include "Scene.hpp"
 
 #include <vector>
 #include <map>
@@ -25,5 +24,3 @@ public:
 
     bool isConnected() const {return m_connected;}
 };
-
-#endif

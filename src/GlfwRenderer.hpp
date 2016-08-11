@@ -1,8 +1,7 @@
-#ifndef __GLFWRENDERER_H__
-#define __GLFWRENDERER_H__
+#pragma once
 
-#include "IRenderer.h"
-#include "ResourceManager.h"
+#include "IRenderer.hpp"
+#include "ResourceManager.hpp"
 
 #include <vector>
 
@@ -46,5 +45,3 @@ public:
 private:
     GLuint loadShader(const char* shaderCode, GLenum shaderType);
 };
-
-#endif

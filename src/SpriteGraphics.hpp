@@ -1,5 +1,4 @@
-#ifndef __SPRITEGRAPHICS_HPP__
-#define __SPRITEGRAPHICS_HPP__
+#pragma once
 
 #include "IGraphics.hpp"
 
@@ -28,5 +27,3 @@ private:
     static constexpr const char* const CLASS_NAME = "SpriteGraphics";
     static constexpr const luaL_Reg METHODS[] = {{nullptr, nullptr}};
 };
-
-#endif

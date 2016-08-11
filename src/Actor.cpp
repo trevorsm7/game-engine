@@ -1,11 +1,11 @@
 #include "Actor.hpp"
 #include "Canvas.hpp"
-#include "IRenderer.h"
+#include "IRenderer.hpp"
 #include "SpriteGraphics.hpp"
 #include "AabbCollider.hpp"
 #include "TiledGraphics.hpp"
 #include "TiledCollider.hpp"
-#include "Physics.h"
+#include "Physics.hpp"
 
 #include <limits>
 #include <cstdint>

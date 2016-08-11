@@ -1,7 +1,6 @@
-#ifndef __TRANSFORM_H__
-#define __TRANSFORM_H__
+#pragma once
 
-#include "Aabb.h"
+#include "Aabb.hpp"
 
 // TODO: this was done as a quick hack... needs lots of work
 // TODO: maybe even just make this a struct?
@@ -31,5 +30,3 @@ public:
     void addX(float x) {m_x += x;}
     void addY(float y) {m_y += y;}
 };
-
-#endif

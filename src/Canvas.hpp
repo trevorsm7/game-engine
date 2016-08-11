@@ -1,9 +1,8 @@
-#ifndef __CANVAS_HPP__
-#define __CANVAS_HPP__
+#pragma once
 
 #include "IUserdata.hpp"
-#include "Event.h"
-#include "ICamera.h"
+#include "Event.hpp"
+#include "ICamera.hpp"
 
 #include <vector>
 #include <memory>
@@ -78,5 +77,3 @@ private:
         {nullptr, nullptr}
     };
 };
-
-#endif

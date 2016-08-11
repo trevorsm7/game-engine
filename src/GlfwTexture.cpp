@@ -1,4 +1,4 @@
-#include "GlfwTexture.h"
+#include "GlfwTexture.hpp"
 
 #include <fstream>
 #include <cstdio>

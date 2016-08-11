@@ -1,6 +1,6 @@
 #include "TiledGraphics.hpp"
-#include "Serializer.h"
-#include "IRenderer.h"
+#include "Serializer.hpp"
+#include "IRenderer.hpp"
 #include "TileMap.hpp"
 #include "Actor.hpp"
 

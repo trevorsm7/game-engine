@@ -1,8 +1,7 @@
-#ifndef __ICOLLIDER_HPP__
-#define __ICOLLIDER_HPP__
+#pragma once
 
 #include "IUserdata.hpp"
-#include "Aabb.h"
+#include "Aabb.hpp"
 
 #include <cstdint>
 #include <cassert>
@@ -58,5 +57,3 @@ private:
         {nullptr, nullptr}
     };
 };
-
-#endif

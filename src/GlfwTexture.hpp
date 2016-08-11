@@ -1,8 +1,7 @@
-#ifndef __GLFWTEXTURE_H__
-#define __GLFWTEXTURE_H__
+#pragma once
 
-#include "IResource.h"
-#include "ResourceManager.h"
+#include "IResource.hpp"
+#include "ResourceManager.hpp"
 
 #define GLFW_INCLUDE_GLCOREARB
 #include "GLFW/glfw3.h"
@@ -36,5 +35,3 @@ private:
     static GlfwTexturePtr getPlaceholder();
     static GlfwTexturePtr m_placeholder;
 };
-
-#endif

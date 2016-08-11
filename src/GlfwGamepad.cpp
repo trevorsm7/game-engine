@@ -1,4 +1,4 @@
-#include "GlfwGamepad.h"
+#include "GlfwGamepad.hpp"
 
 #include <cstdio>
 

@@ -1,9 +1,8 @@
-#ifndef __SDLRENDERER_H__
-#define __SDLRENDERER_H__
+#pragma once
 
-#include "IRenderer.h"
-#include "SdlTexture.h"
-#include "ResourceManager.h"
+#include "IRenderer.hpp"
+#include "SdlTexture.hpp"
+#include "ResourceManager.hpp"
 
 #include <cstdint>
 #include <SDL2/SDL.h>
@@ -43,5 +42,3 @@ public:
     void popModelTransform() override {}
     void popCameraTransform() override {}
 };
-
-#endif

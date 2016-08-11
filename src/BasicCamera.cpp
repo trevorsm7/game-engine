@@ -1,5 +1,5 @@
-#include "BasicCamera.h"
-#include "IRenderer.h"
+#include "BasicCamera.hpp"
+#include "IRenderer.hpp"
 
 void BasicCamera::resize(int width, int height)
 {

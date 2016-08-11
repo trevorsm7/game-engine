@@ -1,5 +1,4 @@
-#ifndef __IRESOURCE_H__
-#define __IRESOURCE_H__
+#pragma once
 
 #include <memory>
 
@@ -13,5 +12,3 @@ public:
 };
 
 typedef std::shared_ptr<IResource> IResourcePtr;
-
-#endif

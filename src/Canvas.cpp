@@ -1,9 +1,9 @@
 #include "Canvas.hpp"
-#include "Scene.h"
+#include "Scene.hpp"
 #include "Actor.hpp"
-#include "BasicCamera.h"
+#include "BasicCamera.hpp"
 #include "ICollider.hpp"
-#include "Physics.h"
+#include "Physics.hpp"
 
 #include <algorithm>
 #include <limits>

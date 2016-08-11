@@ -1,5 +1,4 @@
-#ifndef __TILEDGRAPHICS_HPP__
-#define __TILEDGRAPHICS_HPP__
+#pragma once
 
 #include "IGraphics.hpp"
 
@@ -41,5 +40,3 @@ private:
         {nullptr, nullptr}
     };
 };
-
-#endif

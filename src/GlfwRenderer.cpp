@@ -1,5 +1,5 @@
-#include "GlfwRenderer.h"
-#include "GlfwTexture.h"
+#include "GlfwRenderer.hpp"
+#include "GlfwTexture.hpp"
 #include "TileMap.hpp"
 
 #include <iostream>

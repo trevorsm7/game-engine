@@ -1,7 +1,6 @@
-#ifndef __RESOURCEMANAGER_H__
-#define __RESOURCEMANAGER_H__
+#pragma once
 
-#include "IResource.h"
+#include "IResource.hpp"
 
 #include <string>
 #include <vector>
@@ -20,5 +19,3 @@ public:
     bool loadRawData(const std::string& name, std::vector<char>& data);
     void bindResource(const std::string& name, IResourcePtr resource) {m_ptrMap[name] = resource;}
 };
-
-#endif

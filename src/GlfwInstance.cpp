@@ -1,7 +1,7 @@
-#include "GlfwInstance.h"
-#include "GlfwRenderer.h"
-#include "GlfwTexture.h"
-#include "Event.h"
+#include "GlfwInstance.hpp"
+#include "GlfwRenderer.hpp"
+#include "GlfwTexture.hpp"
+#include "Event.hpp"
 
 #include <cmath>
 #include <cstdio>

@@ -1,10 +1,9 @@
-#ifndef __GLFWINSTANCE_H__
-#define __GLFWINSTANCE_H__
+#pragma once
 
-#include "IRenderer.h"
-#include "ResourceManager.h"
-#include "Scene.h"
-#include "GlfwGamepad.h"
+#include "IRenderer.hpp"
+#include "ResourceManager.hpp"
+#include "Scene.hpp"
+#include "GlfwGamepad.hpp"
 
 #include <map>
 #include <memory>
@@ -44,5 +43,3 @@ private:
     static void callback_mouse_button(GLFWwindow* window, int button, int action, int mods);
     static void callback_window(GLFWwindow* window, int width, int height);
 };
-
-#endif

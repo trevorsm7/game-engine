@@ -1,8 +1,7 @@
-#ifndef __AABBCOLLIDER_HPP__
-#define __AABBCOLLIDER_HPP__
+#pragma once
 
 #include "ICollider.hpp"
-#include "Aabb.h"
+#include "Aabb.hpp"
 
 class AabbCollider : public TUserdata<AabbCollider, ICollider>
 {
@@ -29,5 +28,3 @@ private:
     static constexpr const char* const CLASS_NAME = "AabbCollider";
     static constexpr const luaL_Reg METHODS[] = {{nullptr, nullptr}};
 };
-
-#endif

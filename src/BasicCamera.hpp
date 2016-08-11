@@ -1,8 +1,7 @@
-#ifndef __BASICCAMERA_H__
-#define __BASICCAMERA_H__
+#pragma once
 
-#include "ICamera.h"
-#include "Transform.h"
+#include "ICamera.hpp"
+#include "Transform.hpp"
 
 class BasicCamera : public ICamera
 {
@@ -25,5 +24,3 @@ public:
 
     void mouseToWorld(const MouseEvent& event, float& x, float& y) const override;
 };
-
-#endif

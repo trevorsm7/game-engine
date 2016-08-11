@@ -1,6 +1,6 @@
 #include "TileMap.hpp"
-#include "Serializer.h"
-#include "ResourceManager.h"
+#include "Serializer.hpp"
+#include "ResourceManager.hpp"
 
 //#include <iterator>
 #include <algorithm>

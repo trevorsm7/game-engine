@@ -1,5 +1,5 @@
-#include "SDLInstance.h"
-#include "SdlRenderer.h"
+#include "SDLInstance.hpp"
+#include "SdlRenderer.hpp"
 
 #include <cstdio>
 #include <OpenGL/gl3.h>

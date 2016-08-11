@@ -1,5 +1,4 @@
-#ifndef __IGRAPHICS_HPP__
-#define __IGRAPHICS_HPP__
+#pragma once
 
 #include "IUserdata.hpp"
 
@@ -49,5 +48,3 @@ private:
         {nullptr, nullptr}
     };
 };
-
-#endif

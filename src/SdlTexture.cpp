@@ -1,4 +1,4 @@
-#include "SdlTexture.h"
+#include "SdlTexture.hpp"
 
 SdlTexture::~SdlTexture()
 {

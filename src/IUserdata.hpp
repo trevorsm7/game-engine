@@ -1,7 +1,6 @@
-#ifndef __IUSERDATA_HPP__
-#define __IUSERDATA_HPP__
+#pragma once
 
-#include "Serializer.h"
+#include "Serializer.hpp"
 
 #include <new>
 #include <cassert>
@@ -267,5 +266,3 @@ void TUserdata<T, B>::initMetatable(lua_State* L)
     lua_pushcfunction(L, script_create);
     lua_setglobal(L, T::CLASS_NAME);
 }
-
-#endif

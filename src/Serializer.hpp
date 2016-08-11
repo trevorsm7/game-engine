@@ -1,5 +1,4 @@
-#ifndef __SERIALIZER_H__
-#define __SERIALIZER_H__
+#pragma once
 
 #include "lua.hpp"
 #include <map>
@@ -98,5 +97,3 @@ public:
         return reinterpret_cast<Serializer*>(lua_touserdata(L, index));
     }
 };
-
-#endif

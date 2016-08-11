@@ -1,7 +1,7 @@
-#include "Scene.h"
+#include "Scene.hpp"
 #include "Canvas.hpp"
 #include "Actor.hpp"
-#include "IRenderer.h"
+#include "IRenderer.hpp"
 
 #include "TileMap.hpp"
 #include "SpriteGraphics.hpp"

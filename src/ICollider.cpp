@@ -1,5 +1,5 @@
 #include "ICollider.hpp"
-#include "Serializer.h"
+#include "Serializer.hpp"
 
 const luaL_Reg ICollider::METHODS[];
 

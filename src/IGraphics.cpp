@@ -1,5 +1,5 @@
 #include "IGraphics.hpp"
-#include "Serializer.h"
+#include "Serializer.hpp"
 
 const luaL_Reg IGraphics::METHODS[];
 

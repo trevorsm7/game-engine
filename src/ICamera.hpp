@@ -1,7 +1,6 @@
-#ifndef __ICAMERA_H__
-#define __ICAMERA_H__
+#pragma once
 
-#include "Event.h"
+#include "Event.hpp"
 
 class IRenderer;
 
@@ -19,5 +18,3 @@ public:
 
     virtual void mouseToWorld(const MouseEvent& event, float& x, float& y) const = 0;
 };
-
-#endif

@@ -1,5 +1,5 @@
 #include "TiledCollider.hpp"
-#include "Serializer.h"
+#include "Serializer.hpp"
 #include "Actor.hpp"
 #include "TileMap.hpp"
 

@@ -1,5 +1,4 @@
-#ifndef __TILEMAP_HPP__
-#define __TILEMAP_HPP__
+#pragma once
 
 #include "IUserdata.hpp"
 
@@ -92,5 +91,3 @@ private:
         {nullptr, nullptr}
     };
 };
-
-#endif

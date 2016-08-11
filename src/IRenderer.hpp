@@ -1,7 +1,6 @@
-#ifndef __IRENDERER_H__
-#define __IRENDERER_H__
+#pragma once
 
-#include "Transform.h"
+#include "Transform.hpp"
 
 #include <string>
 
@@ -26,5 +25,3 @@ public:
     virtual void popModelTransform() = 0;
     virtual void popCameraTransform() = 0;
 };
-
-#endif

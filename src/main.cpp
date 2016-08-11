@@ -1,6 +1,6 @@
-#include "GlfwInstance.h"
-#include "SDLInstance.h"
-#include "Scene.h"
+#include "GlfwInstance.hpp"
+#include "SDLInstance.hpp"
+#include "Scene.hpp"
 
 #include <cstdio>
 #include <string>

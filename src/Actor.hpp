@@ -1,9 +1,8 @@
-#ifndef __ACTOR_HPP__
-#define __ACTOR_HPP__
+#pragma once
 
 #include "IUserdata.hpp"
-#include "Physics.h"
-#include "Transform.h"
+#include "Physics.hpp"
+#include "Transform.hpp"
 
 #include <memory>
 #include "lua.hpp"
@@ -97,5 +96,3 @@ private:
         {nullptr, nullptr}
     };
 };
-
-#endif

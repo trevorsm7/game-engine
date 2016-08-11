@@ -1,5 +1,5 @@
-#include "SdlRenderer.h"
-#include "SdlTexture.h"
+#include "SdlRenderer.hpp"
+#include "SdlTexture.hpp"
 #include "TileMap.hpp"
 
 bool SdlRenderer::init()

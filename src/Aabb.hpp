@@ -1,5 +1,4 @@
-#ifndef __AABB_H__
-#define __AABB_H__
+#pragma once
 
 class Aabb
 {
@@ -30,5 +29,3 @@ public:
 
     void addOffset(float x, float y) {m_bounds.l += x; m_bounds.r += x; m_bounds.b += y; m_bounds.t += y;}
 };
-
-#endif

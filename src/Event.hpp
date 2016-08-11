@@ -1,5 +1,4 @@
-#ifndef __EVENT_H__
-#define __EVENT_H__
+#pragma once
 
 struct MouseEvent
 {
@@ -13,5 +12,3 @@ struct ControlEvent
     const char* name;
     bool down;
 };
-
-#endif

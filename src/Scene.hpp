@@ -1,8 +1,7 @@
-#ifndef __SCENE_H__
-#define __SCENE_H__
+#pragma once
 
-#include "Event.h"
-#include "ResourceManager.h"
+#include "Event.hpp"
+#include "ResourceManager.hpp"
 
 #include <vector>
 #include <memory>
@@ -51,5 +50,3 @@ public:
     static int scene_setPortraitHint(lua_State* L);
     static int scene_quit(lua_State* L);
 };
-
-#endif

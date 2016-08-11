@@ -1,9 +1,8 @@
-#ifndef __SDLINSTANCE_H__
-#define __SDLINSTANCE_H__
+#pragma once
 
-#include "IRenderer.h"
-#include "ResourceManager.h"
-#include "Scene.h"
+#include "IRenderer.hpp"
+#include "ResourceManager.hpp"
+#include "Scene.hpp"
 
 #include <memory>
 #include <SDL2/SDL.h>
@@ -40,5 +39,3 @@ private:
     void handleGamepadButtonEvent(SDL_ControllerButtonEvent& e);
     void handleGamepadAxisEvent(SDL_ControllerAxisEvent& e);
 };
-
-#endif

@@ -1,8 +1,7 @@
-#ifndef __SDLTEXTURE_H__
-#define __SDLTEXTURE_H__
+#pragma once
 
-#include "IResource.h"
-#include "ResourceManager.h"
+#include "IResource.hpp"
+#include "ResourceManager.hpp"
 
 #include <SDL2/SDL.h>
 
@@ -35,5 +34,3 @@ private:
     static SdlTexturePtr getPlaceholder(SDL_Renderer* renderer);
     static SdlTexturePtr m_placeholder;
 };
-
-#endif

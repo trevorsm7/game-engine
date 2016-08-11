@@ -1,5 +1,4 @@
-#ifndef __PHYSICS_H__
-#define __PHYSICS_H__
+#pragma once
 
 #include <cstdint>
 
@@ -37,5 +36,3 @@ public:
     void addAccX(float accX) {m_acc.x += accX;}
     void addAccY(float accY) {m_acc.y += accY;}
 };
-
-#endif
