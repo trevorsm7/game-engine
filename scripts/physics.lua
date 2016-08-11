@@ -105,7 +105,9 @@ reset[3] = function(canvas)
             addPhysicsBox(canvas, col, row, 1, .5, -10)
         end
     end
-    addPhysicsBox(canvas, -10, 1, 100, .5):setVelocity(5, 0):setScale(4, 4)
+    local box = addPhysicsBox(canvas, -10, 1, 100, .5)
+    box:setVelocity(5, 0)
+    box:setScale(4, 4)
 end
 
 reset[3](canvases[3])
@@ -117,7 +119,8 @@ canvases[4]:setPaused(true)
 
 reset[4] = function(canvas)
     local speed = 4
-    local center = addPhysicsBox(canvas, -1, 1, 1):setVelocity(speed, 0)
+    local center = addPhysicsBox(canvas, -1, 1, 1)
+    center:setVelocity(speed, 0)
     --canvas:setCenter(center)
     --[[function center:update()
         canvas:setCenter(self)
@@ -151,16 +154,21 @@ reset[4] = function(canvas)
     addPhysicsBox(canvas, -2, -1, 1)
     addStaticBox(canvas, -2-5, -1)
 
-    addPhysicsBox(canvas, -2, 1, 1):setVelocity(-speed, 0)
+    local box
+    box = addPhysicsBox(canvas, -2, 1, 1)
+    box:setVelocity(-speed, 0)
     addStaticBox(canvas, -2-5, 1)
 
-    addPhysicsBox(canvas, 1, 2+2, 1):setVelocity(0, -speed)
+    box = addPhysicsBox(canvas, 1, 2+2, 1)
+    box:setVelocity(0, -speed)
     addStaticBox(canvas, 1, 2+3)
 
-    addPhysicsBox(canvas, 2+4, -1, 1):setVelocity(-speed, 0)
+    box = addPhysicsBox(canvas, 2+4, -1, 1)
+    box:setVelocity(-speed, 0)
     addStaticBox(canvas, 2+5, -1)
 
-    addPhysicsBox(canvas, -1, -2-6, 1):setVelocity(0, speed)
+    box = addPhysicsBox(canvas, -1, -2-6, 1)
+    box:setVelocity(0, speed)
     addStaticBox(canvas, -1, -2-7)
 end
 
@@ -172,26 +180,35 @@ canvases[5]:setVisible(false)
 canvases[5]:setPaused(true)
 
 reset[5] = function(canvas)
+    local box
     addPhysicsBox(canvas, -2, 2, 1)
 
     addStaticBox(canvas, -7, 2)
-    addPhysicsBox(canvas, -3, 2, 2):setVelocity(3, 0)
-    addPhysicsBox(canvas, 3-1, 2, 2):setVelocity(1, 0)
+    box = addPhysicsBox(canvas, -3, 2, 2)
+    box:setVelocity(3, 0)
+    box = addPhysicsBox(canvas, 3-1, 2, 2)
+    box:setVelocity(1, 0)
     addStaticBox(canvas, 7, 2)
 
     addStaticBox(canvas, 2, 7)
-    addPhysicsBox(canvas, 2, 3+3, 2):setVelocity(0, -3)
-    addPhysicsBox(canvas, 2, -3+2, 2):setVelocity(0, -1)
+    box = addPhysicsBox(canvas, 2, 3+3, 2)
+    box:setVelocity(0, -3)
+    box = addPhysicsBox(canvas, 2, -3+2, 2)
+    box:setVelocity(0, -1)
     addStaticBox(canvas, 2, -7)
 
     addStaticBox(canvas, 10, -2)
-    addPhysicsBox(canvas, 3+6, -2, 2):setVelocity(-3, 0)
-    addPhysicsBox(canvas, -3+3, -2, 2):setVelocity(-1, 0)
+    box = addPhysicsBox(canvas, 3+6, -2, 2)
+    box:setVelocity(-3, 0)
+    box = addPhysicsBox(canvas, -3+3, -2, 2)
+    box:setVelocity(-1, 0)
     addStaticBox(canvas, -10, -2)
 
     addStaticBox(canvas, -2, -13)
-    addPhysicsBox(canvas, -2, -3-9, 2):setVelocity(0, 3)
-    addPhysicsBox(canvas, -2, 3-4, 2):setVelocity(0, 1)
+    box = addPhysicsBox(canvas, -2, -3-9, 2)
+    box:setVelocity(0, 3)
+    box = addPhysicsBox(canvas, -2, 3-4, 2)
+    box:setVelocity(0, 1)
     addStaticBox(canvas, -2, 13)
 end
 

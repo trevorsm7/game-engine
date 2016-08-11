@@ -230,7 +230,7 @@ void GlfwInstance::callback_mouse_button(GLFWwindow* window, int button, int act
 
             MouseEvent event;
             event.x = floor(x);
-            event.y = height - floor(y) - 1;
+            event.y = floor(y);
             event.w = width;
             event.h = height;
             event.down = (action == GLFW_PRESS);

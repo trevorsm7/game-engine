@@ -23,11 +23,10 @@ bool TiledCollider::testCollision(float x, float y) const
     if (x < 0.f || x >= transform.getW() || y < 0.f || y >= transform.getH())
         return false;
 
-    // Map to tile map coordinates; y is inverted
+    // Map to tile map coordinates
     // NOTE don't need floor() since x, y guranteed to be non-negative
     const int tileX = int(x * m_tilemap->getCols() / transform.getW());
-    //const int tileY = int((transform.getH() - y) * tileMap->getRows() / transform.getH());
-    const int tileY = (m_tilemap->getRows() - 1) - int(y * m_tilemap->getRows() / transform.getH());
+    const int tileY = int(y * m_tilemap->getRows() / transform.getH());
 
     // Get the collision flag at the tile map index
     int index = m_tilemap->getIndex(tileX, tileY);
@@ -45,18 +44,18 @@ bool TiledCollider::testCollision(const Aabb& aabb) const
     // Translate AABB relative to transform; reject if no overlap
     const Transform& transform = m_actor->getTransform();
     const float left = aabb.getLeft() - transform.getX();
+    const float top = aabb.getTop() - transform.getY();
     const float right = aabb.getRight() - transform.getX();
     const float bottom = aabb.getBottom() - transform.getY();
-    const float top = aabb.getTop() - transform.getY();
-    if (right <= 0.f || top <= 0.f || left >= transform.getW() || bottom >= transform.getH())
+    if (right <= 0.f || bottom <= 0.f || left >= transform.getW() || top >= transform.getH())
         return false;
 
-    // Map to tile map coordinates; y is inverted
-    // NOTE using ceil for right/top since these are exclusive ranges
+    // Map to tile map coordinates
+    // NOTE using ceil for right/bottom since these are exclusive ranges
     const int tileLeft = std::max<int>(0, floor(left * m_tilemap->getCols() / transform.getW()));
     const int tileRight = std::min<int>(m_tilemap->getCols(), ceil(right * m_tilemap->getCols() / transform.getW()));
-    const int tileBottom = m_tilemap->getRows() - std::max<int>(0, floor(bottom * m_tilemap->getRows() / transform.getH()));
-    const int tileTop = m_tilemap->getRows() - std::min<int>(m_tilemap->getRows(), ceil(top * m_tilemap->getRows() / transform.getH()));
+    const int tileTop = std::max<int>(0, floor(top * m_tilemap->getRows() / transform.getH()));
+    const int tileBottom = std::min<int>(m_tilemap->getRows(), ceil(bottom * m_tilemap->getRows() / transform.getH()));
 
     TileIndex* tileIndex = m_tilemap->getTileIndex();
 
@@ -110,12 +109,12 @@ bool TiledCollider::testCollision(float deltaX, float deltaY, const ICollider* o
             if (!tileIndex->isCollidable(index))
                 continue;
 
-            // If collidable, compute AABB for tile; y is inverted
+            // If collidable, compute AABB for tile
             const float left = transform.getX() + (x * transform.getW() / cols) + deltaX;
             const float right = transform.getX() + ((x + 1) * transform.getW() / cols) + deltaX;
-            const float top = transform.getY() + ((rows - y) * transform.getH() / rows) + deltaY;
-            const float bottom = transform.getY() + ((rows - y - 1) * transform.getH() / rows) + deltaY;
-            const Aabb tileAabb(left, bottom, right, top);
+            const float top = transform.getY() + (y * transform.getH() / rows) + deltaY;
+            const float bottom = transform.getY() + ((y + 1) * transform.getH() / rows) + deltaY;
+            const Aabb tileAabb(left, top, right, bottom);
 
             // Test the tile AABB against the collider
             if (other->testCollision(tileAabb))

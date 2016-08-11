@@ -256,8 +256,8 @@ local game = Canvas({20, 15}, true)
 local player = newPlayer(game, 1, 1)
 registerControl("left", player:moveFactory{-1, 0})
 registerControl("right", player:moveFactory{1, 0})
-registerControl("down", player:moveFactory{0, -1})
-registerControl("up", player:moveFactory{0, 1})
+registerControl("down", player:moveFactory{0, 1})
+registerControl("up", player:moveFactory{0, -1})
 registerControl("action", player:bombFactory())
 
 for x = 0, 19 do

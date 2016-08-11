@@ -3,20 +3,20 @@
 
 class Aabb
 {
-    struct {float l, b, r, t;} m_bounds;
+    struct {float l, t, r, b;} m_bounds;
 
 public:
-    Aabb(float l, float b, float r, float t): m_bounds{l, b, r, t} {}
+    Aabb(float l, float t, float r, float b): m_bounds{l, t, r, b} {}
 
     bool isContaining(float x, float y) const
     {
-        return m_bounds.r > x && m_bounds.l <= x && m_bounds.t > y && m_bounds.b <= y;
+        return m_bounds.r > x && m_bounds.l <= x && m_bounds.b > y && m_bounds.t <= y;
     }
 
     bool isOverlapping(const Aabb& other) const
     {
         return m_bounds.r > other.m_bounds.l && m_bounds.l < other.m_bounds.r
-            && m_bounds.t > other.m_bounds.b && m_bounds.b < other.m_bounds.t;
+            && m_bounds.b > other.m_bounds.t && m_bounds.t < other.m_bounds.b;
     }
 
     // NOTE here we assume that we are static and the other AABB is moving

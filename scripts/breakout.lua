@@ -5,7 +5,7 @@ game = Canvas({20, 15}, true)
 leftWall = Actor
 {
     collider = AabbCollider{group = 4, mask = 3},
-    position = {-1, -1},
+    position = {-1, 0},
     scale = {1, 16}
 }
 game:addActor(leftWall)
@@ -13,7 +13,7 @@ game:addActor(leftWall)
 rightWall = Actor
 {
     collider = AabbCollider{group = 4, mask = 3},
-    position = {20, -1},
+    position = {20, 0},
     scale = {1, 16}
 }
 game:addActor(rightWall)
@@ -21,7 +21,7 @@ game:addActor(rightWall)
 topWall = Actor
 {
     collider = AabbCollider{group = 4, mask = 1},
-    position = {0, 15},
+    position = {0, -1},
     scale = {20, 1}
 }
 game:addActor(topWall)
@@ -29,7 +29,7 @@ game:addActor(topWall)
 bottomWall = Actor
 {
     collider = AabbCollider{group = 4, mask = 1},
-    position = {0, -2},
+    position = {0, 16},
     scale = {20, 1}
 }
 game:addActor(bottomWall)
@@ -75,7 +75,7 @@ game:addActor(ball)
 function ball:update()
     if self.attached then
         local x, y = paddle:getPosition()
-        self:setPosition(x + 1.5, y + 1)
+        self:setPosition(x + 1.5, y - 1)
         self:setVelocity(0, 0)
     end
 end
@@ -123,7 +123,7 @@ end
 
 function resetGame()
     -- reset paddle position
-    paddle:setPosition(8, 0)
+    paddle:setPosition(8, 14)
     paddle.vel = 0
     paddle:update()
 
@@ -140,7 +140,7 @@ function resetGame()
     -- populate bricks
     for row = 0, 3 do
         for col = 0, 8 do
-            addBrick(2 * col + 1, row + 10, genColor(col, row, 8, 3))
+            addBrick(2 * col + 1, row + 1, genColor(col, row, 8, 3))
         end
     end
 end
@@ -157,7 +157,7 @@ end
 function launchBall()
     if ball.attached then
         local velx = paddle:getVelocity()
-        ball:setVelocity(velx, 6)
+        ball:setVelocity(velx, -6)
         ball.attached = false
     end
 end

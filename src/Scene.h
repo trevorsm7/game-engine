@@ -26,7 +26,7 @@ class Scene
     bool m_isPortraitHint;
 
 public:
-    Scene(ResourceManager& resources): m_resources(resources), m_L(nullptr) {}
+    Scene(ResourceManager& resources): m_resources(resources), m_L(nullptr), m_isPortraitHint(false) {}
     ~Scene() {if (m_L) lua_close(m_L);} // TODO remove Canvas references; will be deleted anyway when closing Lua state, but would be nice to do?
 
     bool load(const char *filename);

@@ -307,7 +307,7 @@ void SdlInstance::handleMouseButtonEvent(SDL_MouseButtonEvent& e)
     // Map mouse click to event structure
     MouseEvent event;
     event.x = e.x;
-    event.y = height - e.y - 1; // move origin to lower-left
+    event.y = e.y;
     event.w = width;
     event.h = height;
     event.down = (e.state == SDL_PRESSED);

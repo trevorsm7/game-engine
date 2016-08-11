@@ -33,7 +33,7 @@ tiles = Actor
 {
     graphics = TiledGraphics{tilemap=map},
     collider = TiledCollider{tilemap=map},
-    position = {-1, -1},
+    position = {0, 0},
     scale = {7, 7} -- map:getSize()
 }
 game:addActor(tiles)
@@ -64,7 +64,7 @@ player = Actor
 {
     graphics = TiledGraphics{tilemap=heropad},
     collider = TiledCollider{tilemap=heropad},
-    position = {-2, -2},
+    position = {1, 1},
     scale = {3, 3} -- heropad:getSize()
 }
 game:addActor(player)
@@ -100,14 +100,14 @@ end
 
 registerControl("left", player:keyDown(player.move, {-1, 0}))
 registerControl("right", player:keyDown(player.move, {1, 0}))
-registerControl("down", player:keyDown(player.move, {0, -1}))
-registerControl("up", player:keyDown(player.move, {0, 1}))
+registerControl("down", player:keyDown(player.move, {0, 1}))
+registerControl("up", player:keyDown(player.move, {0, -1}))
 
 nerd = Actor
 {
     graphics = SpriteGraphics{sprite="nerd.tga"},
     collider = AabbCollider{},
-    position = {4, 4},
+    position = {5, 5},
     members = {test = "hello", val = 5}
 }
 game:addActor(nerd)

@@ -16,7 +16,7 @@ function player:update(delta)
     if not canvas then return end
 
     local x, y = self:getPosition()
-    if x < 0 or y < -10 then
+    if x < 0 or y > 10 then
         print("u is ded")
         canvas:removeActor(self)
     end
@@ -25,18 +25,18 @@ function player:update(delta)
     camY = camY + (y - camY) * delta
     canvas:setCenter(10, camY)
 
-    self:addAcceleration(0, -10)
+    self:addAcceleration(0, 10)
 end
 function player:jump()
     --TODO reset jump counter when we hit top of a platform instead
-    if self:testCollision(0, -.01) then
+    if self:testCollision(0, .01) then
         self.canDoubleJump = true
         local velX = self:getVelocity()
-        self:setVelocity(velX, 8)
+        self:setVelocity(velX, -8)
     elseif self.canDoubleJump then
         self.canDoubleJump = false
         local velX = self:getVelocity()
-        self:setVelocity(velX, 8)
+        self:setVelocity(velX, -8)
     end
 end
 
@@ -61,7 +61,7 @@ function addPlatform(canvas, x, y, w, h)
     return box
 end
 
-addPlatform(game, 0, -2, 10, 1)
+addPlatform(game, 0, 2, 10, 1)
 addPlatform(game, 15, 0, 10, 1)
 
 

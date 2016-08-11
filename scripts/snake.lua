@@ -191,14 +191,14 @@ local function resetGame(game)
     local player1 = newSnake(game, "Red", {1, 7}, {1, 0}, red)
     registerControl("a", player1:moveFactory{-1, 0})
     registerControl("d", player1:moveFactory{1, 0})
-    registerControl("s", player1:moveFactory{0, -1})
-    registerControl("w", player1:moveFactory{0, 1})
+    registerControl("s", player1:moveFactory{0, 1})
+    registerControl("w", player1:moveFactory{0, -1})
 
     local player2 = newSnake(game, "Blue", {18, 7}, {-1, 0}, blue)
     registerControl("left", player2:moveFactory{-1, 0})
     registerControl("right", player2:moveFactory{1, 0})
-    registerControl("down", player2:moveFactory{0, -1})
-    registerControl("up", player2:moveFactory{0, 1})
+    registerControl("down", player2:moveFactory{0, 1})
+    registerControl("up", player2:moveFactory{0, -1})
 
     newApple(game)
     newApple(game)
@@ -219,7 +219,7 @@ menu:setVisible(false)
 local continue = Actor
 {
     graphics = SpriteGraphics{sprite="continue.tga"},
-    position = {-5, 2},
+    position = {-5, -4},
     scale = {10, 2}
 }
 menu:addActor(continue)
@@ -250,7 +250,7 @@ end
 local endGame = Actor
 {
     graphics = SpriteGraphics{sprite="quit.tga"},
-    position = {-5, -4},
+    position = {-5, 2},
     scale = {10, 2}
 }
 menu:addActor(endGame)

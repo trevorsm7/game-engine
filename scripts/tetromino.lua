@@ -288,7 +288,7 @@ game:addActor(rightWall)
 local bottomWall = Actor
 {
     collider = AabbCollider{},
-    position = {0, -1},
+    position = {0, screenSize[2]},
     scale = {screenSize[1], 1}
 }
 game:addActor(bottomWall)
@@ -333,7 +333,7 @@ current = Actor
 
             local w, h = tetromino:getSize()
             current:setScale(tetromino:getSize())
-            current:setPosition(math.floor((screenSize[1] - w) / 2), math.floor(screenSize[2] - 1))
+            current:setPosition(math.floor((screenSize[1] - w) / 2), 0)
 
             next = getNext()
         end,
@@ -379,7 +379,7 @@ current = Actor
             end
 
             if time > fallPeriod then
-                dy = -1
+                dy = 1
                 time = math.fmod(time, fallPeriod)
             end
 
@@ -409,14 +409,14 @@ current = Actor
             local tetromino = self:getGraphics():getTileMap()
             local w, h = tetromino:getSize()--self:getScale()?
             local sw, sh = screenSize[1], screenSize[2]
-            local yoff = (sh - h) - y
+            --local yoff = (sh - h) - y
 
             -- copy current tetromino onto screen
             for yi = 0, w-1 do
                 for xi = 0, w-1 do
                     local tile = tetromino:getTile(xi, yi)
                     if tile > 0 then
-                        local sx, sy = xi + x, yi + yoff
+                        local sx, sy = xi + x, yi + y--yoff
                         if sx >= 0 and sx < sw and sy >= 0 and sy < sh then
                             screenMap:setTiles(sx, sy, 1, 1, tile)
                         end

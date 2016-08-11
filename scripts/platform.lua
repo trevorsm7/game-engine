@@ -2,7 +2,7 @@ red = {1, 0, 0}
 white = {1, 1, 1}
 
 game = Canvas({20, 20}, false)
-game:setCenter(0.5, 5)
+game:setCenter(0.5, -5)
 
 player = Actor
 {
@@ -19,10 +19,10 @@ function player:collided(hit)
 end
 
 function player:update(delta)
-    self:addAcceleration(0, -10)
+    self:addAcceleration(0, 10)
 
     local velX, velY = self:getVelocity()
-    if self:testCollision(0, -.01) then
+    if self:testCollision(0, .01) then
         self:setVelocity(self.velX, velY)
     elseif self.velX ~= 0 then
         self:setVelocity(self.velX / 2, velY)
@@ -45,7 +45,7 @@ function addBox(x, y)
 end
 
 function updateBox(self, delta)
-    self:addAcceleration(0, -10)
+    self:addAcceleration(0, 10)
 end
 
 function addMovingBox(x, y)
@@ -67,40 +67,40 @@ end
 do
     local col = 0
     for row = 2, 5 do
-        addMovingBox(col, row)
+        addMovingBox(col, -row)
     end
 end
 
-addBox(-5, -1)
-addBox(-4, -1)
-addBox(-3, -1)
-addBox(-2, -1)
-addBox(-1, -1)
-addBox(0, -1)
-addBox(1, -1)
-addBox(2, -1)
-addBox(3, -1)
-addBox(4, -1)
-addBox(5, -1)
+addBox(-5, 1)
+addBox(-4, 1)
+addBox(-3, 1)
+addBox(-2, 1)
+addBox(-1, 1)
+addBox(0, 1)
+addBox(1, 1)
+addBox(2, 1)
+addBox(3, 1)
+addBox(4, 1)
+addBox(5, 1)
 
 addBox(-5, 0)
-addBox(-5, 1)
-addBox(-5, 2)
-addBox(5, 2)
-addBox(5, 1)
+addBox(-5, -1)
+addBox(-5, -2)
+addBox(5, -2)
+addBox(5, -1)
 addBox(5, 0)
 
---addBox(0, 4)
---addBox(0, 5)
---addBox(0, 6)
+--addBox(0, -4)
+--addBox(0, -5)
+--addBox(0, -6)
 
-addBox(-3, 8)
-addBox(-3, 9)
-addBox(-3, 10)
+addBox(-3, -8)
+addBox(-3, -9)
+addBox(-3, -10)
 
-addBox(3, 10)
-addBox(3, 9)
-addBox(3, 8)
+addBox(3, -10)
+addBox(3, -9)
+addBox(3, -8)
 
 function resetBoxes()
     for i, box in ipairs(allBoxes) do
@@ -112,7 +112,7 @@ function jump(velY)
     -- TODO PlatformCollider
     -- NOTE switched signs so you kick away from the wall
     local wall = player.velX > 0 and -.1 or player.velX < 0 and .1 or 0
-    if player:testCollision(wall, -.01) then
+    if player:testCollision(wall, .01) then
         resetBoxes()
         local velX = player:getVelocity()
         player:setVelocity(velX, velY)
@@ -151,6 +151,6 @@ end
 -- IDEA if we continue to use registerControl this way, have it take a 3rd arg to pass to the callback
 registerControl("right", keyAction(moveBox, 5))
 registerControl("left", keyAction(moveBox, -5))
-registerControl("action", keyDown(jump, 8))
-registerControl("up", keyDown(jump, 8))
-registerControl("down", keyDown(warpBox, {0, -0.1}))
+registerControl("action", keyDown(jump, -8))
+registerControl("up", keyDown(jump, -8))
+registerControl("down", keyDown(warpBox, {0, 0.1}))

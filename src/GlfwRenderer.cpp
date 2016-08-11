@@ -22,10 +22,11 @@ bool GlfwRenderer::init()
     "uniform vec2 u_textureScale;\n"
     "uniform vec2 u_textureOffset;\n"
     "layout(location = 0) in vec2 a_vertex;\n"
+    "layout(location = 1) in vec2 a_texCoord;\n"
     "out vec2 v_texCoord;\n"
     "void main() {\n"
-    "v_texCoord = a_vertex * u_textureScale + u_textureOffset;\n"
-    "gl_Position = vec4((a_vertex * u_modelScale + u_modelOffset - u_cameraOffset) * 2 / u_cameraScale - vec2(1, 1), 0.0, 1.0);\n"
+    "v_texCoord = (a_vertex * u_textureScale + u_textureOffset) * vec2(1, -1) + vec2(0, 1);\n"
+    "gl_Position = vec4((a_vertex * u_modelScale + u_modelOffset - u_cameraOffset) * vec2(2, -2) / u_cameraScale - vec2(1, -1), 0.0, 1.0);\n"
     "}\n";
 
     const char* fragmentShader =
@@ -75,12 +76,12 @@ bool GlfwRenderer::init()
 
     // TODO: import some real mesh loading code
 
-    struct {float x, y;} vertices[4] =
+    struct vertex_t {float x, y, u, v;} vertices[4] =
     {
-        {0.f, 0.f},
-        {1.f, 0.f},
-        {1.f, 1.f},
-        {0.f, 1.f}
+        {0.f, 0.f, 0.f, 0.f},
+        {1.f, 0.f, 1.f, 0.f},
+        {1.f, 1.f, 1.f, 1.f},
+        {0.f, 1.f, 0.f, 1.f}
     };
 
     GLuint indices[4] = {0, 1, 3, 2};
@@ -96,10 +97,13 @@ bool GlfwRenderer::init()
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
     // Enable vertex attribute pointer
-    //GLint a_vertex = program.getAttribLocation("a_vertex");
     GLint a_vertex = 0;
     glEnableVertexAttribArray(a_vertex);
-    glVertexAttribPointer(a_vertex, 2, GL_FLOAT, GL_FALSE, 0, 0);
+    glVertexAttribPointer(a_vertex, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &(((vertex_t*)0)->x));
+
+    GLint a_texCoord = 1;
+    glEnableVertexAttribArray(a_texCoord);
+    glVertexAttribPointer(a_texCoord, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t), &(((vertex_t*)0)->u));
 
     // Buffer the index data
     GLuint indexBuffer;
@@ -216,8 +220,7 @@ void GlfwRenderer::drawTiles(TileMap* tilemap)
     const float modelH = m_model.getH() / tilemap->getRows();
     glUniform2f(m_modelScale, modelW, modelH);
 
-    const float originY = m_model.getY() + m_model.getH() - modelH;
-
+    // TODO push all vertices and tex coords into mapped buffer -> single draw call
     // Iterate over tile (x, y) indices
     int i = 0;
     for (int y = 0; y < tilemap->getRows(); ++y)
@@ -231,12 +234,12 @@ void GlfwRenderer::drawTiles(TileMap* tilemap)
 
             // Index tiles from top-left
             const float tileX = tileindex->getIndexCol(tile) * tileW;
-            const float tileY = 1.f - (tileindex->getIndexRow(tile) + 1) * tileH;
+            const float tileY = tileindex->getIndexRow(tile) * tileH;
             glUniform2f(m_textureOffset, tileX, tileY);
 
             // Draw tilemap from top-left
             const float modelX = m_model.getX() + x * modelW;
-            const float modelY = originY - y * modelH;
+            const float modelY = m_model.getY() + y * modelH;
             glUniform2f(m_modelOffset, modelX, modelY);
 
             // Draw the tile

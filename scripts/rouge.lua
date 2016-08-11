@@ -14,12 +14,15 @@ local function newPlayer(canvas, x, y)
     {
         graphics = SpriteGraphics{sprite="hero.tga"},
         collider = AabbCollider{},
-        position = {x, y}
+        position = {x, y},
+        members =
+        {
+            player = true,
+            stepTime = 1
+        }
     }
     canvas:addActor(player)
     canvas:setCenter(player)
-    player.player = true
-    player.stepTime = 1
 
     function player:update(delta)
         local canvas = self:getCanvas()
@@ -74,12 +77,15 @@ local function newNerd(canvas, x, y)
     {
         graphics = SpriteGraphics{sprite="nerd.tga"},
         collider = AabbCollider{},
-        position = {x, y}
+        position = {x, y},
+        members =
+        {
+            enemy = true,
+            stepTime = 1,
+            time = gameTime
+        }
     }
     canvas:addActor(nerd)
-    nerd.enemy = true
-    nerd.stepTime = 1
-    nerd.time = gameTime
 
     local function sign(n)
         if n > 0 then
@@ -140,33 +146,37 @@ local function newNerd(canvas, x, y)
     return nerd
 end
 
-local function newDoor(canvas, x, y)
+local function newDoor(canvas, map, x, y)
+    map:setTiles(x, y, 1, 1, 1)
+
     local door = Actor
     {
         graphics = SpriteGraphics{sprite="door.tga"},
         collider = AabbCollider{},
         position = {x, y},
+        members =
+        {
+            open = false,
+            interact = function(self, actor)
+                local canvas = self:getCanvas()
+                if canvas then
+                    if self.open then
+                        self:setScale(1, 1)
+                        self:getCollider():setCollidable(true)
+                        self.open = false
+                        return 1 -- time to close door
+                    else
+                        self:setScale(0.1, 1)
+                        self:getCollider():setCollidable(false)
+                        self.open = true
+                        return 1 -- time to open door
+                    end
+                end
+                return 0
+            end
+        }
     }
     canvas:addActor(door)
-    door.open = false
-
-    function door:interact(actor)
-        local canvas = self:getCanvas()
-        if canvas then
-            if self.open then
-                self:setScale(1, 1)
-                self:getCollider():setCollidable(true)
-                self.open = false
-                return 1 -- time to close door
-            else
-                self:setScale(0.1, 1)
-                self:getCollider():setCollidable(false)
-                self.open = true
-                return 1 -- time to open door
-            end
-        end
-        return 0
-    end
 
     return door
 end
@@ -183,8 +193,8 @@ game = Canvas
 player = newPlayer(game, 1, 1)
 registerControl("left", player:keyDown(player.move, {-1, 0}))
 registerControl("right", player:keyDown(player.move, {1, 0}))
-registerControl("down", player:keyDown(player.move, {0, -1}))
-registerControl("up", player:keyDown(player.move, {0, 1}))
+registerControl("down", player:keyDown(player.move, {0, 1}))
+registerControl("up", player:keyDown(player.move, {0, -1}))
 registerControl("action", player:keyDown(player.idle))
 
 local map = TileMap
@@ -204,7 +214,7 @@ local map = TileMap
     {
         3, 4, 3, 3, 4, 3,
         4, 1, 1, 1, 1, 4,
-        3, 1, 2, 1, 1, 1,
+        3, 1, 2, 1, 1, 3,
         3, 1, 1, 1, 1, 3,
         4, 1, 1, 1, 1, 4,
         3, 4, 3, 3, 4, 3,
@@ -224,8 +234,6 @@ tiles = Actor
     layer = -1
 }
 game:addActor(tiles)
---TODO should y axis be inverted for 2D canvas?
-map:setTiles(5, 2, 1, 1, 1)
-newDoor(game, 5, 3)
+newDoor(game, map, 5, 2)
 
 newNerd(game, 10, 10)

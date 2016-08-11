@@ -33,19 +33,19 @@ bool Aabb::getCollisionTime(const Aabb& other, float velX, float velY, float& st
     float startY, endY;
     if (velY > 0.f)
     {
-        startY = (m_bounds.b - other.m_bounds.t) / velY;
-        endY = (m_bounds.t - other.m_bounds.b) / velY;
+        startY = (m_bounds.t - other.m_bounds.b) / velY;
+        endY = (m_bounds.b - other.m_bounds.t) / velY;
         if (startY >= startX)
             edge = Bottom;
     }
     else if (velY < 0.f)
     {
-        startY = (m_bounds.t - other.m_bounds.b) / velY;
-        endY = (m_bounds.b - other.m_bounds.t) / velY;
+        startY = (m_bounds.b - other.m_bounds.t) / velY;
+        endY = (m_bounds.t - other.m_bounds.b) / velY;
         if (startY >= startX)
             edge = Top;
     }
-    else if (m_bounds.b < other.m_bounds.t && m_bounds.t > other.m_bounds.b)
+    else if (m_bounds.t < other.m_bounds.b && m_bounds.b > other.m_bounds.t)
     {
         startY = std::numeric_limits<float>::lowest();
         endY = std::numeric_limits<float>::max();

@@ -48,14 +48,13 @@ void SdlRenderer::drawSprite(const std::string& name)
     SDL_SetTextureColorMod(texture->getPtr(), m_color.r, m_color.g, m_color.b);
 
     // Set the destination rect where we will draw the texture
-    // NOTE: translating origin from lower-left to upper-left
     SDL_Rect target;
     const float scaleW = m_width / m_camera.getW();
     const float scaleH = m_height / m_camera.getH();
     target.w = m_model.getW() * scaleW;
     target.h = m_model.getH() * scaleH;
     target.x = (m_model.getX() - m_camera.getX()) * scaleW;
-    target.y = m_height - (m_model.getY() - m_camera.getY()) * scaleH - target.h;
+    target.y = (m_model.getY() - m_camera.getY()) * scaleH;
 
     // Draw the texture
     SDL_RenderCopy(m_renderer, texture->getPtr(), nullptr, &target);
@@ -90,7 +89,7 @@ void SdlRenderer::drawTiles(TileMap* tilemap)
 
     // Use the top-left corner of the tilemap as the origin
     const int originX = (m_model.getX() - m_camera.getX()) * scaleW;
-    const int originY = m_height - (m_model.getY() - m_camera.getY() + m_model.getH()) * scaleH;
+    const int originY = (m_model.getY() - m_camera.getY()) * scaleH;
 
     // Set the destination rect where we will draw the texture
     SDL_Rect target;
