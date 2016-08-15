@@ -48,6 +48,15 @@ void BasicCamera::setCenter(float x, float y)
     m_transform.setY(y - m_transform.getH() * 0.5f);
 }
 
+void BasicCamera::setOrigin(float x, float y)
+{
+    m_center.x = x + m_transform.getW() * 0.5f;
+    m_center.y = y + m_transform.getH() * 0.5f;
+
+    m_transform.setX(x);
+    m_transform.setY(y);
+}
+
 void BasicCamera::mouseToWorld(const MouseEvent& event, float& x, float& y) const
 {
     const float fractionX = float(event.x) / float(event.w);

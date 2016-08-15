@@ -21,6 +21,7 @@ public:
     void postRender(IRenderer* renderer) override;
 
     void setCenter(float x, float y) override;
+    void setOrigin(float x, float y) override;
 
     void mouseToWorld(const MouseEvent& event, float& x, float& y) const override;
 };

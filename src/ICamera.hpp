@@ -15,6 +15,7 @@ public:
     virtual void postRender(IRenderer* renderer) = 0;
 
     virtual void setCenter(float x, float y) = 0;
+    virtual void setOrigin(float x, float y) = 0;
 
     virtual void mouseToWorld(const MouseEvent& event, float& x, float& y) const = 0;
 };

@@ -262,8 +262,13 @@ bool Canvas::testCollision(float deltaX, float deltaY, const Actor* actor1) cons
         if (actor1 == actor2)
             continue;
 
+        // Reject early if actor has no collider
+        const ICollider* collider2 = actor2->getCollider();
+        if (!collider2)
+            continue;
+
         // Test colliders against each other
-        if (collider1->testCollision(deltaX, deltaY, actor2->getCollider()))
+        if (collider1->testCollision(deltaX, deltaY, collider2))
             return true;
     }
 
@@ -303,6 +308,11 @@ bool Canvas::getEarliestCollision(const Actor* actor1, ActorIterator it, ActorIt
         if (actor1 == actor2)
             continue;
 
+        // Reject early if actor has no collider
+        const ICollider* collider2 = actor2->getCollider();
+        if (!collider2)
+            continue;
+
         // Compute the relative velocity (in frame of reference of other object)
         float relVelX = velX, relVelY = velY;
         const Physics* physics2 = actor2->getPhysics();
@@ -317,7 +327,7 @@ bool Canvas::getEarliestCollision(const Actor* actor1, ActorIterator it, ActorIt
             continue;
 
         // Test colliders against each other
-        if (collider1->getCollisionTime(relVelX, relVelY, actor2->getCollider(), tempStart, tempEnd, tempNormX, tempNormY))
+        if (collider1->getCollisionTime(relVelX, relVelY, collider2, tempStart, tempEnd, tempNormX, tempNormY))
         {
             // NOTE (tempStart < start || (tempStart == start && relPosY <= 0.f)) orders simultaneous collisions by order in the direction of movement
             // NOTE (tempStart >= 0.f || tempEnd > fabs(tempStart)) is a solution for only considering inward movemnt as collision
@@ -510,6 +520,19 @@ int Canvas::canvas_setCenter(lua_State* L)
 
     if (canvas->m_camera)
         canvas->m_camera->setCenter(x, y);
+
+    return 0;
+}
+
+int Canvas::canvas_setOrigin(lua_State* L)
+{
+    // Validate function arguments
+    Canvas *canvas = Canvas::checkUserdata(L, 1);
+    float x = static_cast<float>(luaL_checknumber(L, 2));
+    float y = static_cast<float>(luaL_checknumber(L, 3));
+
+    if (canvas->m_camera)
+        canvas->m_camera->setOrigin(x, y);
 
     return 0;
 }

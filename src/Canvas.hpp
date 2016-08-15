@@ -60,6 +60,7 @@ private:
     static int canvas_removeActor(lua_State* L);
     static int canvas_clear(lua_State* L);
     static int canvas_setCenter(lua_State* L);
+    static int canvas_setOrigin(lua_State* L);
     static int canvas_getCollision(lua_State* L);
     static int canvas_setPaused(lua_State* L);
     static int canvas_setVisible(lua_State* L);
@@ -71,6 +72,7 @@ private:
         {"removeActor", canvas_removeActor},
         {"clear", canvas_clear},
         {"setCenter", canvas_setCenter},
+        {"setOrigin", canvas_setOrigin},
         {"getCollision", canvas_getCollision},
         {"setPaused", canvas_setPaused},
         {"setVisible", canvas_setVisible},

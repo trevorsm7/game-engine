@@ -103,8 +103,33 @@ bool SdlInstance::init(const char* script)
     SDL_GL_GetDrawableSize(m_window, &width, &height);
     printf("Framebuffer size: %d, %d\n", width, height);
 #else
+    m_scene = ScenePtr(new Scene(m_resources));
+    m_scene->setQuitCallback([&] {m_bQuit = true;});
+    m_scene->setRegisterControlCallback([&](const char* action)->bool
+    {
+        // TODO: replace with a mechanism for default bindings and loading/saving custom bindings
+        //printf("TODO: implement register control callback\n");
+        return false;
+    });
+    if (!m_scene->load(script))
+        return false;
+
+    // TODO define default window size somewhere
+    int width, height;
+    if (m_scene->isPortraitHint())
+    {
+        width = 600;
+        height = 800;
+    }
+    else
+    {
+        width = 800;
+        height = 600;
+    }
+
     // Create the window
-    m_window = SDL_CreateWindow("Engine", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+    m_window = SDL_CreateWindow("Engine", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        width, height, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     if (!m_window)
     {
         fprintf(stderr, "Failed to create SDL window: %s\n", SDL_GetError());
@@ -116,25 +141,7 @@ bool SdlInstance::init(const char* script)
     if (!m_renderer->init())
         return false;
 
-    // NOTE: creating window first, then scene can change size if it wants
-    m_scene = ScenePtr(new Scene(m_resources));
-    m_scene->setQuitCallback([&] {m_bQuit = true;});
-    m_scene->setRegisterControlCallback([&](const char* action)->bool
-    {
-        // TODO: replace with a mechanism for default bindings and loading/saving custom bindings
-        //printf("TODO: implement register control callback\n");
-
-        return false;
-    });
-    if (!m_scene->load(script))
-        return false;
-
-    // TODO default window size??
-    if (m_scene->isPortraitHint())
-        SDL_SetWindowSize(m_window, 480, 640);
-
-    int width, height;
-    reinterpret_cast<SdlRenderer*>(m_renderer.get())->getSize(width, height);
+    //reinterpret_cast<SdlRenderer*>(m_renderer.get())->getSize(width, height);
     m_scene->resize(width, height);
 
     //SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Testing", "Hello world", m_window);

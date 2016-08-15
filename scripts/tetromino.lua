@@ -247,9 +247,10 @@ setPortraitHint(true)
 
 game = Canvas
 {
-    size = screenSize,
+    size = {screenSize[1] + 6, screenSize[2] + 1},
     fixed = true
 }
+game:setOrigin(-1, 0)
 
 -- Create the TileMap that will represent all the fallen blocks
 screenMap = TileMap
@@ -261,32 +262,60 @@ screenMap = TileMap
 -- We'll mainly be working with the TileMap, not the Actor
 local screen = Actor
 {
-    graphics = TiledGraphics{tilemap=screenMap, color = {0.7, 0.5, 0.5}},
-    collider = TiledCollider{tilemap=screenMap},
+    graphics = TiledGraphics{tilemap = screenMap, color = {0.7, 0.5, 0.5}},
+    collider = TiledCollider{tilemap = screenMap},
     position = {0, 0},
     scale = screenSize
 }
 game:addActor(screen)
 
 -- Add colliders around the edge of the playing field
+local leftWallTiles = TileMap
+{
+    index = singleTile,
+    size = {1, screenSize[2] + 5}
+}
+leftWallTiles:setTiles(0, 0, 1, screenSize[2] + 5, 1)
+
 local leftWall = Actor
 {
-    collider = AabbCollider{},
-    position = {-1, 0},
-    scale = {1, screenSize[2]}
+    graphics = TiledGraphics{tilemap = leftWallTiles, color = {0.5, 0.5, 0.5}},
+    collider = AabbCollider{}, -- no need for tiled collider
+    position = {-1, -4},
+    scale = {1, screenSize[2] + 5}
 }
 game:addActor(leftWall)
 
+local rightWallTiles = TileMap
+{
+    index = singleTile,
+    size = {5, screenSize[2] + 5}
+}
+rightWallTiles:setTiles(0, 0, 1, screenSize[2] + 5, 1)
+rightWallTiles:setTiles(4, 0, 1, screenSize[2] + 5, 1)
+rightWallTiles:setTiles(1, 4, 3, 1, 1)
+rightWallTiles:setTiles(1, 9, 3, 1, 1)
+rightWallTiles:setTiles(1, screenSize[2] + 4, 3, 1, 1)
+
 local rightWall = Actor
 {
+    graphics = TiledGraphics{tilemap = rightWallTiles, color = {0.5, 0.5, 0.5}},
     collider = AabbCollider{},
-    position = {screenSize[1], 0},
-    scale = {1, screenSize[2]}
+    position = {screenSize[1], -4},
+    scale = {5, screenSize[2] + 5}
 }
 game:addActor(rightWall)
 
+local bottomWallTiles = TileMap
+{
+    index = singleTile,
+    size = {screenSize[1], 1}
+}
+bottomWallTiles:setTiles(0, 0, screenSize[1], 1, 1)
+
 local bottomWall = Actor
 {
+    graphics = TiledGraphics{tilemap = bottomWallTiles, color = {0.5, 0.5, 0.5}},
     collider = AabbCollider{},
     position = {0, screenSize[2]},
     scale = {screenSize[1], 1}
@@ -296,8 +325,19 @@ game:addActor(bottomWall)
 -- set a fresh random seed when we start up
 math.randomseed(os.time())
 
+deck = {}
 function getNext()
-    return math.random(1, #tetrominoes)
+    if #deck == 0 then
+        for i = 1, #tetrominoes do
+            table.insert(deck, i)
+            table.insert(deck, i)
+        end
+    end
+
+    local i = math.random(1, #deck)
+    local val = deck[i]
+    table.remove(deck, i)
+    return val
 end
 
 next = getNext()
@@ -311,6 +351,26 @@ function dropCurrent(down)
         fallPeriod = defaultFallPeriod
     end
 end
+
+preview = Actor
+{
+    graphics = TiledGraphics{},
+    members =
+    {
+        reset = function(self, val)
+            local tetromino = tetrominoes[val]
+
+            local graphics = self:getGraphics()
+            graphics:setColor(tetromino.color)
+            graphics:setTileMap(tetromino[1])
+
+            local w, h = tetromino[1]:getSize()
+            self:setScale(tetromino[1]:getSize())
+            self:setPosition(screenSize[1]+1, 1)
+        end
+    }
+}
+game:addActor(preview)
 
 -- Reuse the same Actor for all falling blocks
 current = Actor
@@ -326,16 +386,17 @@ current = Actor
 
             local tetromino = tetrominoes[next][1]
 
-            local graphics = current:getGraphics()
+            local graphics = self:getGraphics()
             graphics:setColor(tetrominoes[next].color)
             graphics:setTileMap(tetromino)
-            current:getCollider():setTileMap(tetromino)
+            self:getCollider():setTileMap(tetromino)
 
             local w, h = tetromino:getSize()
-            current:setScale(tetromino:getSize())
-            current:setPosition(math.floor((screenSize[1] - w) / 2), 0)
+            self:setScale(tetromino:getSize())
+            self:setPosition(math.floor((screenSize[1] - w) / 2), -h)
 
             next = getNext()
+            preview:reset(next)
         end,
 
         move = function(self, dir)
@@ -352,16 +413,16 @@ current = Actor
             end
 
             local tetromino = tetrominoes[self.num][ori]
-            current:getGraphics():setTileMap(tetromino)
-            current:getCollider():setTileMap(tetromino)
-            --current:setScale(tetromino:getSize()) -- NOTE assuming all orientations share the same size
+            self:getGraphics():setTileMap(tetromino)
+            self:getCollider():setTileMap(tetromino)
+            --self:setScale(tetromino:getSize()) -- NOTE assuming all orientations share the same size
 
             -- If new orientation collides, reset to old orientation
-            if current:testCollision(0, 0) then
+            if self:testCollision(0, 0) then
                 tetromino = tetrominoes[self.num][self.ori]
-                current:getGraphics():setTileMap(tetromino)
-                current:getCollider():setTileMap(tetromino)
-                --current:setScale(tetromino:getSize())
+                self:getGraphics():setTileMap(tetromino)
+                self:getCollider():setTileMap(tetromino)
+                --self:setScale(tetromino:getSize())
                 return
             end
 
@@ -452,7 +513,7 @@ current = Actor
                 screenMap:setTiles(0, 0, sw, shift, 0)
             end
 
-            self:reset(getNext())
+            self:reset()
         end
     }
 }
