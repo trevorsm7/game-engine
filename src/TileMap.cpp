@@ -31,12 +31,11 @@ void TileIndex::construct(lua_State* L)
     lua_pop(L, 3);
 
     lua_pushliteral(L, "data");
-    //if (lua_rawget(L, 1) != LUA_TNIL)
-    luaL_argcheck(L, (lua_rawget(L, 1) == LUA_TTABLE), 1, "data required");
+    if (lua_rawget(L, 1) != LUA_TNIL)
     {
         const int size = m_cols * m_rows;
+        luaL_checktype(L, -1, LUA_TTABLE);
         luaL_argcheck(L, (lua_rawlen(L, -1) == size), 1, "data must match size");
-        //luaL_checktype(L, -1, LUA_TTABLE);
         for (int i = 0; i < size; ++i)
         {
             lua_rawgeti(L, -1, i + 1);

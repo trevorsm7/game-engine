@@ -322,6 +322,68 @@ local bottomWall = Actor
 }
 game:addActor(bottomWall)
 
+local fontTiles = TileMap
+{
+    index = TileIndex
+    {
+        sprite = "gnsh-green.tga",
+        size = {20, 5},
+    },
+    size = {7, 4}
+}
+
+scoreText = Actor
+{
+    graphics = TiledGraphics{tilemap = fontTiles},
+    position = {screenSize[1] + 1, 6},
+    scale = {3, 4},
+    members =
+    {
+        tilemap = fontTiles,
+        setTextL = function(self, line, text)
+            local tilemap = self.tilemap
+            local size, _ = tilemap:getSize()
+            local chars = math.min(string.len(text), size)
+            for i = 1, chars do
+                tilemap:setTiles(i-1, line, 1, 1, string.byte(text, i) - 31)
+            end
+            if chars < size then
+                tilemap:setTiles(chars, line, size-chars, 1, 0)
+            end
+        end,
+        setTextR = function(self, line, text)
+            local tilemap = self.tilemap
+            local size, _ = tilemap:getSize()
+            local chars = math.min(string.len(text), size)
+            local offset = math.max(size-chars - 1, -1)
+            for i = 1, chars do
+                tilemap:setTiles(i+offset, line, 1, 1, string.byte(text, i) - 31)
+            end
+            if chars < size then
+                tilemap:setTiles(0, line, size-chars, 1, 0)
+            end
+        end,
+        setLevel = function(self, level)
+            local text = tostring(level)
+            self:setTextR(1, text)
+        end,
+        setScore = function(self, score)
+            local text = tostring(score)
+            self:setTextR(3, text)
+        end
+    }
+}
+game:addActor(scoreText)
+
+count = 0
+level = 1
+scoreText:setTextL(0, "Level:")
+scoreText:setLevel(level)
+
+score = 0
+scoreText:setTextL(2, "Score:")
+scoreText:setScore(score)
+
 -- set a fresh random seed when we start up
 math.randomseed(os.time())
 
@@ -404,6 +466,10 @@ current = Actor
         end,
 
         rotate = function(self, dir)
+            if not self:getCanvas() then
+                return
+            end
+
             local ori = self.ori + dir
             local nOri = #tetrominoes[self.num]
             if ori > nOri then
@@ -470,19 +536,25 @@ current = Actor
             local tetromino = self:getGraphics():getTileMap()
             local w, h = tetromino:getSize()--self:getScale()?
             local sw, sh = screenSize[1], screenSize[2]
-            --local yoff = (sh - h) - y
 
             -- copy current tetromino onto screen
             for yi = 0, w-1 do
                 for xi = 0, w-1 do
                     local tile = tetromino:getTile(xi, yi)
                     if tile > 0 then
-                        local sx, sy = xi + x, yi + y--yoff
+                        local sx, sy = xi + x, yi + y
                         if sx >= 0 and sx < sw and sy >= 0 and sy < sh then
                             screenMap:setTiles(sx, sy, 1, 1, tile)
                         end
                     end
                 end
+            end
+
+            if y < 0 then
+                scoreText:setTextL(0, "Game")
+                scoreText:setTextR(1, "Over")
+                game:removeActor(self)
+                return
             end
 
             -- TODO add helper method to TileMap for scrolling/moving
@@ -498,7 +570,6 @@ current = Actor
                 end
                 -- skip line if cleared; otherwise shift line down
                 if cleared then
-                    -- TODO increment score
                     shift = shift + 1
                 else
                     for xi = 0, sw-1 do
@@ -511,6 +582,20 @@ current = Actor
             -- clear the top of the screen that was shifted down
             if shift > 0 then
                 screenMap:setTiles(0, 0, sw, shift, 0)
+
+                -- add 10, 30, 60, 100 points depending on rows cleared
+                score = score + shift*(shift+1)*level
+            end
+
+            score = score + level
+            scoreText:setScore(score)
+
+            count = count + 1
+            if count == 10 then
+                level = level + 1
+                defaultFallPeriod = math.max(defaultFallPeriod * 0.8, 0.1)
+                count = 0
+                scoreText:setLevel(level)
             end
 
             self:reset()
