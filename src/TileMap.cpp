@@ -245,10 +245,13 @@ int TileMap::script_setTiles(lua_State* L)
 
     luaL_argcheck(L, (x >= 0 && x < cols), 2, "x is out of bounds");
     luaL_argcheck(L, (y >= 0 && y < rows), 3, "y is out of bounds");
-    luaL_argcheck(L, (w > 0), 4, "w must be greater than 0");
-    luaL_argcheck(L, (h > 0), 5, "h must be greater than 0");
+    luaL_argcheck(L, (w >= 0), 4, "w must be positive");
+    luaL_argcheck(L, (h >= 0), 5, "h must be positive");
     luaL_argcheck(L, (x + w <= cols), 4, "x + w is out of bounds");
     luaL_argcheck(L, (y + h <= rows), 5, "y + h is out of bounds");
+
+    if (w == 0 || h == 0)
+        return 0;
 
     int index = tilemap->toIndex(x, y);
     for (int row = 0; row < h; ++row)
@@ -279,4 +282,53 @@ int TileMap::script_getTile(lua_State* L)
 
     lua_pushinteger(L, tilemap->getIndex(x, y));
     return 1;
+}
+
+int TileMap::script_moveTiles(lua_State* L)
+{
+    // Validate function arguments
+    TileMap* const tilemap = TileMap::checkUserdata(L, 1);
+    const int x = luaL_checkinteger(L, 2);
+    const int y = luaL_checkinteger(L, 3);
+    const int w = luaL_checkinteger(L, 4);
+    const int h = luaL_checkinteger(L, 5);
+    const int dx = luaL_checkinteger(L, 6);
+    const int dy = luaL_checkinteger(L, 7);
+
+    const int cols = tilemap->m_cols;
+    const int rows = tilemap->m_rows;
+
+    luaL_argcheck(L, (x >= 0 && x < cols), 2, "x is out of bounds");
+    luaL_argcheck(L, (y >= 0 && y < rows), 3, "y is out of bounds");
+    luaL_argcheck(L, (w >= 0), 4, "w must be positive");
+    luaL_argcheck(L, (h >= 0), 5, "h must be positive");
+    luaL_argcheck(L, (x + w <= cols), 4, "x + w is out of bounds");
+    luaL_argcheck(L, (y + h <= rows), 5, "y + h is out of bounds");
+    luaL_argcheck(L, (x + dx >= 0 && x + w + dx <= cols), 6, "x + dx is out of bounds");
+    luaL_argcheck(L, (y + dy >= 0 && y + h + dy <= rows), 6, "y + dy is out of bounds");
+
+    if (w == 0 || h == 0)
+        return 0;
+
+    const int old_i = tilemap->toIndex(x, y);
+    const int new_i = tilemap->toIndex(x + dx, y + dy);
+
+    if (new_i > old_i)
+    {
+        for (int row = h-1; row >= 0; --row)
+        {
+            auto i = tilemap->m_map.begin() + (row * cols);
+            std::move_backward(i + old_i, i + (old_i + w), i + (new_i + w));
+        }
+    }
+    else if (new_i < old_i)
+    {
+        for (int row = 0; row < h; ++row)
+        {
+            auto i = tilemap->m_map.begin() + (row * cols);
+            std::move(i + old_i,  i + (old_i + w), i + new_i);
+        }
+    }
+
+    return 0;
 }

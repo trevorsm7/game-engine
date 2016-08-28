@@ -557,9 +557,10 @@ current = Actor
                 return
             end
 
-            -- TODO add helper method to TileMap for scrolling/moving
+            -- check for cleared rows along tetromino outline
             local shift = 0
-            for yi = sh-1, 0, -1 do
+            local bottom = math.min(y+h, sh) - 1
+            for yi = bottom, y, -1 do
                 -- scan to check if row cleared (fully filled)
                 local cleared = true
                 for xi = 0, sw-1 do
@@ -571,16 +572,14 @@ current = Actor
                 -- skip line if cleared; otherwise shift line down
                 if cleared then
                     shift = shift + 1
-                else
-                    for xi = 0, sw-1 do
-                        local tile = screenMap:getTile(xi, yi)
-                        screenMap:setTiles(xi, yi+shift, 1, 1, tile)
-                    end
+                elseif shift > 0 then
+                    screenMap:moveTiles(0, yi, sw, 1, 0, shift)
                 end
             end
 
-            -- clear the top of the screen that was shifted down
+            -- shift remainder of the screen and clear the top
             if shift > 0 then
+                screenMap:moveTiles(0, 0, sw, y, 0, shift)
                 screenMap:setTiles(0, 0, sw, shift, 0)
 
                 -- add 10, 30, 60, 100 points depending on rows cleared

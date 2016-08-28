@@ -79,6 +79,7 @@ private:
     static int script_setSize(lua_State* L);
     static int script_setTiles(lua_State* L);
     static int script_getTile(lua_State* L);
+    static int script_moveTiles(lua_State* L);
 
     static constexpr const char* const CLASS_NAME = "TileMap";
     static constexpr const luaL_Reg METHODS[] =
@@ -88,6 +89,7 @@ private:
         {"setSize", script_setSize},
         {"setTiles", script_setTiles},
         {"getTile", script_getTile},
+        {"moveTiles", script_moveTiles},
         {nullptr, nullptr}
     };
 };
