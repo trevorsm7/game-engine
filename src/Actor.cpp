@@ -163,17 +163,17 @@ void Actor::setCollider(lua_State* L, int index)
 void Actor::construct(lua_State* L)
 {
     lua_pushliteral(L, "graphics");
-    if (lua_rawget(L, 1) != LUA_TNIL)
+    if (lua_rawget(L, 2) != LUA_TNIL)
         setGraphics(L, -1);
     lua_pop(L, 1);
 
     lua_pushliteral(L, "collider");
-    if (lua_rawget(L, 1) != LUA_TNIL)
+    if (lua_rawget(L, 2) != LUA_TNIL)
         setCollider(L, -1);
     lua_pop(L, 1);
 
     lua_pushliteral(L, "physics");
-    if (lua_rawget(L, 1) != LUA_TNIL)
+    if (lua_rawget(L, 2) != LUA_TNIL)
     {
         luaL_checktype(L, -1, LUA_TTABLE);
 
@@ -208,7 +208,7 @@ void Actor::construct(lua_State* L)
     lua_pop(L, 1);
 
     lua_pushliteral(L, "position");
-    if (lua_rawget(L, 1) != LUA_TNIL)
+    if (lua_rawget(L, 2) != LUA_TNIL)
     {
         luaL_checktype(L, -1, LUA_TTABLE);
         lua_rawgeti(L, -1, 1);
@@ -220,7 +220,7 @@ void Actor::construct(lua_State* L)
     lua_pop(L, 1);
 
     lua_pushliteral(L, "scale");
-    if (lua_rawget(L, 1) != LUA_TNIL)
+    if (lua_rawget(L, 2) != LUA_TNIL)
     {
         luaL_checktype(L, -1, LUA_TTABLE);
         lua_rawgeti(L, -1, 1);
@@ -233,7 +233,7 @@ void Actor::construct(lua_State* L)
     lua_pop(L, 1);
 
     lua_pushliteral(L, "layer");
-    if (lua_rawget(L, 1) != LUA_TNIL)
+    if (lua_rawget(L, 2) != LUA_TNIL)
         setLayer(luaL_checkinteger(L, -1));
     lua_pop(L, 1);
 }

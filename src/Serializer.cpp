@@ -92,8 +92,12 @@ void Serializer::serializeValue(ObjectRef* parent, const char* table, const char
         parent->setImmediate(table, key, lua_toboolean(L, index) ? "true" : "false");
         break;
     case LUA_TFUNCTION:
-        // TODO serialize binary dump? don't forget upvalues
-        parent->setImmediate(table, key, "<TODO: function>");
+        {
+            // TODO serialize binary dump? don't forget upvalues
+            char buffer[32];
+            snprintf(buffer, sizeof(buffer), "<TODO: function %p>", lua_topointer(L, index));
+            parent->setImmediate(table, key, buffer);
+        }
         break;
     case LUA_TTABLE:
     case LUA_TUSERDATA:

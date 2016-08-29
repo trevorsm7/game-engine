@@ -36,7 +36,7 @@ bool SpriteGraphics::testBounds(float x, float y) const
 void SpriteGraphics::construct(lua_State* L)
 {
     lua_pushliteral(L, "sprite");
-    luaL_argcheck(L, (lua_rawget(L, 1) == LUA_TSTRING), 1, "{sprite = filename} is required");
+    luaL_argcheck(L, (lua_rawget(L, 2) == LUA_TSTRING), 2, "{sprite = filename} is required");
     m_filename = lua_tostring(L, -1);
     lua_pop(L, 1);
 }

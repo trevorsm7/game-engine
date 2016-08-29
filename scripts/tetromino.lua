@@ -384,9 +384,6 @@ score = 0
 scoreText:setTextL(2, "Score:")
 scoreText:setScore(score)
 
--- set a fresh random seed when we start up
-math.randomseed(os.time())
-
 deck = {}
 function getNext()
     if #deck == 0 then

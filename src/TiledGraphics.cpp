@@ -53,7 +53,7 @@ void TiledGraphics::setTileMap(lua_State* L, int index)
 void TiledGraphics::construct(lua_State* L)
 {
     lua_pushliteral(L, "tilemap");
-    if (lua_rawget(L, 1) != LUA_TNIL)
+    if (lua_rawget(L, 2) != LUA_TNIL)
         setTileMap(L, -1);
     lua_pop(L, 1);
 }

@@ -12,20 +12,190 @@
 #include <cassert>
 #include <cstring>
 
+#include <vector>
+#include <string>
+#include <algorithm>
+typedef std::vector<const void*> PtrStack;
+void dumptable(lua_State* L, PtrStack& stack, std::string key, int index)
+{
+    const int indent = stack.size() * 2;
+    const void* p = lua_topointer(L, index);
+    auto it = std::find(stack.begin(), stack.end(), p);
+    if (it != stack.end())
+    {
+        printf("%*scycle!\n", indent, "");
+        return;
+    }
+    stack.push_back(p);
+
+    lua_pushnil(L);
+    if (index < 0)
+        index -= 1;
+    while (lua_next(L, index))
+    {
+        int type = lua_type(L, -2);
+        std::string nextkey;
+        switch (type)
+        {
+        case LUA_TSTRING:
+            nextkey = lua_tostring(L, -2);
+            break;
+        case LUA_TNUMBER:
+            lua_pushvalue(L, -2);
+            nextkey = lua_tostring(L, -1);
+            lua_pop(L, 1);
+            break;
+        default:
+            nextkey = std::string("type(") + lua_typename(L, type) + ")";
+            break;
+        }
+
+        printf("%*s", indent, "");
+        type = lua_type(L, -1);
+        switch (type)
+        {
+        case LUA_TSTRING:
+            printf("%s[%s] = %s\n", key.c_str(), nextkey.c_str(), lua_tostring(L, -1));
+            break;
+        case LUA_TNUMBER:
+            lua_pushvalue(L, -1);
+            printf("%s[%s] = %s\n", key.c_str(), nextkey.c_str(), lua_tostring(L, -1));
+            lua_pop(L, 1);
+            break;
+        case LUA_TTABLE:
+            printf("%s[%s] = table<%p>\n", key.c_str(), nextkey.c_str(), lua_topointer(L, -1));
+            dumptable(L, stack, nextkey, -1);
+            break;
+        case LUA_TUSERDATA:
+            printf("%s[%s] = userdata<%p>\n", key.c_str(), nextkey.c_str(), lua_topointer(L, -1));
+            break;
+        case LUA_TFUNCTION:
+            printf("%s[%s] = function<%p>\n", key.c_str(), nextkey.c_str(), lua_topointer(L, -1));
+            break;
+        default:
+            printf("%s[%s] = %s\n", key.c_str(), nextkey.c_str(), lua_typename(L, type));
+            break;
+        }
+
+        lua_pop(L, 1);
+    }
+
+    stack.pop_back();
+}
+void dumptable(lua_State* L, std::string key, int index)
+{
+    PtrStack stack;
+    dumptable(L, stack, key, index);
+}
+
+int readglobal(lua_State* L)
+{
+    //if (lua_type(L, 2) == LUA_TSTRING)
+    //    printf("fetching %s from RO _ENV\n", lua_tostring(L, 2));
+    lua_pushliteral(L, "GLOBAL_RO");
+    lua_rawget(L, LUA_REGISTRYINDEX);
+    lua_pushvalue(L, 2);
+    lua_rawget(L, -2);
+    return 1;
+}
+
+void copyglobal(lua_State* L, const char* name, int src, int dst)
+{
+    lua_pushstring(L, name);
+    lua_pushvalue(L, -1);
+    lua_rawget(L, (src < 0 ? src - 2 : src));
+
+    int type = lua_type(L, -1);
+    switch (type)
+    {
+    case LUA_TSTRING:
+    case LUA_TNUMBER:
+    case LUA_TBOOLEAN:
+    case LUA_TFUNCTION:
+    case LUA_TUSERDATA:
+    case LUA_TLIGHTUSERDATA:
+        lua_rawset(L, (dst < 0 ? dst - 2 : dst));
+        break;
+    case LUA_TTABLE:
+        // Copy into a read-only userdata
+        lua_newuserdata(L, 0);
+        lua_newtable(L); // metatable
+
+        // Prevent metatable from being accessed directly
+        lua_pushliteral(L, "__metatable");
+        lua_pushvalue(L, -5); // name
+        lua_rawset(L, -3);
+
+        // Push methods table as index of class object
+        // TODO need to make a deep copy if there are nested tables
+        lua_pushliteral(L, "__index");
+        lua_rotate(L, -4, -1); // move table to top
+        lua_rawset(L, -3);
+
+        // Set the metatable and move to dest
+        lua_setmetatable(L, -2);
+        lua_rawset(L, (dst < 0 ? dst - 2 : dst));
+        break;
+    default:
+        fprintf(stderr, "Attempt to copy key %s with type %s\n", name, lua_typename(L, type));
+        lua_pop(L, 2);
+        break;
+    }
+}
+
 bool Scene::load(const char *filename)
 {
     assert(m_L == nullptr);
     m_L = luaL_newstate();
-    luaL_openlibs(m_L);
-
-    // TODO: global utility functions should be protected from write and kept separate from
-    // serialization. Make alternate "global" table w/ metatable to separate reads from user
-    // globals and library globals.
 
     // Add Scene pointer to registry
     lua_pushliteral(m_L, "Scene");
     lua_pushlightuserdata(m_L, this);
     lua_rawset(m_L, LUA_REGISTRYINDEX);
+
+    // TODO: global utility functions should be protected from write and kept separate from
+    // serialization. Make alternate "global" table w/ metatable to separate reads from user
+    // globals and library globals.
+    // TODO Keep rawset, rawget, table.insert, etc hidden unless we replace read-only tables with userdata proxies.
+    luaL_openlibs(m_L);
+
+    // TODO seed math.random since we're taking away os.time
+
+    /*lua_pushglobaltable(m_L);
+    dumptable(m_L, "_ENV", -1);
+    lua_pop(m_L, 1);*/
+
+    // Create table for read-only globals
+    lua_newtable(m_L);
+    lua_pushliteral(m_L, "GLOBAL_RO");
+    lua_pushvalue(m_L, -2); // push copy of globals
+    lua_rawset(m_L, LUA_REGISTRYINDEX);
+
+    lua_pushglobaltable(m_L);
+    //copyglobal(m_L, "assert", -1, -2);
+    //copyglobal(m_L, "error", -1, -2);
+    copyglobal(m_L, "getmetatable", -1, -2);
+    copyglobal(m_L, "ipairs", -1, -2);
+    copyglobal(m_L, "next", -1, -2);
+    copyglobal(m_L, "pairs", -1, -2);
+    copyglobal(m_L, "print", -1, -2); // for now...
+    copyglobal(m_L, "rawequal", -1, -2);
+    copyglobal(m_L, "rawget", -1, -2);
+    copyglobal(m_L, "rawlen", -1, -2);
+    copyglobal(m_L, "rawset", -1, -2);
+    copyglobal(m_L, "select", -1, -2);
+    copyglobal(m_L, "setmetatable", -1, -2);
+    copyglobal(m_L, "tonumber", -1, -2);
+    copyglobal(m_L, "tostring", -1, -2);
+    copyglobal(m_L, "type", -1, -2);
+
+    copyglobal(m_L, "math", -1, -2);
+    copyglobal(m_L, "bit32", -1, -2);
+    copyglobal(m_L, "math", -1, -2);
+    copyglobal(m_L, "string", -1, -2);
+    copyglobal(m_L, "table", -1, -2);
+    copyglobal(m_L, "utf8", -1, -2);
+    lua_pop(m_L, 1);
 
     // Initialize objects and methods
     Canvas::initMetatable(m_L);
@@ -37,21 +207,56 @@ bool Scene::load(const char *filename)
     AabbCollider::initMetatable(m_L);
     TiledCollider::initMetatable(m_L);
 
+    lua_pushliteral(m_L, "registerControl");
     lua_pushcfunction(m_L, scene_registerControl);
-    lua_setglobal(m_L, "registerControl");
+    lua_rawset(m_L, -3);
 
+    lua_pushliteral(m_L, "setPortraitHint");
     lua_pushcfunction(m_L, scene_setPortraitHint);
-    lua_setglobal(m_L, "setPortraitHint");
+    lua_rawset(m_L, -3);
 
+    lua_pushliteral(m_L, "quit");
     lua_pushcfunction(m_L, scene_quit);
-    lua_setglobal(m_L, "quit");
+    lua_rawset(m_L, -3);
+
+    dumptable(m_L, "_RO", -1);
+    lua_pop(m_L, 1); // GLOBAL_RO
+
+
+    // Create table for user globals and its metatable
+    lua_newtable(m_L);
+    lua_newtable(m_L);
+
+    // Have metatable expose read-only globals
+    lua_pushliteral(m_L, "__index");
+    // TODO use RO table directly
+    lua_pushcfunction(m_L, readglobal);
+    lua_rawset(m_L, -3);
+
+    // TODO use __newindex to prevent shadowing read-only globals
+
+    lua_setmetatable(m_L, -2);
+
+    if (luaL_loadfile(m_L, filename) != 0)
+    {
+        fprintf(stderr, "Unable to load script \"%s\"\n", filename);
+        return false;
+    }
+
+    // Copy the user globals and set as script _ENV
+    lua_pushvalue(m_L, -2);
+    lua_setupvalue(m_L, -2, 1);
 
     // Execute specified script
-    if (luaL_dofile(m_L, filename) != 0)
+    //if (lua_pcall(m_L, 0, LUA_MULTRET, 0) != 0)
+    if (lua_pcall(m_L, 0, 0, 0) != 0)
     {
         fprintf(stderr, "%s\n", lua_tostring(m_L, -1));
         return false;
     }
+
+    dumptable(m_L, "_RW", -1);
+    lua_pop(m_L, 1); // pop _ENV
 
     return true;
 }

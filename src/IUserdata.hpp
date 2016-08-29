@@ -104,10 +104,8 @@ protected:
     {
         B::initInterface(L);
 
-        //B::setMethods(L, METHODS);//T::METHODS);
-        lua_pushliteral(L, "methods");
-        lua_rawget(L, -2);
-        assert(lua_type(L, -1) == LUA_TTABLE);
+        assert(lua_type(L, -2) == LUA_TTABLE);
+        lua_pushvalue(L, -2);
         luaL_setfuncs(L, T::METHODS, 0);
         lua_pop(L, 1);
     }
@@ -150,10 +148,11 @@ protected:
     }
 
 private:
-    static int script_create(lua_State* L)
+    static int script_construct(lua_State* L)
     {
         // Validate constructor arguments
-        luaL_checktype(L, 1, LUA_TTABLE);
+        //luaL_checktype(L, 1, LUA_TTABLE); // table/class; unused for now
+        luaL_checktype(L, 2, LUA_TTABLE); // arguments
 
         // Create userdata with the full size of the object
         T* ptr = reinterpret_cast<T*>(lua_newuserdata(L, sizeof(T)));
@@ -218,30 +217,24 @@ private:
 template <class T, class B>
 void TUserdata<T, B>::initMetatable(lua_State* L)
 {
-    // TODO the push string/table functions are unsafe if they fail (out of memory error)
-    // TODO assert if init is called more than once?
+    // Create table to populate with methods
+    lua_newtable(L);
+
 
     // === B::createMetatable(L, CLASS_NAME); ===
     // Push new metatable on the stack
-    luaL_newmetatable(L, T::CLASS_NAME);
+    int rval = luaL_newmetatable(L, T::CLASS_NAME);
+    assert(rval == 1); // assert if table already initialized
 
     // Prevent metatable from being accessed directly
     lua_pushliteral(L, "__metatable");
     lua_pushstring(L, T::CLASS_NAME); // return name if getmetatable is called
     lua_rawset(L, -3);
 
-
-    // TODO replace with setMethods, move newlib/newtable elsewhere
     // Push function table to be used with __index and __newindex
     lua_pushliteral(L, "methods");
-    //luaL_newlib(L, METHODS);//T::METHODS);
-    lua_newtable(L);
+    lua_pushvalue(L, -3);
     lua_rawset(L, -3);
-
-    initInterface(L);
-    //B::initInterface(L);
-    //B::setMethods(L, METHODS);//T::METHODS);
-
 
     // === B::finalizeMetatable(L, CLASS_NAME, script_create, script_delete); ===
     // Make sure to call destructor when the object is GC'd
@@ -259,10 +252,44 @@ void TUserdata<T, B>::initMetatable(lua_State* L)
     lua_pushcfunction(L, script_upcast);
     lua_rawset(L, -3);
 
+    initInterface(L);
+
     // Pop the metatable from the stack
     lua_pop(L, 1);
 
-    // Push constructor as global function with class name
-    lua_pushcfunction(L, script_create);
-    lua_setglobal(L, T::CLASS_NAME);
+
+    // Create read-only class and its metatable
+    lua_newuserdata(L, 0);
+    lua_newtable(L);
+
+    // Prevent metatable from being accessed directly
+    lua_pushliteral(L, "__metatable");
+    lua_pushstring(L, T::CLASS_NAME);
+    lua_rawset(L, -3);
+
+    // Push methods table as index of class object
+    lua_pushliteral(L, "__index");
+    lua_pushvalue(L, -4); // methods
+    lua_rawset(L, -3);
+
+    // Push constructor as call metamethod
+    // NOTE first argument will be the class table
+    lua_pushliteral(L, "__call");
+    lua_pushcfunction(L, script_construct);
+    lua_rawset(L, -3);
+
+    // Set the metatable
+    lua_setmetatable(L, -2);
+
+    // Assign class as a global variable
+    //lua_setglobal(L, T::CLASS_NAME);
+    lua_pushliteral(L, "GLOBAL_RO");
+    lua_rawget(L, LUA_REGISTRYINDEX);
+    lua_pushstring(L, T::CLASS_NAME);
+    lua_pushvalue(L, -3);
+    lua_rawset(L, -3);
+    lua_pop(L, 2);
+
+    // Pop the methods table
+    lua_pop(L, 1);
 }

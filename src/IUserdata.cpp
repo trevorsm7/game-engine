@@ -91,7 +91,7 @@ void IUserdata::constructHelper(lua_State* L, IUserdata* ptr)
 {
     // Copy the member table if specified
     lua_pushliteral(L, "members");
-    if (lua_rawget(L, 1) != LUA_TNIL)
+    if (lua_rawget(L, 2) != LUA_TNIL)
     {
         luaL_checktype(L, -1, LUA_TTABLE);
 
@@ -102,8 +102,6 @@ void IUserdata::constructHelper(lua_State* L, IUserdata* ptr)
         lua_pushnil(L);
         while (lua_next(L, -3))
         {
-            luaL_argcheck(L, lua_type(L, -2) == LUA_TSTRING, 1, "member tables keys must be strings");
-
             // Duplicate key, set key/value, leave key on stack for next iteration of lua_next
             lua_pushvalue(L, -2);
             lua_insert(L, -2);
@@ -154,10 +152,16 @@ int IUserdata::script_index(lua_State* L)
 {
     // Validate userdata
     assert(lua_type(L, 1) == LUA_TUSERDATA);
-    //assert(luaL_testudata(L, 1, T::METATABLE));
-    //checkUserdata(L, 1);
 
-    // First check if the key is in the function table
+    // Check if key is in the members table (uservalue)
+    if (lua_getuservalue(L, 1) == LUA_TTABLE)
+    {
+        lua_pushvalue(L, 2);
+        if (lua_rawget(L, -2) != LUA_TNIL)
+            return 1;
+    }
+
+    // Check if key is in the methods table (metafield)
     if (luaL_getmetafield(L, 1, "methods") == LUA_TTABLE)
     {
         lua_pushvalue(L, 2);
@@ -165,32 +169,13 @@ int IUserdata::script_index(lua_State* L)
             return 1;
     }
 
-    // Get the uservalue from Actor and index it with the 2nd argument
-    if (lua_getuservalue(L, 1) == LUA_TTABLE)
-    {
-        lua_pushvalue(L, 2);
-        lua_rawget(L, -2); // if type is nil, return it anyway
-        return 1;
-    }
-
-    lua_pushnil(L);
-    return 1;
+    return 0;
 }
 
 int IUserdata::script_newindex(lua_State* L)
 {
     // Validate userdata
     assert(lua_type(L, 1) == LUA_TUSERDATA);
-    //assert(luaL_testudata(L, 1, T::METATABLE));
-    //checkUserdata(L, 1);
-
-    // First check if the key is in the function table
-    if (luaL_getmetafield(L, 1, "methods") == LUA_TTABLE)
-    {
-        lua_pushvalue(L, 2);
-        if (lua_rawget(L, -2) != LUA_TNIL)
-            luaL_error(L, "field %s is read-only!", lua_tostring(L, 2));
-    }
 
     // Get the uservalue table; initialize if it doesn't exist
     if (lua_getuservalue(L, 1) != LUA_TTABLE)

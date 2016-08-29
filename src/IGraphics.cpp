@@ -6,7 +6,7 @@ const luaL_Reg IGraphics::METHODS[];
 void IGraphics::construct(lua_State* L)
 {
     lua_pushliteral(L, "visible");
-    if (lua_rawget(L, 1) != LUA_TNIL)
+    if (lua_rawget(L, 2) != LUA_TNIL)
     {
         luaL_checktype(L, -1, LUA_TBOOLEAN);
         setVisible(lua_toboolean(L, -1));
@@ -14,7 +14,7 @@ void IGraphics::construct(lua_State* L)
     lua_pop(L, 1);
 
     lua_pushliteral(L, "color");
-    if (lua_rawget(L, 1) != LUA_TNIL)
+    if (lua_rawget(L, 2) != LUA_TNIL)
     {
         // TODO refactor w/ script_setColor
         for (int i = 1; i <= 3; ++i)

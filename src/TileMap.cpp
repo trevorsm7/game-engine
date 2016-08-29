@@ -14,15 +14,13 @@ const luaL_Reg TileMap::METHODS[];
 
 void TileIndex::construct(lua_State* L)
 {
-    luaL_checktype(L, 1, LUA_TTABLE);
-
     lua_pushliteral(L, "sprite");
-    luaL_argcheck(L, (lua_rawget(L, 1) == LUA_TSTRING), 1, "{sprite = filename} is required");
+    luaL_argcheck(L, (lua_rawget(L, 2) == LUA_TSTRING), 2, "{sprite = filename} is required");
     m_image = lua_tostring(L, -1);
     lua_pop(L, 1);
 
     lua_pushliteral(L, "size");
-    luaL_argcheck(L, (lua_rawget(L, 1) == LUA_TTABLE), 1, "size required");
+    luaL_argcheck(L, (lua_rawget(L, 2) == LUA_TTABLE), 2, "size required");
     lua_rawgeti(L, -1, 1);
     lua_rawgeti(L, -2, 2);
     m_cols = luaL_checknumber(L, -2);
@@ -31,11 +29,11 @@ void TileIndex::construct(lua_State* L)
     lua_pop(L, 3);
 
     lua_pushliteral(L, "data");
-    if (lua_rawget(L, 1) != LUA_TNIL)
+    if (lua_rawget(L, 2) != LUA_TNIL)
     {
         const int size = m_cols * m_rows;
         luaL_checktype(L, -1, LUA_TTABLE);
-        luaL_argcheck(L, (lua_rawlen(L, -1) == size), 1, "data must match size");
+        luaL_argcheck(L, (lua_rawlen(L, -1) == size), 2, "data must match size");
         for (int i = 0; i < size; ++i)
         {
             lua_rawgeti(L, -1, i + 1);
@@ -89,12 +87,12 @@ void TileMap::setTileIndex(lua_State* L, int index)
 void TileMap::construct(lua_State* L)
 {
     lua_pushliteral(L, "index");
-    if (lua_rawget(L, 1) != LUA_TNIL)
+    if (lua_rawget(L, 2) != LUA_TNIL)
         setTileIndex(L, -1);
     lua_pop(L, 1);
 
     lua_pushliteral(L, "size");
-    luaL_argcheck(L, (lua_rawget(L, 1) == LUA_TTABLE), 1, "size required");
+    luaL_argcheck(L, (lua_rawget(L, 2) == LUA_TTABLE), 2, "size required");
     lua_rawgeti(L, -1, 1);
     lua_rawgeti(L, -2, 2);
     m_cols = luaL_checknumber(L, -2);
@@ -103,7 +101,7 @@ void TileMap::construct(lua_State* L)
     lua_pop(L, 3);
 
     lua_pushliteral(L, "data");
-    if (lua_rawget(L, 1) != LUA_TNIL)
+    if (lua_rawget(L, 2) != LUA_TNIL)
     {
         const int size = m_cols * m_rows;
         luaL_checktype(L, -1, LUA_TTABLE);

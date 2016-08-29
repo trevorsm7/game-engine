@@ -363,7 +363,7 @@ void Canvas::construct(lua_State* L)
 {
     float w = 20.f, h = 15.f;
     lua_pushliteral(L, "size");
-    if (lua_rawget(L, 1) != LUA_TNIL)
+    if (lua_rawget(L, 2) != LUA_TNIL)
     {
         luaL_checktype(L, -1, LUA_TTABLE);
         lua_rawgeti(L, -1, 1);
@@ -376,7 +376,7 @@ void Canvas::construct(lua_State* L)
 
     bool fixed = false;
     lua_pushliteral(L, "fixed");
-    if (lua_rawget(L, 1) != LUA_TNIL)
+    if (lua_rawget(L, 2) != LUA_TNIL)
     {
         luaL_checktype(L, -1, LUA_TBOOLEAN);
         fixed = lua_toboolean(L, -1);
