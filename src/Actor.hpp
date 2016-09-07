@@ -61,7 +61,6 @@ private:
     void destroy(lua_State* L);
     void serialize(lua_State* L, Serializer* serializer, ObjectRef* ref);
 
-    static int actor_serialize(lua_State* L);
     static int actor_getCanvas(lua_State* L);
     static int actor_getGraphics(lua_State* L);
     static int actor_setGraphics(lua_State* L);
@@ -79,7 +78,6 @@ private:
     static constexpr const char* const CLASS_NAME = "Actor";
     static constexpr const luaL_Reg METHODS[] =
     {
-        {"serialize", actor_serialize},
         {"getCanvas", actor_getCanvas},
         {"getGraphics", actor_getGraphics},
         {"setGraphics", actor_setGraphics},

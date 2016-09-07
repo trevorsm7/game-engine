@@ -44,6 +44,8 @@ void ObjectRef::setObjectDirect(std::string table, std::string key, const void* 
 
 void ObjectRef::setObjectCycle(std::string key, std::string setter, const void* ptr)
 {
+    m_inlinable = false;
+
     // TODO use a flag instead?
     std::string fullName = std::string(1, ':') + setter;
     if (fullName.length() == 1)
@@ -73,6 +75,9 @@ ObjectRef* Serializer::getObjectRef(const void* ptr)
 
 void Serializer::serializeValue(ObjectRef* parent, const char* table, const char* key, const char* setter, lua_State* L, int index)
 {
+    if (parent == nullptr)
+        parent = &m_root;
+
     int type = lua_type(L, index);
     switch (type)
     {
@@ -110,8 +115,11 @@ void Serializer::serializeValue(ObjectRef* parent, const char* table, const char
     }
 }
 
-void Serializer::serializeObject(ObjectRef* parent, const char* table, const char* key, const char* setter, lua_State* L, int index)
+void Serializer::serializeObject(ObjectRef* parent, const char* table, const char* key, const char* setter, lua_State* L, int index, bool forceCycle)
 {
+    if (parent == nullptr)
+        parent = &m_root;
+
     // Get userdata pointer and data store
     const void* ptr = lua_topointer(L, index);
     assert(ptr != nullptr);
@@ -120,23 +128,20 @@ void Serializer::serializeObject(ObjectRef* parent, const char* table, const cha
     // Check if object ref already exists
     if (ref)
     {
-        ref->m_count++;
+        //ref->m_count++;
+        ref->m_inlinable = false;
 
         // Break cycle if object is already on the stack
         if (ref->m_onStack)
         {
-            if (parent)
-                parent->setObjectCycle(key, setter, ptr);
-            else // HACK
-                m_root = ref;
-
+            parent->setObjectCycle(key, setter, ptr);
             return;
         }
     }
     else
     {
         // Create a new object ref
-        const int depth = parent ? (parent->m_depth + 1) : 0;
+        const int depth = parent->m_depth + 1;
         ref = addObjectRef(ptr, depth);
         assert(ref != nullptr);
 
@@ -162,7 +167,13 @@ void Serializer::serializeObject(ObjectRef* parent, const char* table, const cha
             serializeFromTable(ref, "", L, index);
     }
 
-    if (parent)
+    if (forceCycle)
+    {
+        // Treat as cyclic reference (and don't rebalance parent depth)
+        parent->setObjectCycle(key, setter, ptr);
+        ref->m_inlinable = false;
+    }
+    else
     {
         // Rebalance parent depth
         if (parent->m_depth >= ref->m_depth)
@@ -171,8 +182,6 @@ void Serializer::serializeObject(ObjectRef* parent, const char* table, const cha
         // Add ref to parent
         parent->setObjectDirect(table, key, ptr);
     }
-    else // HACK
-        m_root = ref;
 
     // Clear the onStack flag
     ref->m_onStack = false;
@@ -182,6 +191,9 @@ void Serializer::serializeObject(ObjectRef* parent, const char* table, const cha
 void Serializer::serializeFromTable(ObjectRef* ref, const char* table, lua_State* L, int index)
 {
     assert(lua_type(L, index) == LUA_TTABLE);
+
+    if (ref == nullptr)
+        ref = &m_root;
 
     // Iterate over table key/value pairs
     lua_pushnil(L);
@@ -243,23 +255,20 @@ void Serializer::print()
         ordered.insert(it, pair.second.get());
     }
 
-    printf("temp = {}\n");
+    printf("local temp = {}\n");
 
     int index = 1;
     for (auto& ref : ordered)
     {
         // Skip inlinable objects (do not increment index!)
-        // TODO print the root after temp{}, before cycles; could be inlined there
-        // HACK m_root is a hack anyway...
-        if (ref->m_count == 1 && ref->m_cyclicObjs.empty() && ref != m_root)
-        {
-            //printf("--skipping inlinable %p\n", ptr);
+        //if (ref->m_count == 1 && ref->m_cyclicObjs.empty())
+        if (ref->m_inlinable)
             continue;
-        }
 
         ref->m_index = index++;
 
         // Print object
+        // TODO if object has a global name, we can use that directly instead
         printf("temp[%d] = ", ref->m_index);
         printObject(ref, 0);
         printf("\n");
@@ -267,40 +276,42 @@ void Serializer::print()
 
     // Iterate over object refs with cycles
     for (auto& parent : ordered)
-    {
-        for (auto& cycle : parent->m_cyclicObjs)
-        {
-            // Get the object ref from the pointer
-            auto it = m_objectRefs.find(cycle.ptr);
-            if (it == m_objectRefs.end())
-            {
-                printf("warning! temp[%d]%s bad ref\n", parent->m_index, cycle.setter.c_str());
-                continue;
-            }
-            ObjectRef* ref = it->second.get();
-
-            // Use different formatting for setter functions
-            if (cycle.setter[0] == ':')
-                printf("temp[%d]%s(temp[%d])\n", parent->m_index, cycle.setter.c_str(), ref->m_index);
-            else if (cycle.setter[0] == '.')
-                printf("temp[%d]%s = temp[%d]\n", parent->m_index, cycle.setter.c_str(), ref->m_index);
-            else
-                printf("warning! temp[%d]%s expected . or :\n", parent->m_index, cycle.setter.c_str());
-        }
-    }
+        printCycles(parent);
 
     printf("temp = nil\n");
+
+    // TODO print global names in m_root
+    printImmediates(&m_root, 0, false);
+    printf("\n");
+    printCycles(&m_root); // TODO rework this to support root
 }
 
-void Serializer::printObject(ObjectRef* ref, int indent)
+// TODO finalize this function...
+void Serializer::printCycles(ObjectRef* parent)
 {
-    printf("%s", ref->m_constructor.c_str());
-    //printf("%*s--debug: refCount = %d, refDepth = %d\n", nested, "", ptr->refCount, ptr->refDepth);
-    /*for (auto& attrib : ref->m_immediates)
-        printf("\n--debug: %s.%s = %s", attrib.table.c_str(), attrib.key.c_str(), attrib.value.c_str());
-    for (auto& attrib : ref->m_directObjs)
-        printf("\n--debug: %s.%s = %p", attrib.table.c_str(), attrib.key.c_str(), attrib.ptr);*/
+    for (auto& cycle : parent->m_cyclicObjs)
+    {
+        // Get the object ref from the pointer
+        auto it = m_objectRefs.find(cycle.ptr);
+        if (it == m_objectRefs.end())
+        {
+            printf("warning! temp[%d]%s bad ref\n", parent->m_index, cycle.setter.c_str());
+            continue;
+        }
+        ObjectRef* ref = it->second.get();
 
+        // Use different formatting for setter functions
+        if (cycle.setter[0] == ':')
+            printf("temp[%d]%s(temp[%d])\n", parent->m_index, cycle.setter.c_str(), ref->m_index);
+        else if (cycle.setter[0] == '.')
+            printf("temp[%d]%s = temp[%d]\n", parent->m_index, cycle.setter.c_str(), ref->m_index);
+        else
+            printf("warning! temp[%d]%s expected . or :\n", parent->m_index, cycle.setter.c_str());
+    }
+}
+
+void Serializer::printImmediates(ObjectRef* ref, int indent, bool useCommas)
+{
     bool firstLine = true;
     std::string lastTable;
 
@@ -329,14 +340,9 @@ void Serializer::printObject(ObjectRef* ref, int indent)
         }
 
         // Handle end of line formatting
-        if (firstLine)
-        {
-            printf("\n%*s{\n", indent, "");
-            indent += 2;
-            firstLine = false;
-        }
-        else
-            printf(",\n");
+        if (!firstLine)
+            printf(((!lastTable.empty() && !tableChanged) || useCommas) ? ",\n" : "\n");
+        firstLine = false;
 
         // Open new subtable
         if (tableChanged)
@@ -377,16 +383,27 @@ void Serializer::printObject(ObjectRef* ref, int indent)
         }
     }
 
-    // Add closing braces (newline added by caller)
-    if (!firstLine)
+    // Close the subtable
+    if (!lastTable.empty())
     {
-        if (!lastTable.empty())
-        {
-            indent -= 2;
-            printf("\n%*s}", indent, "");
-        }
-
         indent -= 2;
+        printf("\n%*s}", indent, "");
+    }
+}
+
+void Serializer::printObject(ObjectRef* ref, int indent)
+{
+    printf("%s", ref->m_constructor.c_str());
+    //printf("%*s--debug: refCount = %d, refDepth = %d\n", nested, "", ptr->refCount, ptr->refDepth);
+    /*for (auto& attrib : ref->m_immediates)
+        printf("\n--debug: %s.%s = %s", attrib.table.c_str(), attrib.key.c_str(), attrib.value.c_str());
+    for (auto& attrib : ref->m_directObjs)
+        printf("\n--debug: %s.%s = %p", attrib.table.c_str(), attrib.key.c_str(), attrib.ptr);*/
+
+    if (ref->hasImmediates())
+    {
+        printf("\n%*s{\n", indent, "");
+        printImmediates(ref, indent + 2, true);
         printf("\n%*s}", indent, "");
     }
     else

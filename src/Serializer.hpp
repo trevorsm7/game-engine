@@ -21,12 +21,15 @@ private:
     std::vector<ImmediateVal> m_immediates;
     std::vector<ObjectDirect> m_directObjs;
     std::vector<ObjectCycle> m_cyclicObjs;
-    int m_count, m_depth;
+    int m_depth;
     int m_index;
+    bool m_inlinable;
     bool m_onStack; // for cycle detection
 
 public:
-    ObjectRef(int depth): m_count(1), m_depth(depth), m_onStack(true) {}
+    ObjectRef(int depth): m_depth(depth), m_index(0), m_inlinable(true), m_onStack(true) {}
+
+    bool hasImmediates() const {return m_immediates.size() > 0 || m_directObjs.size() > 0;}
 
     void setConstructor(const char* constructor)
     {
@@ -76,24 +79,20 @@ class Serializer
 {
 private:
     std::map<const void*, ObjectRefPtr> m_objectRefs;
-    ObjectRef* m_root;
+    ObjectRef m_root;
 
 public:
-    Serializer(): m_root(nullptr) {}
+    Serializer(): m_root(0) {}
 
     ObjectRef* addObjectRef(const void* ptr, int depth);
     ObjectRef* getObjectRef(const void* ptr);
 
     void serializeValue(ObjectRef* parent, const char* table, const char* key, const char* setter, lua_State* L, int index);
-    void serializeObject(ObjectRef* parent, const char* table, const char* key, const char* setter, lua_State* L, int index);
+    void serializeObject(ObjectRef* parent, const char* table, const char* key, const char* setter, lua_State* L, int index, bool forceCycle = false);
     void serializeFromTable(ObjectRef* ref, const char* table, lua_State* L, int index);
 
     void print();
+    void printCycles(ObjectRef* parent);
+    void printImmediates(ObjectRef* ref, int indent, bool useCommas);
     void printObject(ObjectRef* ref, int indent);
-
-    static Serializer* checkSerializer(lua_State* L, int index)
-    {
-        luaL_checktype(L, index, LUA_TLIGHTUSERDATA);
-        return reinterpret_cast<Serializer*>(lua_touserdata(L, index));
-    }
 };

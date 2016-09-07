@@ -283,19 +283,6 @@ void Actor::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
     ref->setType<float>("", "layer", m_layer);
 }
 
-// TODO remove this; should be global and use global table as root
-int Actor::actor_serialize(lua_State* L)
-{
-    // Validate function arguments
-    Actor::checkUserdata(L, 1);
-
-    Serializer serializer;
-    serializer.serializeObject(nullptr, "", "", "", L, 1);
-    serializer.print();
-
-    return 0;
-}
-
 int Actor::actor_getCanvas(lua_State* L)
 {
     // Validate function arguments

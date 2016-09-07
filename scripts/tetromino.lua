@@ -399,7 +399,7 @@ function getNext()
     return val
 end
 
-next = getNext()
+nextTetro = getNext()
 defaultFallPeriod = 1
 fallPeriod = defaultFallPeriod
 
@@ -439,14 +439,14 @@ current = Actor
     members =
     {
         reset = function(self)
-            self.num = next
+            self.num = nextTetro
             self.ori = 1
             self.dir = 0
 
-            local tetromino = tetrominoes[next][1]
+            local tetromino = tetrominoes[nextTetro][1]
 
             local graphics = self:getGraphics()
-            graphics:setColor(tetrominoes[next].color)
+            graphics:setColor(tetrominoes[nextTetro].color)
             graphics:setTileMap(tetromino)
             self:getCollider():setTileMap(tetromino)
 
@@ -454,8 +454,8 @@ current = Actor
             self:setScale(tetromino:getSize())
             self:setPosition(math.floor((screenSize[1] - w) / 2), -h)
 
-            next = getNext()
-            preview:reset(next)
+            nextTetro = getNext()
+            preview:reset(nextTetro)
         end,
 
         move = function(self, dir)

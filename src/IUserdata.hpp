@@ -185,7 +185,8 @@ private:
         // Validate userdata
         T* ptr = testUserdata(L, 1);
         assert(ptr != nullptr);
-        Serializer* serializer = Serializer::checkSerializer(L, 2);
+        assert(lua_type(L, 2) == LUA_TLIGHTUSERDATA);
+        Serializer* serializer = reinterpret_cast<Serializer*>(lua_touserdata(L, 2));
 
         // Get the object ref and update the constructor name
         ObjectRef* ref = serializer->getObjectRef(ptr);
@@ -282,13 +283,9 @@ void TUserdata<T, B>::initMetatable(lua_State* L)
     lua_setmetatable(L, -2);
 
     // Assign class as a global variable
-    //lua_setglobal(L, T::CLASS_NAME);
-    lua_pushliteral(L, "GLOBAL_RO");
-    lua_rawget(L, LUA_REGISTRYINDEX);
     lua_pushstring(L, T::CLASS_NAME);
-    lua_pushvalue(L, -3);
-    lua_rawset(L, -3);
-    lua_pop(L, 2);
+    lua_insert(L, -2); // swap name and class
+    lua_rawset(L, -4); // globals
 
     // Pop the methods table
     lua_pop(L, 1);

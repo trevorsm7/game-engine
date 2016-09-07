@@ -248,9 +248,6 @@ local function newPlayer(canvas, x, y)
     return player
 end
 
--- set a fresh random seed when we start up
-math.randomseed(os.time())
-
 local game = Canvas({20, 15}, true)
 
 local player = newPlayer(game, 1, 1)

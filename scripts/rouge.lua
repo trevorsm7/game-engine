@@ -181,9 +181,6 @@ local function newDoor(canvas, map, x, y)
     return door
 end
 
--- set a fresh random seed when we start up
-math.randomseed(os.time())
-
 game = Canvas
 {
     size = {20, 20},

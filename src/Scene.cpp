@@ -88,17 +88,6 @@ void dumptable(lua_State* L, std::string key, int index)
     dumptable(L, stack, key, index);
 }
 
-int readglobal(lua_State* L)
-{
-    //if (lua_type(L, 2) == LUA_TSTRING)
-    //    printf("fetching %s from RO _ENV\n", lua_tostring(L, 2));
-    lua_pushliteral(L, "GLOBAL_RO");
-    lua_rawget(L, LUA_REGISTRYINDEX);
-    lua_pushvalue(L, 2);
-    lua_rawget(L, -2);
-    return 1;
-}
-
 void copyglobal(lua_State* L, const char* name, int src, int dst)
 {
     lua_pushstring(L, name);
@@ -153,10 +142,7 @@ bool Scene::load(const char *filename)
     lua_pushlightuserdata(m_L, this);
     lua_rawset(m_L, LUA_REGISTRYINDEX);
 
-    // TODO: global utility functions should be protected from write and kept separate from
-    // serialization. Make alternate "global" table w/ metatable to separate reads from user
-    // globals and library globals.
-    // TODO Keep rawset, rawget, table.insert, etc hidden unless we replace read-only tables with userdata proxies.
+    // TODO unload/don't load libs we don't want, rather than just hide them
     luaL_openlibs(m_L);
 
     // TODO seed math.random since we're taking away os.time
@@ -207,6 +193,10 @@ bool Scene::load(const char *filename)
     AabbCollider::initMetatable(m_L);
     TiledCollider::initMetatable(m_L);
 
+    lua_pushliteral(m_L, "serialize");
+    lua_pushcfunction(m_L, scene_serialize);
+    lua_rawset(m_L, -3);
+
     lua_pushliteral(m_L, "registerControl");
     lua_pushcfunction(m_L, scene_registerControl);
     lua_rawset(m_L, -3);
@@ -220,20 +210,27 @@ bool Scene::load(const char *filename)
     lua_rawset(m_L, -3);
 
     dumptable(m_L, "_RO", -1);
-    lua_pop(m_L, 1); // GLOBAL_RO
+    //lua_pop(m_L, 1); // GLOBAL_RO
 
 
-    // Create table for user globals and its metatable
+    // Create table for user globals
     lua_newtable(m_L);
+    lua_pushliteral(m_L, "GLOBAL_USER");
+    lua_pushvalue(m_L, -2); // push copy of globals
+    lua_rawset(m_L, LUA_REGISTRYINDEX);
+
+    // Create metatable for user globals
     lua_newtable(m_L);
 
     // Have metatable expose read-only globals
     lua_pushliteral(m_L, "__index");
-    // TODO use RO table directly
-    lua_pushcfunction(m_L, readglobal);
+    //lua_pushcfunction(m_L, readglobal);
+    lua_pushvalue(m_L, -4);
     lua_rawset(m_L, -3);
 
-    // TODO use __newindex to prevent shadowing read-only globals
+    lua_pushliteral(m_L, "__newindex");
+    lua_pushcfunction(m_L, scene_writeGlobal);
+    lua_rawset(m_L, -3);
 
     lua_setmetatable(m_L, -2);
 
@@ -248,7 +245,6 @@ bool Scene::load(const char *filename)
     lua_setupvalue(m_L, -2, 1);
 
     // Execute specified script
-    //if (lua_pcall(m_L, 0, LUA_MULTRET, 0) != 0)
     if (lua_pcall(m_L, 0, 0, 0) != 0)
     {
         fprintf(stderr, "%s\n", lua_tostring(m_L, -1));
@@ -256,7 +252,8 @@ bool Scene::load(const char *filename)
     }
 
     dumptable(m_L, "_RW", -1);
-    lua_pop(m_L, 1); // pop _ENV
+    //lua_pop(m_L, 1); // pop _ENV
+    lua_pop(m_L, 2); // RW and RO
 
     return true;
 }
@@ -328,13 +325,13 @@ Scene* Scene::checkScene(lua_State* L)
 {
     // Get light userdata from registry
     lua_pushliteral(L, "Scene");
-    if (lua_rawget(L, LUA_REGISTRYINDEX) != LUA_TLIGHTUSERDATA)
-        luaL_error(L, "Failed to get Scene reference (non-userdata)");
+    int type = lua_rawget(L, LUA_REGISTRYINDEX);
+    assert(type == LUA_TLIGHTUSERDATA);
 
     // Cast light userdata to Scene*
     auto scene = reinterpret_cast<Scene*>(lua_touserdata(L, -1));
-    if (!scene) luaL_error(L, "Failed to get Scene reference (nullptr)");
-    lua_pop(L, 1); // clean up the stack
+    assert(scene != nullptr);
+    lua_pop(L, 1);
 
     return scene;
 }
@@ -349,6 +346,52 @@ void Scene::addCanvas(lua_State *L, int index)
     scene->m_canvases.push_back(canvas);
     canvas->refAdded(L, index);
     canvas->m_scene = scene;
+}
+
+int Scene::scene_serialize(lua_State* L)
+{
+    Scene* scene = Scene::checkScene(L);
+
+    // TODO make sure this object is safe from lua_errors (memory leak!)
+    Serializer serializer;
+
+    // Serialize globals
+    lua_pushliteral(L, "GLOBAL_USER");
+    int type = lua_rawget(L, LUA_REGISTRYINDEX);
+    assert(type == LUA_TTABLE);
+    serializer.serializeFromTable(nullptr, "", L, -1);
+
+    for (Canvas*& canvas : scene->m_canvases)
+    {
+        canvas->pushUserdata(L);
+        serializer.serializeObject(nullptr, "", "", "addCanvas", L, -1, true);
+        lua_pop(L, 1);
+    }
+
+    // TODO also registered controls and portrait hint!
+
+    serializer.print();
+
+    return 0;
+}
+
+int Scene::scene_writeGlobal(lua_State* L)
+{
+    //lua_upvalueindex(L, 1);
+    int type = luaL_getmetafield(L, 1, "__index");
+    assert(type == LUA_TTABLE);
+
+    // Fail if key exists in read-only globals table
+    lua_pushvalue(L, 2);
+    if (lua_rawget(L, -2) != LUA_TNIL)
+        luaL_error(L, "global value %s is read-only", lua_tostring(L, 2));
+
+    // Write the new value to the user table
+    lua_pushvalue(L, 2);
+    lua_pushvalue(L, 3);
+    lua_rawset(L, 1);
+
+    return 0;
 }
 
 int Scene::scene_registerControl(lua_State* L)

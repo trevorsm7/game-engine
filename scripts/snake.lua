@@ -99,8 +99,7 @@ local function newSnake(canvas, name, pos, dir, color)
     end
 
     function snake:die()
-        io.write(self.name, " is dead! Score: ", self.length, "\n")
-        io.flush() -- even this doesn't seem to help all the time???
+        print(self.name.." is dead! Score: "..self.length)
         self.dead = true
     end
 
@@ -181,8 +180,7 @@ local function resetGame(game)
 
     function god:mouse(down)
         if down and not self.dead then
-            io.write("God is dead! Score: ", self.score, "\n")
-            io.flush() -- even this doesn't seem to help all the time???
+            print("God is dead! Score: "..self.score)
             self.dead = true
         end
         return true
@@ -203,9 +201,6 @@ local function resetGame(game)
     newApple(game)
     newApple(game)
 end
-
--- set a fresh random seed when we start up
-math.randomseed(os.time())
 
 -- create and populate our game canvas
 local game = Canvas({20, 15}, true)

@@ -144,4 +144,5 @@ tiles[1].cycle = nerd
 tiles[2] = nerd
 --]]
 
-tiles:serialize()
+--tiles:serialize()
+serialize()

@@ -414,19 +414,26 @@ void Canvas::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
 {
     printf("TODO Canvas::serialize\n");
     // TODO serialize camera
-    // TODO must gurantee that order of all Actors is preserved?
-    int i = 1;
     for (auto& actor : m_actors)
     {
         if (actor->m_canvas != this)
             continue;
 
-        std::string index = "["s + std::to_string(i++) + "]"s;
         actor->pushUserdata(L);
-        serializer->serializeObject(ref, "actors", index.c_str(), "addActor", L, -1);
+        // TODO add a setActor function to set directly to m_actors instead of m_added?
+        serializer->serializeObject(ref, "", "", "addActor", L, -1, true);
         lua_pop(L, 1);
     }
-    // TODO serialize added queue separately?
+
+    for (auto& actor : m_added)
+    {
+        if (actor->m_canvas != this)
+            continue;
+
+        actor->pushUserdata(L);
+        serializer->serializeObject(ref, "", "", "addActor", L, -1, true);
+        lua_pop(L, 1);
+    }
 }
 
 int Canvas::canvas_addActor(lua_State *L)
