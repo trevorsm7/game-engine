@@ -384,9 +384,6 @@ void Canvas::construct(lua_State* L)
     lua_pop(L, 1);
 
     m_camera = ICameraPtr(new BasicCamera(w, h, fixed));
-
-    // Implicitly add Canvas to Scene
-    Scene::addCanvas(L, -1);
 }
 
 void Canvas::destroy(lua_State* L)
@@ -412,8 +409,6 @@ void Canvas::destroy(lua_State* L)
 
 void Canvas::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
 {
-    printf("TODO Canvas::serialize\n");
-    // TODO serialize camera
     for (auto& actor : m_actors)
     {
         if (actor->m_canvas != this)
@@ -434,6 +429,8 @@ void Canvas::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
         serializer->serializeObject(ref, "", "", "addActor", L, -1, true);
         lua_pop(L, 1);
     }
+
+    // TODO serialize camera
 }
 
 int Canvas::canvas_addActor(lua_State *L)

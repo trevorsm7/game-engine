@@ -245,12 +245,13 @@ tetrominoes =
 local screenSize = {10, 20}
 setPortraitHint(true)
 
-game = Canvas
+local game = Canvas
 {
     size = {screenSize[1] + 6, screenSize[2] + 1},
     fixed = true
 }
 game:setOrigin(-1, 0)
+addCanvas(game)
 
 -- Create the TileMap that will represent all the fallen blocks
 screenMap = TileMap
@@ -384,7 +385,7 @@ score = 0
 scoreText:setTextL(2, "Score:")
 scoreText:setScore(score)
 
-deck = {}
+local deck = {}
 function getNext()
     if #deck == 0 then
         for i = 1, #tetrominoes do
@@ -550,7 +551,8 @@ current = Actor
             if y < 0 then
                 scoreText:setTextL(0, "Game")
                 scoreText:setTextR(1, "Over")
-                game:removeActor(self)
+                local canvas = self:getCanvas()
+                if canvas then canvas:removeActor(self) end
                 return
             end
 

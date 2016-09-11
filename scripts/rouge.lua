@@ -181,11 +181,12 @@ local function newDoor(canvas, map, x, y)
     return door
 end
 
-game = Canvas
+local game = Canvas
 {
     size = {20, 20},
     fixed = false
 }
+addCanvas(game)
 
 player = newPlayer(game, 1, 1)
 registerControl("left", player:keyDown(player.move, {-1, 0}))

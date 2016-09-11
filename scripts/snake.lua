@@ -204,12 +204,14 @@ end
 
 -- create and populate our game canvas
 local game = Canvas({20, 15}, true)
+addCanvas(game)
 resetGame(game)
 
 -- create game menu
 local menu = Canvas({20, 15}, true)
 menu:setCenter(0, 0)
 menu:setVisible(false)
+addCanvas(menu)
 
 local continue = Actor
 {

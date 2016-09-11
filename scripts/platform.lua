@@ -3,6 +3,7 @@ white = {1, 1, 1}
 
 game = Canvas({20, 20}, false)
 game:setCenter(0.5, -5)
+addCanvas(game)
 
 player = Actor
 {

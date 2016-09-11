@@ -56,6 +56,7 @@ reset = {}
 
 canvases[1] = Canvas({20, 20}, false)
 canvases[1]:setCenter(0, 0)
+addCanvas(canvases[1])
 
 reset[1] = function(canvas)
     addStaticBox(canvas, -5, 0)
@@ -75,6 +76,7 @@ canvases[2] = Canvas({20, 20}, false)
 canvases[2]:setCenter(0, 0)
 canvases[2]:setVisible(false)
 canvases[2]:setPaused(true)
+addCanvas(canvases[2])
 
 reset[2] = function(canvas)
     addStaticBox(canvas, -5, 0)
@@ -95,6 +97,7 @@ canvases[3] = Canvas({20, 20}, false)
 canvases[3]:setCenter(0, 0)
 canvases[3]:setVisible(false)
 canvases[3]:setPaused(true)
+addCanvas(canvases[3])
 
 reset[3] = function(canvas)
     for col = -5, 5 do
@@ -116,6 +119,7 @@ reset[3](canvases[3])
 canvases[4] = Canvas({16, 12}, false)
 canvases[4]:setVisible(false)
 canvases[4]:setPaused(true)
+addCanvas(canvases[4])
 
 reset[4] = function(canvas)
     local speed = 4
@@ -178,6 +182,7 @@ canvases[5] = Canvas({30, 30}, false)
 canvases[5]:setCenter(0, 0)
 canvases[5]:setVisible(false)
 canvases[5]:setPaused(true)
+addCanvas(canvases[5])
 
 reset[5] = function(canvas)
     local box

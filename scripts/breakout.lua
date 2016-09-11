@@ -1,8 +1,9 @@
 -- create a 20x15 game window
-game = Canvas({20, 15}, true)
+local game = Canvas({20, 15}, true)
+addCanvas(game)
 
 -- put invisible walls around the edges of the screen
-leftWall = Actor
+local leftWall = Actor
 {
     collider = AabbCollider{group = 4, mask = 3},
     position = {-1, 0},
@@ -10,7 +11,7 @@ leftWall = Actor
 }
 game:addActor(leftWall)
 
-rightWall = Actor
+local rightWall = Actor
 {
     collider = AabbCollider{group = 4, mask = 3},
     position = {20, 0},
@@ -18,7 +19,7 @@ rightWall = Actor
 }
 game:addActor(rightWall)
 
-topWall = Actor
+local topWall = Actor
 {
     collider = AabbCollider{group = 4, mask = 1},
     position = {0, -1},
@@ -26,7 +27,7 @@ topWall = Actor
 }
 game:addActor(topWall)
 
-bottomWall = Actor
+local bottomWall = Actor
 {
     collider = AabbCollider{group = 4, mask = 1},
     position = {0, 16},

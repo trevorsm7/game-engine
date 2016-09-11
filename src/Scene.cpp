@@ -193,6 +193,10 @@ bool Scene::load(const char *filename)
     AabbCollider::initMetatable(m_L);
     TiledCollider::initMetatable(m_L);
 
+    lua_pushliteral(m_L, "addCanvas");
+    lua_pushcfunction(m_L, scene_addCanvas);
+    lua_rawset(m_L, -3);
+
     lua_pushliteral(m_L, "serialize");
     lua_pushcfunction(m_L, scene_serialize);
     lua_rawset(m_L, -3);
@@ -209,8 +213,7 @@ bool Scene::load(const char *filename)
     lua_pushcfunction(m_L, scene_quit);
     lua_rawset(m_L, -3);
 
-    dumptable(m_L, "_RO", -1);
-    //lua_pop(m_L, 1); // GLOBAL_RO
+    //dumptable(m_L, "_RO", -1);
 
 
     // Create table for user globals
@@ -251,8 +254,7 @@ bool Scene::load(const char *filename)
         return false;
     }
 
-    dumptable(m_L, "_RW", -1);
-    //lua_pop(m_L, 1); // pop _ENV
+    //dumptable(m_L, "_RW", -1);
     lua_pop(m_L, 2); // RW and RO
 
     return true;
@@ -336,16 +338,18 @@ Scene* Scene::checkScene(lua_State* L)
     return scene;
 }
 
-void Scene::addCanvas(lua_State *L, int index)
+int Scene::scene_addCanvas(lua_State *L)
 {
     // Validate and get pointers to Scene and Canvas
     Scene* scene = Scene::checkScene(L);
-    Canvas* canvas = Canvas::checkUserdata(L, index);
+    Canvas* canvas = Canvas::checkUserdata(L, 1);
 
     // Push Canvas on layer above previously pushed Canvases
     scene->m_canvases.push_back(canvas);
-    canvas->refAdded(L, index);
+    canvas->refAdded(L, 1);
     canvas->m_scene = scene;
+
+    return 0;
 }
 
 int Scene::scene_serialize(lua_State* L)
@@ -355,11 +359,19 @@ int Scene::scene_serialize(lua_State* L)
     // TODO make sure this object is safe from lua_errors (memory leak!)
     Serializer serializer;
 
+    // Populate read-only globals
+    lua_pushliteral(L, "GLOBAL_RO");
+    lua_rawget(L, LUA_REGISTRYINDEX);
+    assert(lua_type(L, -1) == LUA_TTABLE);
+    serializer.populateGlobals("", L, -1);
+    lua_pop(L, 1);
+
     // Serialize globals
     lua_pushliteral(L, "GLOBAL_USER");
-    int type = lua_rawget(L, LUA_REGISTRYINDEX);
-    assert(type == LUA_TTABLE);
+    lua_rawget(L, LUA_REGISTRYINDEX);
+    assert(lua_type(L, -1) == LUA_TTABLE);
     serializer.serializeFromTable(nullptr, "", L, -1);
+    lua_pop(L, 1);
 
     for (Canvas*& canvas : scene->m_canvases)
     {
@@ -377,7 +389,6 @@ int Scene::scene_serialize(lua_State* L)
 
 int Scene::scene_writeGlobal(lua_State* L)
 {
-    //lua_upvalueindex(L, 1);
     int type = luaL_getmetafield(L, 1, "__index");
     assert(type == LUA_TTABLE);
 

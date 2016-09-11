@@ -42,10 +42,10 @@ public:
     bool controlEvent(ControlEvent& event);
     void resize(int width, int height);
 
-//private:
+private:
     static Scene* checkScene(lua_State* L);
-    static void addCanvas(lua_State* L, int index);
 
+    static int scene_addCanvas(lua_State* L);
     static int scene_serialize(lua_State* L);
     static int scene_writeGlobal(lua_State* L);
     static int scene_registerControl(lua_State* L);

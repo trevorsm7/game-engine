@@ -249,6 +249,7 @@ local function newPlayer(canvas, x, y)
 end
 
 local game = Canvas({20, 15}, true)
+addCanvas(game)
 
 local player = newPlayer(game, 1, 1)
 registerControl("left", player:moveFactory{-1, 0})
