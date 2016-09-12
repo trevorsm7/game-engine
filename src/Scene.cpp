@@ -376,7 +376,7 @@ int Scene::scene_serialize(lua_State* L)
     for (Canvas*& canvas : scene->m_canvases)
     {
         canvas->pushUserdata(L);
-        serializer.serializeObject(nullptr, "", "", "addCanvas", L, -1, true);
+        serializer.serializeObject(nullptr, "", "", "addCanvas", L, -1);
         lua_pop(L, 1);
     }
 

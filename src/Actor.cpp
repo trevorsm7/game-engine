@@ -276,11 +276,11 @@ void Actor::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
     // TODO move into Transform?
     // TODO using subtable for testing; maybe keep this way though?
     float position[2] = {m_transform.getX(), m_transform.getY()};
-    ref->setArray<float>("transform", "position", position, 2);
+    ref->setArray("transform", "position", position, 2);
     float scale[2] = {m_transform.getW(), m_transform.getH()};
-    ref->setArray<float>("transform", "scale", scale, 2);
+    ref->setArray("transform", "scale", scale, 2);
 
-    ref->setType<float>("", "layer", m_layer);
+    ref->setLiteral("", "layer", m_layer);
 }
 
 int Actor::actor_getCanvas(lua_State* L)

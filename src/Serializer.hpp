@@ -7,30 +7,36 @@
 #include <string>
 #include <cassert>
 
+class ObjectRef;
+
+class FunctionRef
+{
+    friend class Serializer;
+
+    struct UpvalueRef {std::string literal; ObjectRef* object; FunctionRef* function;};
+
+private:
+    std::string m_name;
+    //std::vector<UpvalueRef> m_upvalues;
+    //bool m_tempName;
+};
+
 class ObjectRef
 {
     friend class Serializer;
 
-    // TODO map<table> -> vector<key, value> instead?
-    struct ImmediateVal {std::string table, key, value;};
-    struct ObjectDirect {std::string table, key; const void* ptr;};
-    struct ObjectCycle {std::string setter; const void* ptr;};
+    struct InlineRef {std::string table, key; std::string literal; ObjectRef* object;};
+    struct SetterRef {std::string setter; ObjectRef* object; FunctionRef* function;};
 
 private:
     std::string m_name;
     std::string m_constructor; // can use "" for tables
-    std::vector<ImmediateVal> m_immediates;
-    std::vector<ObjectDirect> m_directObjs;
-    std::vector<ObjectCycle> m_cyclicObjs;
+    std::vector<InlineRef> m_inlines;
+    std::vector<SetterRef> m_setters;
     int m_depth;
     bool m_inlinable;
     bool m_tempName;
     bool m_onStack; // for cycle detection
-
-public:
-    ObjectRef(int depth): m_depth(depth), m_inlinable(true), m_tempName(true), m_onStack(true) {}
-
-    bool hasImmediates() const {return m_immediates.size() > 0 || m_directObjs.size() > 0;}
 
     void setGlobalName(const char* name)
     {
@@ -39,50 +45,66 @@ public:
         m_tempName = false;
     }
 
+public:
+    ObjectRef(int depth): m_depth(depth), m_inlinable(true), m_tempName(true), m_onStack(true) {}
+
     void setConstructor(const char* constructor)
     {
         assert(m_constructor.empty());
         m_constructor = std::string(constructor);
     }
 
-    void setImmediate(std::string table, std::string key, std::string value);
-
     template <class T>
-    void setType(std::string table, std::string key, T value)
+    void setLiteral(std::string table, std::string key, T value)
     {
         std::string str = std::to_string(value);
-        setImmediate(table, key, str);
+        setLiteralRaw(table, key, str);
     }
 
     template <class T>
     void setArray(std::string table, std::string key, T* value, int length)
     {
-        std::string str = std::string("{");
+        auto str = std::string("{");
         for (int i = 0; i < length; ++i)
         {
             if (i > 0)
                 str += ", ";
             str += std::to_string(*(value++));
         }
-        str += std::string("}");
-        setImmediate(table, key, str);
+        str += "}";
+        setLiteralRaw(table, key, str);
     }
 
 private:
-    void setObjectDirect(std::string table, std::string key, const void* ptr);
-    void setObjectCycle(std::string key, std::string setter, const void* ptr, bool isRoot = false);
+    void setLiteralRaw(std::string table, std::string key, std::string value);
+    void setInlineRef(std::string table, std::string key, ObjectRef* ref);
+    void setSetterRef(std::string key, std::string setter, ObjectRef* ref, bool isRoot = false);
 };
 
 template <>
-void ObjectRef::setType<bool>(std::string table, std::string key, bool value);
+inline void ObjectRef::setLiteral<bool>(std::string table, std::string key, bool value)
+{
+    setLiteralRaw(table, key, value ? "true" : "false");
+}
 
 template <>
-void ObjectRef::setType<const char*>(std::string table, std::string key, const char* value);
+inline void ObjectRef::setLiteral<const char*>(std::string table, std::string key, const char* value)
+{
+    auto str = std::string("\"") + value + "\"";
+    setLiteralRaw(table, key, str);
+}
 
-typedef std::unique_ptr<ObjectRef> ObjectRefPtr;
+template <>
+inline void ObjectRef::setLiteral<std::string>(std::string table, std::string key, std::string value)
+{
+    auto str = std::string("\"") + value + "\"";
+    setLiteralRaw(table, key, str);
+}
 
 class Serializer
 {
+    typedef std::unique_ptr<ObjectRef> ObjectRefPtr;
+
 private:
     ObjectRef m_root;
     std::map<const void*, ObjectRefPtr> m_objectRefs;
@@ -96,7 +118,8 @@ public:
     void populateGlobals(std::string prefix, lua_State* L, int index);
 
     void serializeValue(ObjectRef* parent, const char* table, const char* key, const char* setter, lua_State* L, int index);
-    void serializeObject(ObjectRef* parent, const char* table, const char* key, const char* setter, lua_State* L, int index, bool forceCycle = false);
+    void serializeObject(ObjectRef* parent, const char* table, const char* key, const char* setter, lua_State* L, int index);
+    void serializeFunction(ObjectRef* parent, const char* table, const char* key, const char* setter, lua_State* L, int index);
     void serializeFromTable(ObjectRef* ref, const char* table, lua_State* L, int index);
 
     void print();
@@ -104,7 +127,7 @@ public:
 private:
     ObjectRef* addObjectRef(const void* ptr, int depth);
 
-    void printCycles(ObjectRef* parent);
-    void printImmediates(ObjectRef* ref, int indent);
+    void printSetters(ObjectRef* ref);
+    void printInlines(ObjectRef* ref, int indent);
     void printObject(ObjectRef* ref, int indent);
 };

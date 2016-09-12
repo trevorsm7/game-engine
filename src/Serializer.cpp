@@ -5,63 +5,48 @@
 
 using namespace std::string_literals;
 
-template <>
-void ObjectRef::setType<bool>(std::string table, std::string key, bool value)
-{
-    setImmediate(table, key, value ? "true"s : "false"s);
-}
-
-template <>
-void ObjectRef::setType<const char*>(std::string table, std::string key, const char* value)
-{
-    std::string str = "\""s + value + "\"";
-    setImmediate(table, key, str);
-}
-
-void ObjectRef::setImmediate(std::string table, std::string key, std::string value)
+void ObjectRef::setLiteralRaw(std::string table, std::string key, std::string value)
 {
     // Alphabetical search from the end by subtable name
-    auto it = std::find_if(m_immediates.rbegin(), m_immediates.rend(),
-        [&table](ImmediateVal& val) {return table.compare(val.table) >= 0;});
+    auto it = std::find_if(m_inlines.rbegin(), m_inlines.rend(),
+        [&table](InlineRef& iref) {return table.compare(iref.table) >= 0;});
 
     // Insert alphabetically after entires with same subtable name
-    ImmediateVal val = {table, key, value};
-    m_immediates.insert(it.base(), val);
-    //m_immediates.emplace_back(table, name, value);
+    InlineRef iref = {table, key, value, nullptr};
+    m_inlines.insert(it.base(), iref);
 }
 
-void ObjectRef::setObjectDirect(std::string table, std::string key, const void* ptr)
+void ObjectRef::setInlineRef(std::string table, std::string key, ObjectRef* ref)
 {
     // Alphabetical search from the end by subtable name
-    auto it = std::find_if(m_directObjs.rbegin(), m_directObjs.rend(),
-        [&table](ObjectDirect& val) {return table.compare(val.table) >= 0;});
+    auto it = std::find_if(m_inlines.rbegin(), m_inlines.rend(),
+        [&table](InlineRef& iref) {return table.compare(iref.table) >= 0;});
 
     // Insert alphabetically after entires with same subtable name
-    ObjectDirect val = {table, key, ptr};
-    m_directObjs.insert(it.base(), val);
-    //m_directObjs.emplace_back(table, key, ptr);
+    InlineRef iref = {table, key, "", ref};
+    m_inlines.insert(it.base(), iref);
 }
 
-void ObjectRef::setObjectCycle(std::string key, std::string setter, const void* ptr, bool isRoot)
+void ObjectRef::setSetterRef(std::string key, std::string setter, ObjectRef* ref, bool isRoot)
 {
     m_inlinable = false;
 
     if (isRoot)
     {
         assert(!setter.empty());
-        ObjectCycle val = {setter, ptr};
-        m_cyclicObjs.push_back(val);
+        SetterRef sref = {setter, ref, nullptr};
+        m_setters.push_back(sref);
     }
     else if (!setter.empty())
     {
-        ObjectCycle val = {":"s + setter, ptr};
-        m_cyclicObjs.push_back(val);
+        SetterRef sref = {":"s + setter, ref, nullptr};
+        m_setters.push_back(sref);
     }
     else
     {
         assert(!key.empty());
-        ObjectCycle val = {"."s + key, ptr};
-        m_cyclicObjs.push_back(val);
+        SetterRef sref = {"."s + key, ref, nullptr};
+        m_setters.push_back(sref);
     }
 }
 
@@ -69,7 +54,6 @@ ObjectRef* Serializer::addObjectRef(const void* ptr, int depth)
 {
     assert(getObjectRef(ptr) == nullptr);
     ObjectRef* ref = new ObjectRef(depth);
-    //m_objectRefs.emplace(userdata, ptr);
     m_objectRefs[ptr] = ObjectRefPtr(ref); // take ownership of bare ptr
     return ref;
 }
@@ -146,7 +130,7 @@ void Serializer::serializeValue(ObjectRef* parent, const char* table, const char
         parent = &m_root;
 
     // Filter read-only globals (userdata, table, function)
-    // TODO allow user to provide filters as well
+    // TODO allow user to provide filters as well - would need to defer to serializeObject/Function then!
     const void* ptr = lua_topointer(L, index);
     if (ptr != nullptr)
     {
@@ -154,7 +138,7 @@ void Serializer::serializeValue(ObjectRef* parent, const char* table, const char
         if (it != m_globals.end())
         {
             // Use the global name directly
-            parent->setImmediate(table, key, it->second);
+            parent->setLiteralRaw(table, key, it->second);
             return;
         }
     }
@@ -163,25 +147,20 @@ void Serializer::serializeValue(ObjectRef* parent, const char* table, const char
     switch (type)
     {
     case LUA_TNUMBER:
-        // TODO consider using setType - need to check if integer or float
+        // TODO consider using setLiteral - need to check if integer or float
         // NOTE this will convert the value on the stack, so push a copy first
         lua_pushvalue(L, index);
-        parent->setImmediate(table, key, lua_tostring(L, -1));
+        parent->setLiteralRaw(table, key, lua_tostring(L, -1));
         lua_pop(L, 1);
         break;
     case LUA_TSTRING:
-        parent->setType(table, key, lua_tostring(L, index));
+        parent->setLiteral(table, key, lua_tostring(L, index));
         break;
     case LUA_TBOOLEAN:
-        parent->setType(table, key, lua_toboolean(L, index));
+        parent->setLiteral(table, key, lua_toboolean(L, index));
         break;
     case LUA_TFUNCTION:
-        {
-            // TODO serialize binary dump? don't forget upvalues
-            char buffer[32];
-            snprintf(buffer, sizeof(buffer), "<TODO: function %p>", lua_topointer(L, index));
-            parent->setImmediate(table, key, buffer);
-        }
+        serializeFunction(parent, table, key, setter, L, index);
         break;
     case LUA_TTABLE:
     case LUA_TUSERDATA:
@@ -194,7 +173,7 @@ void Serializer::serializeValue(ObjectRef* parent, const char* table, const char
     }
 }
 
-void Serializer::serializeObject(ObjectRef* parent, const char* table, const char* key, const char* setter, lua_State* L, int index, bool forceCycle)
+void Serializer::serializeObject(ObjectRef* parent, const char* table, const char* key, const char* setter, lua_State* L, int index)
 {
     if (parent == nullptr)
         parent = &m_root;
@@ -214,7 +193,7 @@ void Serializer::serializeObject(ObjectRef* parent, const char* table, const cha
         // Break cycle if object is already on the stack
         if (ref->m_onStack)
         {
-            parent->setObjectCycle(key, setter, ptr, isRoot);
+            parent->setSetterRef(key, setter, ref, isRoot);
             return;
         }
     }
@@ -247,10 +226,10 @@ void Serializer::serializeObject(ObjectRef* parent, const char* table, const cha
             serializeFromTable(ref, "", L, index);
     }
 
-    if (forceCycle)
+    if (key[0] == '\0')
     {
-        // Treat as cyclic reference (and don't rebalance parent depth)
-        parent->setObjectCycle(key, setter, ptr, isRoot);
+        // Force setter instead of inlining
+        parent->setSetterRef(key, setter, ref, isRoot);
         ref->m_inlinable = false;
     }
     else
@@ -260,15 +239,23 @@ void Serializer::serializeObject(ObjectRef* parent, const char* table, const cha
             parent->m_depth = ref->m_depth - 1;
 
         // Add ref to parent
-        parent->setObjectDirect(table, key, ptr);
+        parent->setInlineRef(table, key, ref);
 
         // Set name if object is global
         if (isRoot)
             ref->setGlobalName(key);
     }
 
-    // Clear the onStack flag
+    // Clear cycle detection flag before returning
     ref->m_onStack = false;
+}
+
+void Serializer::serializeFunction(ObjectRef* parent, const char* table, const char* key, const char* setter, lua_State* L, int index)
+{
+    // TODO serialize binary dump? don't forget upvalues
+    char buffer[32];
+    snprintf(buffer, sizeof(buffer), "<TODO: function %p>", lua_topointer(L, index));
+    parent->setLiteralRaw(table, key, buffer);
 }
 
 // TODO possible to overflow the Lua stack if we have a chain of tables; break this up with lua_call as with userdata?
@@ -353,75 +340,57 @@ void Serializer::print()
         printf("\n");
     }
 
-    // Print global immediates
-    printImmediates(&m_root, 0);
+    // Print global inlines
+    printInlines(&m_root, 0);
 
     // TODO print functions and closures
 
-    // Iterate over object refs with cycles
+    // Iterate over setters
     for (auto& parent : ordered)
-        printCycles(parent);
-    printCycles(&m_root);
+        printSetters(parent);
+
+    printSetters(&m_root);
 }
 
-void Serializer::printCycles(ObjectRef* parent)
+void Serializer::printSetters(ObjectRef* ref)
 {
-    assert(parent != nullptr);
-    for (auto& cycle : parent->m_cyclicObjs)
+    assert(ref != nullptr);
+    for (auto& sref : ref->m_setters)
     {
-        // Get the object ref from the pointer
-        auto it = m_objectRefs.find(cycle.ptr);
-        assert(it != m_objectRefs.end());
-        ObjectRef* ref = it->second.get();
+        // Assert exactly one non-null
+        assert(!sref.object != !sref.function);
+
+        const char* name;
+        if (sref.object != nullptr)
+            name = sref.object->m_name.c_str();
+        else
+            name = sref.function->m_name.c_str();
 
         // Use different formatting for setter functions
-        if (cycle.setter[0] == '.')
-            printf("%s%s = %s\n", parent->m_name.c_str(), cycle.setter.c_str(), ref->m_name.c_str());
-        else //if (cycle.setter[0] == ':') // or global (empty parent name, no separator)
-            printf("%s%s(%s)\n", parent->m_name.c_str(), cycle.setter.c_str(), ref->m_name.c_str());
+        if (sref.setter[0] == '.')
+            printf("%s%s = %s\n", ref->m_name.c_str(), sref.setter.c_str(), name);
+        else //if (sref.setter[0] == ':') // or global (empty parent name, no separator)
+            printf("%s%s(%s)\n", ref->m_name.c_str(), sref.setter.c_str(), name);
     }
 }
 
-void Serializer::printImmediates(ObjectRef* ref, int indent)
+void Serializer::printInlines(ObjectRef* ref, int indent)
 {
     assert(ref != nullptr);
-    const bool isRoot = (ref != &m_root);
+    const bool isRoot = (ref == &m_root);
 
     bool firstLine = true;
     std::string lastTable;
 
-    auto immIt = ref->m_immediates.begin();
-    auto immEnd = ref->m_immediates.end();
-
-    auto objIt = ref->m_directObjs.begin();
-    auto objEnd = ref->m_directObjs.end();
-
-    // Loop while attributes remain
-    while (immIt != immEnd || objIt != objEnd)
+    for (auto& iref : ref->m_inlines)
     {
-        // Alternate between immediates and objects at subtable boundaries
-        bool immTurn = immIt != immEnd &&
-            (objIt == objEnd || immIt->table.compare(objIt->table) <= 0);
-
         // Skip global objects that have already been printed
         // NOTE will always be true unless more than one global points at the object
-        if (!immTurn && isRoot)
-        {
-            // Get the object ref from the pointer
-            auto it = m_objectRefs.find(objIt->ptr);
-            assert(it != m_objectRefs.end());
-
-            // Skip if key is the same as global name
-            if (objIt->key == it->second->m_name)
-            {
-                ++objIt;
-                continue;
-            }
-        }
+        if (iref.object && isRoot && iref.key == iref.object->m_name)
+            continue;
 
         // Handle change of subtable formatting
-        std::string& curTable = immTurn ? immIt->table : objIt->table;
-        bool tableChanged = (lastTable.compare(curTable) != 0);
+        bool tableChanged = (lastTable != iref.table);
 
         // Close previous subtable
         if (tableChanged && !lastTable.empty())
@@ -433,41 +402,35 @@ void Serializer::printImmediates(ObjectRef* ref, int indent)
         // Handle end of line formatting
         if (!firstLine)
             printf(((!lastTable.empty() && !tableChanged) || isRoot) ? ",\n" : "\n");
+
         firstLine = false;
 
         // Open new subtable
         if (tableChanged)
         {
-            printf("%*s%s =\n%*s{\n", indent, "", curTable.c_str(), indent, "");
+            printf("%*s%s =\n%*s{\n", indent, "", iref.table.c_str(), indent, "");
             indent += 2;
 
-            lastTable = curTable;
+            lastTable = iref.table;
         }
 
         // Print the next line
-        if (immTurn)
+        if (iref.object)
         {
-            printf("%*s%s = %s", indent, "", immIt->key.c_str(), immIt->value.c_str());
-
-            ++immIt;
-        }
-        else
-        {
-            // Get the object ref from the pointer
-            auto it = m_objectRefs.find(objIt->ptr);
-            assert(it != m_objectRefs.end());
-
-            if (it->second->m_inlinable)
+            if (iref.object->m_inlinable)
             {
-                printf("%*s%s = ", indent, "", objIt->key.c_str());
-
                 // Handle nested objects recursively
-                printObject(it->second.get(), indent);
+                printf("%*s%s = ", indent, "", iref.key.c_str());
+                printObject(iref.object, indent);
             }
             else
-                printf("%*s%s = %s", indent, "", objIt->key.c_str(), it->second->m_name.c_str());
-
-            ++objIt;
+            {
+                printf("%*s%s = %s", indent, "", iref.key.c_str(), iref.object->m_name.c_str());
+            }
+        }
+        else // literal
+        {
+            printf("%*s%s = %s", indent, "", iref.key.c_str(), iref.literal.c_str());
         }
     }
 
@@ -487,12 +450,14 @@ void Serializer::printObject(ObjectRef* ref, int indent)
     assert(ref != nullptr);
     printf("%s", ref->m_constructor.c_str());
 
-    if (ref->hasImmediates())
+    if (!ref->m_inlines.empty())
     {
         printf("\n%*s{\n", indent, "");
-        printImmediates(ref, indent + 2);
+        printInlines(ref, indent + 2);
         printf("%*s}", indent, "");
     }
     else
+    {
         printf("{}");
+    }
 }

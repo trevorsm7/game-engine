@@ -32,9 +32,9 @@ void ICollider::construct(lua_State* L)
 
 void ICollider::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
 {
-    ref->setType<uint32_t>("", "group", m_colliderGroup);
-    ref->setType<uint32_t>("", "mask", m_colliderMask); // TODO option to print in hex?
-    ref->setType<bool>("", "collidable", m_collidable);
+    ref->setLiteral("", "group", m_colliderGroup);
+    ref->setLiteral("", "mask", m_colliderMask); // TODO option to print in hex?
+    ref->setLiteral("", "collidable", m_collidable);
 }
 
 int ICollider::script_setCollidable(lua_State* L)

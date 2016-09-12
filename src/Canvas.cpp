@@ -416,7 +416,7 @@ void Canvas::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
 
         actor->pushUserdata(L);
         // TODO add a setActor function to set directly to m_actors instead of m_added?
-        serializer->serializeObject(ref, "", "", "addActor", L, -1, true);
+        serializer->serializeObject(ref, "", "", "addActor", L, -1);
         lua_pop(L, 1);
     }
 
@@ -426,7 +426,7 @@ void Canvas::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
             continue;
 
         actor->pushUserdata(L);
-        serializer->serializeObject(ref, "", "", "addActor", L, -1, true);
+        serializer->serializeObject(ref, "", "", "addActor", L, -1);
         lua_pop(L, 1);
     }
 
