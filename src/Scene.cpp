@@ -142,8 +142,31 @@ bool Scene::load(const char *filename)
     lua_pushlightuserdata(m_L, this);
     lua_rawset(m_L, LUA_REGISTRYINDEX);
 
-    // TODO unload/don't load libs we don't want, rather than just hide them
-    luaL_openlibs(m_L);
+    //luaL_openlibs(m_L);
+    static constexpr const luaL_Reg libs[] =
+    {
+        {"_G", luaopen_base},
+        //{LUA_LOADLIBNAME, luaopen_package},
+        //{LUA_COLIBNAME, luaopen_coroutine},
+        {LUA_TABLIBNAME, luaopen_table},
+        //{LUA_IOLIBNAME, luaopen_io},
+        //{LUA_OSLIBNAME, luaopen_os},
+        {LUA_STRLIBNAME, luaopen_string},
+        {LUA_MATHLIBNAME, luaopen_math},
+        {LUA_UTF8LIBNAME, luaopen_utf8},
+        //{LUA_DBLIBNAME, luaopen_debug},
+        {LUA_BITLIBNAME, luaopen_bit32},
+        {NULL, NULL}
+    };
+    const luaL_Reg *lib;
+    for (lib = libs; lib->func; lib++)
+    {
+        //lua_pushstring(m_L, lib->name);
+        //luaL_requiref(m_L, lib->name, lib->func, 0);
+        //lua_rawset(m_L, -3);
+        luaL_requiref(m_L, lib->name, lib->func, 1);
+        lua_pop(m_L, 1);
+    }
 
     // TODO seed math.random since we're taking away os.time
 
@@ -157,14 +180,16 @@ bool Scene::load(const char *filename)
     lua_pushvalue(m_L, -2); // push copy of globals
     lua_rawset(m_L, LUA_REGISTRYINDEX);
 
+    // Get the initial global table to copy from
     lua_pushglobaltable(m_L);
-    //copyglobal(m_L, "assert", -1, -2);
-    //copyglobal(m_L, "error", -1, -2);
+    copyglobal(m_L, "assert", -1, -2);
+    copyglobal(m_L, "error", -1, -2);
     copyglobal(m_L, "getmetatable", -1, -2);
     copyglobal(m_L, "ipairs", -1, -2);
+    copyglobal(m_L, "load", -1, -2); // TODO replace with custom implementation
     copyglobal(m_L, "next", -1, -2);
     copyglobal(m_L, "pairs", -1, -2);
-    copyglobal(m_L, "print", -1, -2); // for now...
+    copyglobal(m_L, "print", -1, -2); // TODO replace with log to in-game console
     copyglobal(m_L, "rawequal", -1, -2);
     copyglobal(m_L, "rawget", -1, -2);
     copyglobal(m_L, "rawlen", -1, -2);
@@ -177,7 +202,6 @@ bool Scene::load(const char *filename)
 
     copyglobal(m_L, "math", -1, -2);
     copyglobal(m_L, "bit32", -1, -2);
-    copyglobal(m_L, "math", -1, -2);
     copyglobal(m_L, "string", -1, -2);
     copyglobal(m_L, "table", -1, -2);
     copyglobal(m_L, "utf8", -1, -2);
@@ -218,9 +242,13 @@ bool Scene::load(const char *filename)
 
     // Create table for user globals
     lua_newtable(m_L);
-    lua_pushliteral(m_L, "GLOBAL_USER");
-    lua_pushvalue(m_L, -2); // push copy of globals
-    lua_rawset(m_L, LUA_REGISTRYINDEX);
+    //lua_pushliteral(m_L, "GLOBAL_USER");
+    //lua_pushvalue(m_L, -2); // push copy of globals
+    //lua_rawset(m_L, LUA_REGISTRYINDEX);
+    lua_pushvalue(m_L, -1); // Replace globals table; old one should be freed?
+    lua_rawseti(m_L, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS);
+    //lua_pushglobaltable(m_L);
+    //dumptable(m_L, "_RW", -1);
 
     // Create metatable for user globals
     lua_newtable(m_L);
@@ -235,6 +263,10 @@ bool Scene::load(const char *filename)
     lua_pushcfunction(m_L, scene_writeGlobal);
     lua_rawset(m_L, -3);
 
+    lua_pushliteral(m_L, "__metatable");
+    lua_pushliteral(m_L, "read-only");
+    lua_rawset(m_L, -3);
+
     lua_setmetatable(m_L, -2);
 
     if (luaL_loadfile(m_L, filename) != 0)
@@ -244,8 +276,9 @@ bool Scene::load(const char *filename)
     }
 
     // Copy the user globals and set as script _ENV
-    lua_pushvalue(m_L, -2);
-    lua_setupvalue(m_L, -2, 1);
+    // NOTE can remove since we already set the new global table
+    //lua_pushvalue(m_L, -2);
+    //lua_setupvalue(m_L, -2, 1);
 
     // Execute specified script
     if (lua_pcall(m_L, 0, 0, 0) != 0)
@@ -367,8 +400,9 @@ int Scene::scene_serialize(lua_State* L)
     lua_pop(L, 1);
 
     // Serialize globals
-    lua_pushliteral(L, "GLOBAL_USER");
-    lua_rawget(L, LUA_REGISTRYINDEX);
+    //lua_pushliteral(L, "GLOBAL_USER");
+    //lua_rawget(L, LUA_REGISTRYINDEX);
+    lua_pushglobaltable(L); // TODO make this visible/serialzable as _G?
     assert(lua_type(L, -1) == LUA_TTABLE);
     serializer.serializeFromTable(nullptr, "", L, -1);
     lua_pop(L, 1);

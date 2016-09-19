@@ -17,8 +17,22 @@ class FunctionRef
 
 private:
     std::string m_name;
-    //std::vector<UpvalueRef> m_upvalues;
-    //bool m_tempName;
+    std::string m_code;
+    std::vector<UpvalueRef> m_upvalues;
+    int m_depth;
+    bool m_tempName;
+
+    void setGlobalName(const char* name)
+    {
+        if (m_tempName)
+        {
+            m_name = std::string(name);;
+            m_tempName = false;
+        }
+    }
+
+public:
+    FunctionRef(int depth): m_depth(depth), m_tempName(true) {}
 };
 
 class ObjectRef
@@ -40,9 +54,12 @@ private:
 
     void setGlobalName(const char* name)
     {
-        m_name = std::string(name);
-        m_inlinable = false;
-        m_tempName = false;
+        if (m_tempName)
+        {
+            m_name = std::string(name);
+            m_inlinable = false;
+            m_tempName = false;
+        }
     }
 
 public:
@@ -78,7 +95,7 @@ public:
 private:
     void setLiteralRaw(std::string table, std::string key, std::string value);
     void setInlineRef(std::string table, std::string key, ObjectRef* ref);
-    void setSetterRef(std::string key, std::string setter, ObjectRef* ref, bool isRoot = false);
+    void setSetterRef(std::string key, std::string setter, ObjectRef* ref, FunctionRef* func, bool isGlobal = false);
 };
 
 template <>
@@ -104,16 +121,19 @@ inline void ObjectRef::setLiteral<std::string>(std::string table, std::string ke
 class Serializer
 {
     typedef std::unique_ptr<ObjectRef> ObjectRefPtr;
+    typedef std::unique_ptr<FunctionRef> FunctionRefPtr;
 
 private:
     ObjectRef m_root;
-    std::map<const void*, ObjectRefPtr> m_objectRefs;
+    std::map<const void*, ObjectRefPtr> m_objects;
+    std::map<const void*, FunctionRefPtr> m_functions;
     std::map<const void*, std::string> m_globals;
 
 public:
     Serializer(): m_root(0) {}
 
     ObjectRef* getObjectRef(const void* ptr);
+    FunctionRef* getFunctionRef(const void* ptr);
 
     void populateGlobals(std::string prefix, lua_State* L, int index);
 
@@ -126,6 +146,7 @@ public:
 
 private:
     ObjectRef* addObjectRef(const void* ptr, int depth);
+    FunctionRef* addFunctionRef(const void* ptr, int depth);
 
     void printSetters(ObjectRef* ref);
     void printInlines(ObjectRef* ref, int indent);
