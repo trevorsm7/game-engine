@@ -6,7 +6,7 @@ player = Actor
     graphics = SpriteGraphics{sprite="hero.tga"},
     collider = AabbCollider{},
     physics = {cor=0.01, cof=0},
-    position = {2, 0}
+    transform = {position = {2, 0}}
 }
 game:addActor(player)
 game:setCenter(10, 0)
@@ -47,8 +47,7 @@ function addPlatform(canvas, x, y, w, h)
         graphics = SpriteGraphics{sprite="square.tga"},
         collider = AabbCollider{},
         physics = {mass=math.huge},
-        position = {x, y},
-        scale = {w, h}
+        transform = {position = {x, y}, scale = {w, h}}
     }
     canvas:addActor(platform)
     platform:setVelocity(-5, 0)

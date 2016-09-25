@@ -120,7 +120,7 @@ void IUserdata::serializeHelper(lua_State* L, IUserdata* ptr, Serializer* serial
 {
     // Serialize members subtable
     if (lua_getuservalue(L, 1) == LUA_TTABLE)
-        serializer->serializeFromTable(ref, "members", L, -1);
+        serializer->serializeSubtable(ref, "members", L, -1);
     lua_pop(L, 1);
 }
 

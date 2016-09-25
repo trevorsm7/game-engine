@@ -361,29 +361,33 @@ bool Canvas::getEarliestCollision(const Actor* actor1, ActorIterator it, ActorIt
 
 void Canvas::construct(lua_State* L)
 {
-    float w = 20.f, h = 15.f;
-    lua_pushliteral(L, "size");
+    /*lua_pushliteral(L, "camera");
     if (lua_rawget(L, 2) != LUA_TNIL)
     {
         luaL_checktype(L, -1, LUA_TTABLE);
-        lua_rawgeti(L, -1, 1);
-        lua_rawgeti(L, -2, 2);
-        w = static_cast<float>(luaL_checknumber(L, -2));
-        h = static_cast<float>(luaL_checknumber(L, -1));
-        lua_pop(L, 2);
+        m_camera = ICameraPtr(new BasicCamera());
+        m_camera->construct(L, -1);
     }
-    lua_pop(L, 1);
+    lua_pop(L, 1);*/
 
-    bool fixed = false;
-    lua_pushliteral(L, "fixed");
+    m_camera = ICameraPtr(new BasicCamera());
+    m_camera->construct(L, 2);
+
+    lua_pushliteral(L, "paused");
     if (lua_rawget(L, 2) != LUA_TNIL)
     {
         luaL_checktype(L, -1, LUA_TBOOLEAN);
-        fixed = lua_toboolean(L, -1);
+        m_paused = lua_toboolean(L, -1);
     }
     lua_pop(L, 1);
 
-    m_camera = ICameraPtr(new BasicCamera(w, h, fixed));
+    lua_pushliteral(L, "visible");
+    if (lua_rawget(L, 2) != LUA_TNIL)
+    {
+        luaL_checktype(L, -1, LUA_TBOOLEAN);
+        m_visible = lua_toboolean(L, -1);
+    }
+    lua_pop(L, 1);
 }
 
 void Canvas::destroy(lua_State* L)
@@ -416,7 +420,7 @@ void Canvas::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
 
         actor->pushUserdata(L);
         // TODO add a setActor function to set directly to m_actors instead of m_added?
-        serializer->serializeObject(ref, "", "", "addActor", L, -1);
+        serializer->serializeMember(ref, "", "", "addActor", L, -1);
         lua_pop(L, 1);
     }
 
@@ -426,11 +430,20 @@ void Canvas::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
             continue;
 
         actor->pushUserdata(L);
-        serializer->serializeObject(ref, "", "", "addActor", L, -1);
+        serializer->serializeMember(ref, "", "", "addActor", L, -1);
         lua_pop(L, 1);
     }
 
-    // TODO serialize camera
+    if (m_camera)
+        m_camera->serialize(L, "", ref);
+
+    //ref->setLiteral("", "paused", m_paused);
+    if (m_paused)
+        ref->setLiteral("", "paused", true);
+
+    //ref->setLiteral("", "visible", m_visible);
+    if (!m_visible)
+        ref->setLiteral("", "visible", false);
 }
 
 int Canvas::canvas_addActor(lua_State *L)

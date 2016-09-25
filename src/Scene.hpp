@@ -46,7 +46,8 @@ private:
     static Scene* checkScene(lua_State* L);
 
     static int scene_addCanvas(lua_State* L);
-    static int scene_serialize(lua_State* L);
+    static int scene_loadClosure(lua_State* L);
+    static int scene_saveState(lua_State* L);
     static int scene_writeGlobal(lua_State* L);
     static int scene_registerControl(lua_State* L);
     static int scene_setPortraitHint(lua_State* L);

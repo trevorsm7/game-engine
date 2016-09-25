@@ -6,32 +6,28 @@ addCanvas(game)
 local leftWall = Actor
 {
     collider = AabbCollider{group = 4, mask = 3},
-    position = {-1, 0},
-    scale = {1, 16}
+    transform = {position = {-1, 0}, scale = {1, 16}}
 }
 game:addActor(leftWall)
 
 local rightWall = Actor
 {
     collider = AabbCollider{group = 4, mask = 3},
-    position = {20, 0},
-    scale = {1, 16}
+    transform = {position = {20, 0}, scale = {1, 16}}
 }
 game:addActor(rightWall)
 
 local topWall = Actor
 {
     collider = AabbCollider{group = 4, mask = 1},
-    position = {0, -1},
-    scale = {20, 1}
+    transform = {position = {0, -1}, scale = {20, 1}}
 }
 game:addActor(topWall)
 
 local bottomWall = Actor
 {
     collider = AabbCollider{group = 4, mask = 1},
-    position = {0, 16},
-    scale = {20, 1}
+    transform = {position = {0, 16}, scale = {20, 1}}
 }
 game:addActor(bottomWall)
 
@@ -48,13 +44,11 @@ end
 -- TODO make paddle a top edge only collider
 paddle = Actor
 {
-    --graphics = SpriteGraphics{sprite = "square.tga"},
-    --collider = AabbCollider{group = 2, mask = 5},
+    graphics = SpriteGraphics{sprite = "square.tga"},
+    collider = AabbCollider{group = 2, mask = 5},
     physics = {mass = math.huge},
-    scale = {4, 1}
+    transform = {scale = {4, 1}}
 }
-paddle:setGraphics(SpriteGraphics{sprite = "square.tga"})
-paddle:setCollider(AabbCollider{group = 2, mask = 5})
 game:addActor(paddle)
 
 paddle.vel = 0
@@ -66,51 +60,56 @@ end
 -- create the ball
 ball = Actor
 {
-    graphics=SpriteGraphics{sprite="round.tga"},
-    collider=AabbCollider{group=1},
-    physics={} --cof=1
+    graphics = SpriteGraphics{sprite = "round.tga"},
+    collider = AabbCollider{group = 1},
+    physics = {},
+    members =
+    {
+        -- keep the ball stuck to the paddle until it is launched
+        update = function(self)
+            if self.attached then
+                local x, y = paddle:getPosition()
+                self:setPosition(x + 1.5, y - 1)
+                self:setVelocity(0, 0)
+            end
+        end,
+
+        -- simulate friction between the paddle and the ball
+        -- TODO add friction coefficient to do this automatically in-engine
+        collided = function(self, hit)
+            if hit == paddle then
+                local padvelx = paddle:getVelocity()
+                local velx, vely = self:getVelocity()
+                self:setVelocity(velx + padvelx * 0.5, vely)
+            end
+        end
+    }
 }
 game:addActor(ball)
 
--- keep the ball stuck to the paddle until it is launched
-function ball:update()
-    if self.attached then
-        local x, y = paddle:getPosition()
-        self:setPosition(x + 1.5, y - 1)
-        self:setVelocity(0, 0)
-    end
-end
-
--- simulate friction between the paddle and the ball
--- TODO add friction coefficient to do this automatically in-engine
-function ball:collided(hit)
-    if hit == paddle then
-        local padvelx = paddle:getVelocity()
-        local velx, vely = self:getVelocity()
-        self:setVelocity(velx + padvelx * 0.5, vely)
-    end
-end
-
 -- helper function to create a brick
 bricks = {}
+
+local brick_collided = function(self)
+    game:removeActor(self)
+    for i, v in ipairs(bricks) do
+        if v == self then
+            table.remove(bricks, i)
+            break
+        end
+    end
+end
+
 function addBrick(x, y, color)
     local brick = Actor
     {
         graphics = SpriteGraphics{sprite="square.tga", color=color},
         collider = AabbCollider{group=8, mask=1},
-        position = {x, y},
-        scale = {2, 1}
+        transform = {position = {x, y}, scale = {2, 1}},
+        members = {collided = brick_collided}
     }
     game:addActor(brick)
-    function brick:collided()
-        game:removeActor(self)
-        for i, v in ipairs(bricks) do
-            if v == self then
-                table.remove(bricks, i)
-                break
-            end
-        end
-    end
+
     bricks[#bricks+1] = brick
 end
 
@@ -179,5 +178,6 @@ end
 registerControl("right", keyChanged(movePaddle, 12))
 registerControl("left", keyChanged(movePaddle, -12))
 registerControl("action", keyDown(launchBall))
+registerControl("up", keyDown(saveState))
 
 resetGame()

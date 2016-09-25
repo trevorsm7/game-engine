@@ -1,8 +1,76 @@
 #include "Physics.hpp"
 #include "Transform.hpp"
+#include "Serializer.hpp"
 
+#include "lua.hpp"
 #include <cmath>
 #include <algorithm>
+
+void Physics::construct(lua_State* L, int index)
+{
+    const int relIndex = index < 0 ? index - 1 : index;
+
+    lua_pushliteral(L, "mass");
+    if (lua_rawget(L, relIndex) != LUA_TNIL)
+    {
+        luaL_checktype(L, -1, LUA_TNUMBER);
+        m_mass = lua_tonumber(L, -1);
+    }
+    lua_pop(L, 1);
+
+    lua_pushliteral(L, "cor");
+    if (lua_rawget(L, relIndex) != LUA_TNIL)
+    {
+        luaL_checktype(L, -1, LUA_TNUMBER);
+        m_cor = lua_tonumber(L, -1);
+    }
+    lua_pop(L, 1);
+
+    lua_pushliteral(L, "cof");
+    if (lua_rawget(L, relIndex) != LUA_TNIL)
+    {
+        luaL_checktype(L, -1, LUA_TNUMBER);
+        m_cof = lua_tonumber(L, -1);
+    }
+    lua_pop(L, 1);
+
+    lua_pushliteral(L, "velocity");
+    if (lua_rawget(L, relIndex) != LUA_TNIL)
+    {
+        luaL_checktype(L, -1, LUA_TTABLE);
+        lua_rawgeti(L, -1, 1);
+        lua_rawgeti(L, -2, 2);
+        m_vel.x = luaL_checknumber(L, -2);
+        m_vel.y = luaL_checknumber(L, -1);
+        lua_pop(L, 2);
+    }
+    lua_pop(L, 1);
+
+    lua_pushliteral(L, "acceleration");
+    if (lua_rawget(L, relIndex) != LUA_TNIL)
+    {
+        luaL_checktype(L, -1, LUA_TTABLE);
+        lua_rawgeti(L, -1, 1);
+        lua_rawgeti(L, -2, 2);
+        m_acc.x = luaL_checknumber(L, -2);
+        m_acc.y = luaL_checknumber(L, -1);
+        lua_pop(L, 2);
+    }
+    lua_pop(L, 1);
+}
+
+void Physics::serialize(lua_State* L, const char* table, ObjectRef* ref) const
+{
+    ref->setLiteral(table, "mass", m_mass);
+    ref->setLiteral(table, "cor", m_cor);
+    ref->setLiteral(table, "cof", m_cof);
+
+    float vel[2] = {m_vel.x, m_vel.y};
+    ref->setArray(table, "velocity", vel, 2);
+
+    float acc[2] = {m_acc.x, m_acc.y};
+    ref->setArray(table, "acceleration", acc, 2);
+}
 
 void Physics::preUpdate(float delta)
 {

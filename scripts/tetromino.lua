@@ -265,8 +265,7 @@ local screen = Actor
 {
     graphics = TiledGraphics{tilemap = screenMap, color = {0.7, 0.5, 0.5}},
     collider = TiledCollider{tilemap = screenMap},
-    position = {0, 0},
-    scale = screenSize
+    transform = {position = {0, 0}, scale = screenSize}
 }
 game:addActor(screen)
 
@@ -282,8 +281,7 @@ local leftWall = Actor
 {
     graphics = TiledGraphics{tilemap = leftWallTiles, color = {0.5, 0.5, 0.5}},
     collider = AabbCollider{}, -- no need for tiled collider
-    position = {-1, -4},
-    scale = {1, screenSize[2] + 5}
+    transform = {position = {-1, -4}, scale = {1, screenSize[2] + 5}}
 }
 game:addActor(leftWall)
 
@@ -302,8 +300,7 @@ local rightWall = Actor
 {
     graphics = TiledGraphics{tilemap = rightWallTiles, color = {0.5, 0.5, 0.5}},
     collider = AabbCollider{},
-    position = {screenSize[1], -4},
-    scale = {5, screenSize[2] + 5}
+    transform = {position = {screenSize[1], -4}, scale = {5, screenSize[2] + 5}}
 }
 game:addActor(rightWall)
 
@@ -318,8 +315,7 @@ local bottomWall = Actor
 {
     graphics = TiledGraphics{tilemap = bottomWallTiles, color = {0.5, 0.5, 0.5}},
     collider = AabbCollider{},
-    position = {0, screenSize[2]},
-    scale = {screenSize[1], 1}
+    transform = {position = {0, screenSize[2]}, scale = {screenSize[1], 1}}
 }
 game:addActor(bottomWall)
 
@@ -336,11 +332,11 @@ local fontTiles = TileMap
 scoreText = Actor
 {
     graphics = TiledGraphics{tilemap = fontTiles},
-    position = {screenSize[1] + 1, 6},
-    scale = {3, 4},
+    transform = {position = {screenSize[1] + 1, 6}, scale = {3, 4}},
     members =
     {
         tilemap = fontTiles,
+
         setTextL = function(self, line, text)
             local tilemap = self.tilemap
             local size, _ = tilemap:getSize()
@@ -352,6 +348,7 @@ scoreText = Actor
                 tilemap:setTiles(chars, line, size-chars, 1, 0)
             end
         end,
+
         setTextR = function(self, line, text)
             local tilemap = self.tilemap
             local size, _ = tilemap:getSize()
@@ -364,10 +361,12 @@ scoreText = Actor
                 tilemap:setTiles(0, line, size-chars, 1, 0)
             end
         end,
+
         setLevel = function(self, level)
             local text = tostring(level)
             self:setTextR(1, text)
         end,
+
         setScore = function(self, score)
             local text = tostring(score)
             self:setTextR(3, text)
@@ -616,9 +615,14 @@ function keyDown(actor, method, arg)
     end
 end
 
+function saveGame(down)
+    if down then saveState() end
+end
+
 registerControl("up", keyDown(current, current.rotate, 1))
 --registerControl("left", keyDown(rotateCurrent, 1))
 --registerControl("right", keyDown(rotateCurrent, -1))
 registerControl("left", keyDown(current, current.move, -1))
 registerControl("right", keyDown(current, current.move, 1))
 registerControl("down", dropCurrent)
+registerControl("action", saveGame)

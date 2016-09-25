@@ -11,9 +11,11 @@ class BasicCamera : public ICamera
     bool m_fixed;
 
 public:
-    BasicCamera(float w, float h, bool fixed): m_transform(0.f, 0.f, w, h),
-        m_width(w), m_height(h), m_center{w/2, h/2}, m_fixed(fixed) {}
+    BasicCamera(): m_width(20.f), m_height(15.f), m_center{10.f, 7.5f}, m_fixed(true) {}
     ~BasicCamera() override {}
+
+    void construct(lua_State* L, int index) override;
+    void serialize(lua_State* L, const char* table, ObjectRef* ref) const override;
 
     void resize(int width, int height) override;
 

@@ -66,7 +66,7 @@ bool SdlInstance::init(const char* script)
     if (SDL_IsTextInputActive())
     {
         SDL_StopTextInput();
-        printf("Disabling text input mode: %s\n", SDL_IsTextInputActive() ? "failure" : "success");
+        //printf("Disabling text input mode: %s\n", SDL_IsTextInputActive() ? "failure" : "success");
     }
 
 #if 0

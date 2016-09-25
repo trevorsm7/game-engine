@@ -14,7 +14,7 @@ local function newPlayer(canvas, x, y)
     {
         graphics = SpriteGraphics{sprite="hero.tga"},
         collider = AabbCollider{},
-        position = {x, y},
+        transform = {position = {x, y}},
         members =
         {
             player = true,
@@ -77,7 +77,7 @@ local function newNerd(canvas, x, y)
     {
         graphics = SpriteGraphics{sprite="nerd.tga"},
         collider = AabbCollider{},
-        position = {x, y},
+        transform = {position = {x, y}},
         members =
         {
             enemy = true,
@@ -153,7 +153,7 @@ local function newDoor(canvas, map, x, y)
     {
         graphics = SpriteGraphics{sprite="door.tga"},
         collider = AabbCollider{},
-        position = {x, y},
+        transform = {position = {x, y}},
         members =
         {
             open = false,
@@ -227,8 +227,7 @@ tiles = Actor
 {
     graphics = TiledGraphics{tilemap=map},
     collider = TiledCollider{tilemap=map},
-    position = {0, 0},
-    scale = {6, 6}, -- map:getSize()
+    transform = {position = {0, 0}, scale = {6, 6}}, -- map:getSize()
     layer = -1
 }
 game:addActor(tiles)

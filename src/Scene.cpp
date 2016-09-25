@@ -11,12 +11,15 @@
 
 #include <cassert>
 #include <cstring>
+#include <cstdio>
+#include <limits>
 
+// TODO remove or keep as a lightweight debug serializer?
 #include <vector>
 #include <string>
 #include <algorithm>
 typedef std::vector<const void*> PtrStack;
-void dumptable(lua_State* L, PtrStack& stack, std::string key, int index)
+static void dumptable(lua_State* L, PtrStack& stack, std::string key, int index)
 {
     const int indent = stack.size() * 2;
     const void* p = lua_topointer(L, index);
@@ -82,13 +85,13 @@ void dumptable(lua_State* L, PtrStack& stack, std::string key, int index)
 
     stack.pop_back();
 }
-void dumptable(lua_State* L, std::string key, int index)
+static void dumptable(lua_State* L, std::string key, int index)
 {
     PtrStack stack;
     dumptable(L, stack, key, index);
 }
 
-void copyglobal(lua_State* L, const char* name, int src, int dst)
+static void copyglobal(lua_State* L, const char* name, int src, int dst)
 {
     lua_pushstring(L, name);
     lua_pushvalue(L, -1);
@@ -142,6 +145,7 @@ bool Scene::load(const char *filename)
     lua_pushlightuserdata(m_L, this);
     lua_rawset(m_L, LUA_REGISTRYINDEX);
 
+    // Load only selected libraries
     //luaL_openlibs(m_L);
     static constexpr const luaL_Reg libs[] =
     {
@@ -161,9 +165,6 @@ bool Scene::load(const char *filename)
     const luaL_Reg *lib;
     for (lib = libs; lib->func; lib++)
     {
-        //lua_pushstring(m_L, lib->name);
-        //luaL_requiref(m_L, lib->name, lib->func, 0);
-        //lua_rawset(m_L, -3);
         luaL_requiref(m_L, lib->name, lib->func, 1);
         lua_pop(m_L, 1);
     }
@@ -217,12 +218,24 @@ bool Scene::load(const char *filename)
     AabbCollider::initMetatable(m_L);
     TiledCollider::initMetatable(m_L);
 
+    lua_pushliteral(m_L, "inf");
+    lua_pushnumber(m_L, std::numeric_limits<lua_Number>::infinity());
+    lua_rawset(m_L, -3);
+
+    lua_pushliteral(m_L, "nan");
+    lua_pushnumber(m_L, std::numeric_limits<lua_Number>::quiet_NaN());
+    lua_rawset(m_L, -3);
+
     lua_pushliteral(m_L, "addCanvas");
     lua_pushcfunction(m_L, scene_addCanvas);
     lua_rawset(m_L, -3);
 
-    lua_pushliteral(m_L, "serialize");
-    lua_pushcfunction(m_L, scene_serialize);
+    lua_pushliteral(m_L, "loadClosure");
+    lua_pushcfunction(m_L, scene_loadClosure);
+    lua_rawset(m_L, -3);
+
+    lua_pushliteral(m_L, "saveState");
+    lua_pushcfunction(m_L, scene_saveState);
     lua_rawset(m_L, -3);
 
     lua_pushliteral(m_L, "registerControl");
@@ -242,20 +255,21 @@ bool Scene::load(const char *filename)
 
     // Create table for user globals
     lua_newtable(m_L);
-    //lua_pushliteral(m_L, "GLOBAL_USER");
-    //lua_pushvalue(m_L, -2); // push copy of globals
-    //lua_rawset(m_L, LUA_REGISTRYINDEX);
     lua_pushvalue(m_L, -1); // Replace globals table; old one should be freed?
     lua_rawseti(m_L, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS);
-    //lua_pushglobaltable(m_L);
-    //dumptable(m_L, "_RW", -1);
+
+    // Set reference to user global table in read-only globals
+    // NOTE we must expose this when we serialize closures
+    lua_pushliteral(m_L, "_G");
+    lua_pushvalue(m_L, -2);
+    lua_rawset(m_L, -4);
+
 
     // Create metatable for user globals
     lua_newtable(m_L);
 
     // Have metatable expose read-only globals
     lua_pushliteral(m_L, "__index");
-    //lua_pushcfunction(m_L, readglobal);
     lua_pushvalue(m_L, -4);
     lua_rawset(m_L, -3);
 
@@ -269,26 +283,14 @@ bool Scene::load(const char *filename)
 
     lua_setmetatable(m_L, -2);
 
-    if (luaL_loadfile(m_L, filename) != 0)
-    {
-        fprintf(stderr, "Unable to load script \"%s\"\n", filename);
-        return false;
-    }
+    // Pop global tables
+    lua_pop(m_L, 2);
 
-    // Copy the user globals and set as script _ENV
-    // NOTE can remove since we already set the new global table
-    //lua_pushvalue(m_L, -2);
-    //lua_setupvalue(m_L, -2, 1);
-
-    // Execute specified script
-    if (lua_pcall(m_L, 0, 0, 0) != 0)
+    if (luaL_loadfile(m_L, filename) != 0 || lua_pcall(m_L, 0, 0, 0) != 0)
     {
         fprintf(stderr, "%s\n", lua_tostring(m_L, -1));
         return false;
     }
-
-    //dumptable(m_L, "_RW", -1);
-    lua_pop(m_L, 2); // RW and RO
 
     return true;
 }
@@ -385,7 +387,39 @@ int Scene::scene_addCanvas(lua_State *L)
     return 0;
 }
 
-int Scene::scene_serialize(lua_State* L)
+int Scene::scene_loadClosure(lua_State* L)
+{
+    int args = lua_gettop(L);
+    luaL_checktype(L, 1, LUA_TSTRING);
+
+    size_t size;
+    const char* buffer = luaL_tolstring(L, 1, &size);
+    luaL_loadbuffer(L, buffer, size, nullptr);
+
+    // Clear _ENV if no args are provided
+    // TODO just pass error if not enough args are passed
+    if (args == 1)
+    {
+        lua_pushnil(L);
+        if (!lua_setupvalue(L, -2, 1))
+            lua_pop(L, 1);
+    }
+
+    for (int i = 1; i < args; ++i)
+    {
+        lua_pushvalue(L, i + 1);
+        if (!lua_setupvalue(L, -2, i))
+        {
+            // TODO error if too many args?
+            lua_pop(L, 1);
+            break;
+        }
+    }
+
+    return 1;
+}
+
+int Scene::scene_saveState(lua_State* L)
 {
     Scene* scene = Scene::checkScene(L);
 
@@ -400,21 +434,41 @@ int Scene::scene_serialize(lua_State* L)
     lua_pop(L, 1);
 
     // Serialize globals
-    //lua_pushliteral(L, "GLOBAL_USER");
-    //lua_rawget(L, LUA_REGISTRYINDEX);
-    lua_pushglobaltable(L); // TODO make this visible/serialzable as _G?
+    lua_pushglobaltable(L);
     assert(lua_type(L, -1) == LUA_TTABLE);
-    serializer.serializeFromTable(nullptr, "", L, -1);
+    serializer.serializeSubtable(nullptr, "", L, -1);
     lua_pop(L, 1);
 
+    // Serialize all Canvases with an addCanvas setter
     for (Canvas*& canvas : scene->m_canvases)
     {
         canvas->pushUserdata(L);
-        serializer.serializeObject(nullptr, "", "", "addCanvas", L, -1);
+        // TODO we could swap this with serialzeSetter?
+        serializer.serializeMember(nullptr, "", "", "addCanvas", L, -1);
         lua_pop(L, 1);
     }
 
-    // TODO also registered controls and portrait hint!
+    // Serialize all controls with a registerControl setter
+    lua_pushliteral(L, "controls");
+    if (lua_rawget(L, LUA_REGISTRYINDEX) != LUA_TNIL)
+    {
+        assert(lua_type(L, -1) == LUA_TTABLE);
+        lua_pushnil(L);
+        while (lua_next(L, -2))
+        {
+            serializer.serializeSetter("registerControl", L, {-2, -1});
+            lua_pop(L, 1);
+        }
+    }
+    lua_pop(L, 1);
+
+    // Serilaize portrait hint, if set
+    if (scene->m_isPortraitHint)
+    {
+        lua_pushboolean(L, scene->m_isPortraitHint);
+        serializer.serializeSetter("setPortraitHint", L, {-1});
+        lua_pop(L, 1);
+    }
 
     serializer.print();
 

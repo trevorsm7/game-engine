@@ -78,7 +78,7 @@ local function newSnake(canvas, name, pos, dir, color)
         {
             graphics = SpriteGraphics{color=color, sprite="round.tga"},
             collider = AabbCollider{},
-            position = {x, y}
+            transform = {position = {x, y}}
         }
         canvas:addActor(body)
         return body
@@ -173,7 +173,7 @@ local function resetGame(game)
         layer = -1,
         -- NOTE: currently, we need a graphics component to receive mouse events
         graphics = SpriteGraphics{sprite="unused", visible=false},
-        scale = {20, 15}
+        transform = {scale = {20, 15}}
     }
     game:addActor(god)
     god.score = 0
@@ -216,8 +216,7 @@ addCanvas(menu)
 local continue = Actor
 {
     graphics = SpriteGraphics{sprite="continue.tga"},
-    position = {-5, -4},
-    scale = {10, 2}
+    transform = {position = {-5, -4}, scale = {10, 2}}
 }
 menu:addActor(continue)
 function continue:mouse(down)
@@ -231,8 +230,7 @@ end
 local newGame = Actor
 {
     graphics = SpriteGraphics{sprite="newgame.tga"},
-    position = {-5, -1},
-    scale = {10, 2}
+    transform = {position = {-5, -1}, scale = {10, 2}}
 }
 menu:addActor(newGame)
 function newGame:mouse(down)
@@ -247,8 +245,7 @@ end
 local endGame = Actor
 {
     graphics = SpriteGraphics{sprite="quit.tga"},
-    position = {-5, 2},
-    scale = {10, 2}
+    transform = {position = {-5, 2}, scale = {10, 2}}
 }
 menu:addActor(endGame)
 function endGame:mouse(down)

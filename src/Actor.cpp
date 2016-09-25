@@ -176,59 +176,16 @@ void Actor::construct(lua_State* L)
     if (lua_rawget(L, 2) != LUA_TNIL)
     {
         luaL_checktype(L, -1, LUA_TTABLE);
-
-        float mass = 1.f, cor = 1.f, cof = 0.f;
-
-        lua_pushliteral(L, "mass");
-        if (lua_rawget(L, -2) != LUA_TNIL)
-        {
-            luaL_checktype(L, -1, LUA_TNUMBER);
-            mass = lua_tonumber(L, -1);
-        }
-        lua_pop(L, 1);
-
-        lua_pushliteral(L, "cor");
-        if (lua_rawget(L, -2) != LUA_TNIL)
-        {
-            luaL_checktype(L, -1, LUA_TNUMBER);
-            cor = lua_tonumber(L, -1);
-        }
-        lua_pop(L, 1);
-
-        lua_pushliteral(L, "cof");
-        if (lua_rawget(L, -2) != LUA_TNIL)
-        {
-            luaL_checktype(L, -1, LUA_TNUMBER);
-            cof = lua_tonumber(L, -1);
-        }
-        lua_pop(L, 1);
-
-        m_physics = PhysicsPtr(new Physics(mass, cor, cof));
+        m_physics = PhysicsPtr(new Physics());
+        m_physics->construct(L, -1);
     }
     lua_pop(L, 1);
 
-    lua_pushliteral(L, "position");
+    lua_pushliteral(L, "transform");
     if (lua_rawget(L, 2) != LUA_TNIL)
     {
         luaL_checktype(L, -1, LUA_TTABLE);
-        lua_rawgeti(L, -1, 1);
-        lua_rawgeti(L, -2, 2);
-        m_transform.setX(luaL_checknumber(L, -2));
-        m_transform.setY(luaL_checknumber(L, -1));
-        lua_pop(L, 2);
-    }
-    lua_pop(L, 1);
-
-    lua_pushliteral(L, "scale");
-    if (lua_rawget(L, 2) != LUA_TNIL)
-    {
-        luaL_checktype(L, -1, LUA_TTABLE);
-        lua_rawgeti(L, -1, 1);
-        lua_rawgeti(L, -2, 2);
-        // TODO let graphics/collider define the base size and use this as a scaling factor
-        m_transform.setW(luaL_checknumber(L, -2));
-        m_transform.setH(luaL_checknumber(L, -1));
-        lua_pop(L, 2);
+        m_transform.construct(L, -1);
     }
     lua_pop(L, 1);
 
@@ -260,25 +217,21 @@ void Actor::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
     if (m_graphics)
     {
         m_graphics->pushUserdata(L);
-        serializer->serializeObject(ref, "", "graphics", "setGraphics", L, -1);
+        serializer->serializeMember(ref, "", "graphics", "setGraphics", L, -1);
         lua_pop(L, 1);
     }
 
     if (m_collider)
     {
         m_collider->pushUserdata(L);
-        serializer->serializeObject(ref, "", "collider", "setCollider", L, -1);
+        serializer->serializeMember(ref, "", "collider", "setCollider", L, -1);
         lua_pop(L, 1);
     }
 
-    // TODO physics; move into Physics?
+    if (m_physics)
+        m_physics->serialize(L, "physics", ref);
 
-    // TODO move into Transform?
-    // TODO using subtable for testing; maybe keep this way though?
-    float position[2] = {m_transform.getX(), m_transform.getY()};
-    ref->setArray("transform", "position", position, 2);
-    float scale[2] = {m_transform.getW(), m_transform.getH()};
-    ref->setArray("transform", "scale", scale, 2);
+    m_transform.serialize(L, "transform", ref);
 
     ref->setLiteral("", "layer", m_layer);
 }

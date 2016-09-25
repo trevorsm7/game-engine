@@ -1,11 +1,12 @@
 #pragma once
 
-#include "lua.hpp"
 #include <map>
 #include <vector>
 #include <memory>
 #include <string>
-#include <cassert>
+#include <initializer_list>
+
+struct lua_State;
 
 class ObjectRef;
 
@@ -67,7 +68,6 @@ public:
 
     void setConstructor(const char* constructor)
     {
-        assert(m_constructor.empty());
         m_constructor = std::string(constructor);
     }
 
@@ -123,30 +123,50 @@ class Serializer
     typedef std::unique_ptr<ObjectRef> ObjectRefPtr;
     typedef std::unique_ptr<FunctionRef> FunctionRefPtr;
 
+    struct SetterArg {std::string literal; ObjectRef* object; FunctionRef* function;};
+    struct SetterRef {std::string setter; std::vector<SetterArg> args;};
+
 private:
     ObjectRef m_root;
     std::map<const void*, ObjectRefPtr> m_objects;
     std::map<const void*, FunctionRefPtr> m_functions;
     std::map<const void*, std::string> m_globals;
+    std::vector<SetterRef> m_setters;
 
 public:
     Serializer(): m_root(0) {}
 
-    ObjectRef* getObjectRef(const void* ptr);
-    FunctionRef* getFunctionRef(const void* ptr);
+    ObjectRef* getObjectRef(const void* ptr)
+    {
+        auto it = m_objects.find(ptr);
+        if (it == m_objects.end())
+            return nullptr;
+
+        return it->second.get();
+    }
+
+    FunctionRef* getFunctionRef(const void* ptr)
+    {
+        auto it = m_functions.find(ptr);
+        if (it == m_functions.end())
+            return nullptr;
+
+        return it->second.get();
+    }
 
     void populateGlobals(std::string prefix, lua_State* L, int index);
 
-    void serializeValue(ObjectRef* parent, const char* table, const char* key, const char* setter, lua_State* L, int index);
-    void serializeObject(ObjectRef* parent, const char* table, const char* key, const char* setter, lua_State* L, int index);
-    void serializeFunction(ObjectRef* parent, const char* table, const char* key, const char* setter, lua_State* L, int index);
-    void serializeFromTable(ObjectRef* ref, const char* table, lua_State* L, int index);
+    void serializeSubtable(ObjectRef* parent, const char* table, lua_State* L, int index);
+    void serializeMember(ObjectRef* parent, const char* table, const char* key, const char* setter, lua_State* L, int index);
+    void serializeUpvalue(FunctionRef* parent, lua_State* L, int index);
+
+    void serializeSetter(const char* setter, lua_State* L, std::initializer_list<int> list);
 
     void print();
 
 private:
-    ObjectRef* addObjectRef(const void* ptr, int depth);
-    FunctionRef* addFunctionRef(const void* ptr, int depth);
+    ObjectRef* serializeObject(int depth, lua_State* L, int index);
+    FunctionRef* serializeFunction(int depth, lua_State* L, int index);
 
     void printSetters(ObjectRef* ref);
     void printInlines(ObjectRef* ref, int indent);

@@ -4,6 +4,10 @@
 
 class Transform;
 
+struct lua_State;
+class Serializer;
+class ObjectRef;
+
 // TODO combine with Transform?
 class Physics
 {
@@ -16,9 +20,11 @@ class Physics
     bool m_stuck;
 
 public:
-    Physics(float mass=1.f, float cor=1.f, float cof=0.f):
-        m_vel{0.f, 0.f}, m_acc{0.f, 0.f}, m_mass(mass), m_cor(cor), m_cof(cof) {}
+    Physics(): m_vel{0.f, 0.f}, m_acc{0.f, 0.f}, m_mass(1.f), m_cor(1.f), m_cof(0.f) {}
     ~Physics() {}
+
+    void construct(lua_State* L, int index);
+    void serialize(lua_State* L, const char* table, ObjectRef* ref) const;
 
     void preUpdate(float delta);
     void update(Transform& transform, float delta);

@@ -72,7 +72,7 @@ void TiledGraphics::serialize(lua_State* L, Serializer* serializer, ObjectRef* r
     if (m_tilemap)
     {
         m_tilemap->pushUserdata(L);
-        serializer->serializeObject(ref, "", "tilemap", "setTilemap", L, -1);
+        serializer->serializeMember(ref, "", "tilemap", "setTilemap", L, -1);
         lua_pop(L, 1);
     }
 }

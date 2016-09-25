@@ -130,7 +130,7 @@ void TileMap::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
     if (m_index)
     {
         m_index->pushUserdata(L);
-        serializer->serializeObject(ref, "", "index", "setTileIndex", L, -1);
+        serializer->serializeMember(ref, "", "index", "setTileIndex", L, -1);
         lua_pop(L, 1);
     }
 

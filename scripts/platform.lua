@@ -10,7 +10,7 @@ player = Actor
     graphics = SpriteGraphics{sprite="hero.tga"},
     collider = AabbCollider{},
     physics = {cor=0.01, cof=0.2},
-    position = {-4, 0}
+    transform = {position = {-4, 0}}
 }
 game:addActor(player)
 player.velX = 0
@@ -38,7 +38,7 @@ function addBox(x, y)
     {
         graphics = SpriteGraphics{sprite="square.tga"},
         collider = AabbCollider{},
-        position = {x, y}
+        transform = {position = {x, y}}
     }
     game:addActor(box)
     allBoxes[num] = box
@@ -56,7 +56,7 @@ function addMovingBox(x, y)
         graphics = SpriteGraphics{sprite="square.tga"},
         collider = AabbCollider{},
         physics = {cor=0.8, cof=0.2},
-        position = {x, y}
+        transform = {position = {x, y}}
     }
     game:addActor(box)
     box.update = updateBox
