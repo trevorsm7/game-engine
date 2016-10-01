@@ -36,6 +36,15 @@ setmetatable(table1, meta)
 --print("✄")
 --print("\226\156\132")
 
+_G[1] = "non-string global key"
+
+a = 4503599627370496e-20
+--[[
+print(a)
+local packed = string.pack("<d", a)
+print(packed)
+print(string.unpack("<d", packed))--]]
+
 local gen = function(i)
     return function()
         return i

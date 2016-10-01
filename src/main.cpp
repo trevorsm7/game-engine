@@ -48,7 +48,7 @@ int main(int argc, char* argv[])
         fprintf(stderr, "Unable to find file %s\n", script);
         return -1;
     }
-    printf("Loading script %s\n", fullpath.c_str());
+    fprintf(stderr, "Loading script %s\n", fullpath.c_str());
 
     if (useSDL)
         SdlInstance::run(fullpath.c_str());

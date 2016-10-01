@@ -54,9 +54,9 @@ void BasicCamera::serialize(lua_State* L, const char* table, ObjectRef* ref) con
     float center[2] = {m_center.x, m_center.y};
     ref->setArray(table, "center", center, 2);
 
-    //ref->setLiteral(table, "fixed", m_fixed);
+    //ref->setBoolean(table, "fixed", m_fixed);
     if (!m_fixed)
-        ref->setLiteral(table, "fixed", false);
+        ref->setBoolean(table, "fixed", false);
 }
 
 void BasicCamera::resize(int width, int height)

@@ -29,7 +29,7 @@ void SdlInstance::run(const char* script)
     // The first poll blocks for a relatively long time; get it out of the way before starting game loop
     //lastTime = SDL_GetPerformanceCounter();
     instance.pollEvents();
-    //printf("First poll: %f\n", (SDL_GetPerformanceCounter() - lastTime) * period);
+    //fprintf(stderr, "First poll: %f\n", (SDL_GetPerformanceCounter() - lastTime) * period);
 
     lastTime = SDL_GetPerformanceCounter();
     while (!instance.isQuit())
@@ -66,7 +66,7 @@ bool SdlInstance::init(const char* script)
     if (SDL_IsTextInputActive())
     {
         SDL_StopTextInput();
-        //printf("Disabling text input mode: %s\n", SDL_IsTextInputActive() ? "failure" : "success");
+        //fprintf(stderr, "Disabling text input mode: %s\n", SDL_IsTextInputActive() ? "failure" : "success");
     }
 
 #if 0
@@ -101,14 +101,14 @@ bool SdlInstance::init(const char* script)
 
     int width, height;
     SDL_GL_GetDrawableSize(m_window, &width, &height);
-    printf("Framebuffer size: %d, %d\n", width, height);
+    fprintf(stderr, "Framebuffer size: %d, %d\n", width, height);
 #else
     m_scene = ScenePtr(new Scene(m_resources));
     m_scene->setQuitCallback([&] {m_bQuit = true;});
     m_scene->setRegisterControlCallback([&](const char* action)->bool
     {
         // TODO: replace with a mechanism for default bindings and loading/saving custom bindings
-        //printf("TODO: implement register control callback\n");
+        //fprintf(stderr, "TODO: implement register control callback\n");
         return false;
     });
     if (!m_scene->load(script))
@@ -165,9 +165,9 @@ void SdlInstance::pollEvents()
             break;
         case SDL_MOUSEMOTION:
             //if (SDL_GetRelativeMouseMode() == SDL_TRUE)
-            //    printf("Mouse motion: %d, %d\n", e.motion.xrel, e.motion.yrel);
+            //    fprintf(stderr, "Mouse motion: %d, %d\n", e.motion.xrel, e.motion.yrel);
             //else
-            //    printf("Mouse position: %d, %d\n", e.motion.x, e.motion.y);
+            //    fprintf(stderr, "Mouse position: %d, %d\n", e.motion.x, e.motion.y);
             break;
         case SDL_MOUSEBUTTONDOWN:
         case SDL_MOUSEBUTTONUP:
@@ -180,15 +180,15 @@ void SdlInstance::pollEvents()
                 SDL_GameController* controller = SDL_GameControllerOpen(e.cdevice.which);
                 if (!controller)
                 {
-                    printf("Failed to acquire controller: %s\n", SDL_GetError());
+                    fprintf(stderr, "Failed to acquire controller: %s\n", SDL_GetError());
                     break;
                 }
                 const char* name = SDL_GameControllerName(controller);
                 //const char* name = SDL_GameControllerNameForIndex(e.cdevice.which);
                 if (name)
-                    printf("%s (%d) added\n", name, e.cdevice.which);
+                    fprintf(stderr, "%s (%d) added\n", name, e.cdevice.which);
                 else
-                    printf("Nameless controller %d added\n", e.cdevice.which);
+                    fprintf(stderr, "Nameless controller %d added\n", e.cdevice.which);
             }
             break;
         case SDL_CONTROLLERDEVICEREMOVED:
@@ -196,14 +196,14 @@ void SdlInstance::pollEvents()
                 SDL_GameController* controller = SDL_GameControllerFromInstanceID(e.cdevice.which);
                 if (!controller)
                 {
-                    printf("Controller instance %d removed; failed: %s\n", e.cdevice.which, SDL_GetError());
+                    fprintf(stderr, "Controller instance %d removed; failed: %s\n", e.cdevice.which, SDL_GetError());
                     break;
                 }
                 const char* name = SDL_GameControllerName(controller);
                 if (name)
-                    printf("%s (%d) removed\n", name, e.cdevice.which);
+                    fprintf(stderr, "%s (%d) removed\n", name, e.cdevice.which);
                 else
-                    printf("Controller instance %d removed, no name\n", e.cdevice.which);
+                    fprintf(stderr, "Controller instance %d removed, no name\n", e.cdevice.which);
                 SDL_GameControllerClose(controller);
             }
             break;
@@ -224,7 +224,7 @@ void SdlInstance::pollEvents()
                 int width, height;
                 //SDL_GL_GetDrawableSize(m_window, &width, &height);
                 reinterpret_cast<SdlRenderer*>(m_renderer.get())->getSize(width, height);
-                //printf("Framebuffer size: %d, %d\n", width, height);
+                //fprintf(stderr, "Framebuffer size: %d, %d\n", width, height);
                 m_scene->resize(width, height);
                 break;
             }
@@ -383,7 +383,7 @@ void SdlInstance::handleGamepadButtonEvent(SDL_ControllerButtonEvent& e)
         break;
     }
 
-    //printf("Controller %d: %s %s\n", e.which, name, e.state == SDL_PRESSED ? "pressed" : "released");
+    //fprintf(stderr, "Controller %d: %s %s\n", e.which, name, e.state == SDL_PRESSED ? "pressed" : "released");
 
     if (!event.name)
         return;
@@ -416,5 +416,5 @@ void SdlInstance::handleGamepadAxisEvent(SDL_ControllerAxisEvent& e)
         break;
     }
 
-    //printf("Controller %d: %s %d\n", e.which, name, e.value);
+    //fprintf(stderr, "Controller %d: %s %d\n", e.which, name, e.value);
 }

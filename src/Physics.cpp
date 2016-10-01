@@ -61,9 +61,9 @@ void Physics::construct(lua_State* L, int index)
 
 void Physics::serialize(lua_State* L, const char* table, ObjectRef* ref) const
 {
-    ref->setLiteral(table, "mass", m_mass);
-    ref->setLiteral(table, "cor", m_cor);
-    ref->setLiteral(table, "cof", m_cof);
+    ref->setNumber(table, "mass", m_mass);
+    ref->setNumber(table, "cor", m_cor);
+    ref->setNumber(table, "cof", m_cof);
 
     float vel[2] = {m_vel.x, m_vel.y};
     ref->setArray(table, "velocity", vel, 2);

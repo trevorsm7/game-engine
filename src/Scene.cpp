@@ -443,8 +443,7 @@ int Scene::scene_saveState(lua_State* L)
     for (Canvas*& canvas : scene->m_canvases)
     {
         canvas->pushUserdata(L);
-        // TODO we could swap this with serialzeSetter?
-        serializer.serializeMember(nullptr, "", "", "addCanvas", L, -1);
+        serializer.serializeSetter("addCanvas", L, {-1});
         lua_pop(L, 1);
     }
 

@@ -23,11 +23,12 @@ private:
     int m_depth;
     bool m_tempName;
 
-    void setGlobalName(const char* name)
+    void setGlobalName(const std::string& name)
     {
+        // Only set name the first time this is called
         if (m_tempName)
         {
-            m_name = std::string(name);;
+            m_name = name;
             m_tempName = false;
         }
     }
@@ -53,33 +54,43 @@ private:
     bool m_tempName;
     bool m_onStack; // for cycle detection
 
-    void setGlobalName(const char* name)
+    void setGlobalName(const std::string& name)
     {
+        // Only set name the first time this is called
         if (m_tempName)
         {
-            m_name = std::string(name);
+            m_name = name;
             m_inlinable = false;
             m_tempName = false;
         }
     }
 
 public:
-    ObjectRef(int depth): m_depth(depth), m_inlinable(true), m_tempName(true), m_onStack(true) {}
+    ObjectRef(int depth, bool inlinable): m_depth(depth), m_inlinable(inlinable), m_tempName(true), m_onStack(true) {}
 
-    void setConstructor(const char* constructor)
+    void setConstructor(const std::string& constructor)
     {
-        m_constructor = std::string(constructor);
+        m_constructor = constructor;
+    }
+
+    void setString(const std::string& table, const std::string& key, const std::string& value)
+    {
+        setLiteral(table, key, std::string("\"") + value + "\"");
+    }
+
+    void setBoolean(const std::string& table, const std::string& key, bool value)
+    {
+        setLiteral(table, key, value ? "true" : "false");
     }
 
     template <class T>
-    void setLiteral(std::string table, std::string key, T value)
+    void setNumber(const std::string& table, const std::string& key, T value)
     {
-        std::string str = std::to_string(value);
-        setLiteralRaw(table, key, str);
+        setLiteral(table, key, std::to_string(value));
     }
 
     template <class T>
-    void setArray(std::string table, std::string key, T* value, int length)
+    void setArray(const std::string& table, const std::string& key, T* value, int length)
     {
         auto str = std::string("{");
         for (int i = 0; i < length; ++i)
@@ -89,34 +100,20 @@ public:
             str += std::to_string(*(value++));
         }
         str += "}";
-        setLiteralRaw(table, key, str);
+        setLiteral(table, key, str);
     }
 
 private:
-    void setLiteralRaw(std::string table, std::string key, std::string value);
-    void setInlineRef(std::string table, std::string key, ObjectRef* ref);
-    void setSetterRef(std::string key, std::string setter, ObjectRef* ref, FunctionRef* func, bool isGlobal = false);
+    void setLiteral(const std::string& table, const std::string& key, const std::string& value);
+    void setInlineRef(const std::string& table, const std::string& key, ObjectRef* ref);
+    void setSetterRef(const std::string& key, const std::string& setter, ObjectRef* ref, FunctionRef* func);
 };
 
-template <>
-inline void ObjectRef::setLiteral<bool>(std::string table, std::string key, bool value)
+/*template <>
+inline void ObjectRef::setNumber<float>(std::string table, std::string key, float value)
 {
-    setLiteralRaw(table, key, value ? "true" : "false");
-}
-
-template <>
-inline void ObjectRef::setLiteral<const char*>(std::string table, std::string key, const char* value)
-{
-    auto str = std::string("\"") + value + "\"";
-    setLiteralRaw(table, key, str);
-}
-
-template <>
-inline void ObjectRef::setLiteral<std::string>(std::string table, std::string key, std::string value)
-{
-    auto str = std::string("\"") + value + "\"";
-    setLiteralRaw(table, key, str);
-}
+    setLiteral(table, key, std::string("string.unpack(\"<f\",") + ???? + ")");
+}*/
 
 class Serializer
 {
@@ -134,7 +131,7 @@ private:
     std::vector<SetterRef> m_setters;
 
 public:
-    Serializer(): m_root(0) {}
+    Serializer(): m_root(0, false) {}
 
     ObjectRef* getObjectRef(const void* ptr)
     {
@@ -154,18 +151,19 @@ public:
         return it->second.get();
     }
 
-    void populateGlobals(std::string prefix, lua_State* L, int index);
+    void populateGlobals(const std::string& prefix, lua_State* L, int index);
+    std::string* getGlobalName(lua_State* L, int index);
 
-    void serializeSubtable(ObjectRef* parent, const char* table, lua_State* L, int index);
-    void serializeMember(ObjectRef* parent, const char* table, const char* key, const char* setter, lua_State* L, int index);
+    void serializeSubtable(ObjectRef* parent, const std::string& table, lua_State* L, int index);
+    void serializeMember(ObjectRef* parent, const std::string& table, const std::string& key, const std::string& setter, lua_State* L, int index);
     void serializeUpvalue(FunctionRef* parent, lua_State* L, int index);
 
-    void serializeSetter(const char* setter, lua_State* L, std::initializer_list<int> list);
+    void serializeSetter(const std::string& setter, lua_State* L, std::initializer_list<int> list);
 
     void print();
 
 private:
-    ObjectRef* serializeObject(int depth, lua_State* L, int index);
+    ObjectRef* serializeObject(int depth, bool inlinable, lua_State* L, int index);
     FunctionRef* serializeFunction(int depth, lua_State* L, int index);
 
     void printSetters(ObjectRef* ref);

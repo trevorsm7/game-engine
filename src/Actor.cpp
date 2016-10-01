@@ -233,7 +233,7 @@ void Actor::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
 
     m_transform.serialize(L, "transform", ref);
 
-    ref->setLiteral("", "layer", m_layer);
+    ref->setNumber("", "layer", m_layer);
 }
 
 int Actor::actor_getCanvas(lua_State* L)

@@ -46,7 +46,7 @@ void TileIndex::construct(lua_State* L)
 
 void TileIndex::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
 {
-    ref->setLiteral("", "sprite", m_image);
+    ref->setString("", "sprite", m_image);
     int size[] = {m_cols, m_rows};
     ref->setArray("", "size", size, 2);
     ref->setArray("", "data", m_flags.data(), m_cols * m_rows);
