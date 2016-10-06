@@ -46,17 +46,17 @@ void BasicCamera::construct(lua_State* L, int index)
     lua_pop(L, 1);
 }
 
-void BasicCamera::serialize(lua_State* L, const char* table, ObjectRef* ref) const
+void BasicCamera::serialize(lua_State* L, const char* table, Serializer* serializer, ObjectRef* ref) const
 {
     float size[2] = {m_width, m_height};
-    ref->setArray(table, "size", size, 2);
+    serializer->setArray(ref, table, "size", size, 2);
 
     float center[2] = {m_center.x, m_center.y};
-    ref->setArray(table, "center", center, 2);
+    serializer->setArray(ref, table, "center", center, 2);
 
-    //ref->setBoolean(table, "fixed", m_fixed);
+    //serializer->setBoolean(ref, table, "fixed", m_fixed);
     if (!m_fixed)
-        ref->setBoolean(table, "fixed", false);
+        serializer->setBoolean(ref, table, "fixed", false);
 }
 
 void BasicCamera::resize(int width, int height)

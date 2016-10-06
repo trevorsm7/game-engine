@@ -64,6 +64,8 @@ void SdlRenderer::drawTiles(TileMap* tilemap)
 {
     assert(tilemap != nullptr);
     TileIndex* tileindex = tilemap->getTileIndex();
+    if (!tileindex)
+        return;
 
     // Get texture resource
     SdlTexturePtr texture = SdlTexture::loadTexture(m_resources, m_renderer, tileindex->getImageFile());

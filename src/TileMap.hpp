@@ -54,7 +54,7 @@ class TileMap : public TUserdata<TileMap>
 public:
     ~TileMap() {}
 
-    TileIndex* getTileIndex() {assert(m_index != nullptr); return m_index;}
+    TileIndex* getTileIndex() {return m_index;}
     int getIndex(int i) const {if (isValidIndex(i)) return m_map[i]; return 0;}
     int getIndex(int x, int y) const {if (isValidIndex(x, y)) return m_map[toIndex(x, y)]; return 0;}
     int getCols() const {return m_cols;}

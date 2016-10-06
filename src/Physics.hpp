@@ -24,7 +24,7 @@ public:
     ~Physics() {}
 
     void construct(lua_State* L, int index);
-    void serialize(lua_State* L, const char* table, ObjectRef* ref) const;
+    void serialize(lua_State* L, const char* table, Serializer* serializer, ObjectRef* ref) const;
 
     void preUpdate(float delta);
     void update(Transform& transform, float delta);

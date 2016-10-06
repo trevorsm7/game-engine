@@ -14,7 +14,7 @@ public:
     virtual ~ICamera() {}
 
     virtual void construct(lua_State* L, int index) = 0;
-    virtual void serialize(lua_State* L, const char* table, ObjectRef* ref) const = 0;
+    virtual void serialize(lua_State* L, const char* table, Serializer* serializer, ObjectRef* ref) const = 0;
 
     virtual void resize(int width, int height) = 0;
 

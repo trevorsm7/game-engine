@@ -32,11 +32,11 @@ void Transform::construct(lua_State* L, int index)
     lua_pop(L, 1);
 }
 
-void Transform::serialize(lua_State* L, const char* table, ObjectRef* ref) const
+void Transform::serialize(lua_State* L, const char* table, Serializer* serializer, ObjectRef* ref) const
 {
     float position[2] = {m_x, m_y};
-    ref->setArray(table, "position", position, 2);
+    serializer->setArray(ref, table, "position", position, 2);
 
     float scale[2] = {m_w, m_h};
-    ref->setArray(table, "scale", scale, 2);
+    serializer->setArray(ref, table, "scale", scale, 2);
 }

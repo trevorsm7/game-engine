@@ -38,6 +38,9 @@ setmetatable(table1, meta)
 
 _G[1] = "non-string global key"
 
+local tableKey = {}
+table1[tableKey] = {tableKey}
+
 a = 4503599627370496e-20
 --[[
 print(a)
@@ -61,3 +64,6 @@ player.update = function()
     saveState()
     quit()
 end
+
+table1[player.update] = "function key"
+table1[Actor.getGraphics] = "global key"

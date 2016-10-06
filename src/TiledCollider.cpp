@@ -13,6 +13,10 @@ bool TiledCollider::testCollision(float x, float y) const
 {
     assert(m_actor != nullptr);
 
+    TileIndex* tileIndex = m_tilemap->getTileIndex();
+    if (!tileIndex)
+        return false;
+
     if (!isCollidable() || !m_tilemap)
         return false;
 
@@ -30,13 +34,16 @@ bool TiledCollider::testCollision(float x, float y) const
 
     // Get the collision flag at the tile map index
     int index = m_tilemap->getIndex(tileX, tileY);
-    TileIndex* tileIndex = m_tilemap->getTileIndex();
     return tileIndex->isCollidable(index);
 }
 
 bool TiledCollider::testCollision(const Aabb& aabb) const
 {
     assert(m_actor != nullptr);
+
+    TileIndex* tileIndex = m_tilemap->getTileIndex();
+    if (!tileIndex)
+        return false;
 
     if (!isCollidable() || !m_tilemap)
         return false;
@@ -56,8 +63,6 @@ bool TiledCollider::testCollision(const Aabb& aabb) const
     const int tileRight = std::min<int>(m_tilemap->getCols(), ceil(right * m_tilemap->getCols() / transform.getW()));
     const int tileTop = std::max<int>(0, floor(top * m_tilemap->getRows() / transform.getH()));
     const int tileBottom = std::min<int>(m_tilemap->getRows(), ceil(bottom * m_tilemap->getRows() / transform.getH()));
-
-    TileIndex* tileIndex = m_tilemap->getTileIndex();
 
     // Iterate over range of tiles that overlap
     for (int y = tileTop; y < tileBottom; ++y)
@@ -81,6 +86,10 @@ bool TiledCollider::testCollision(float deltaX, float deltaY, const ICollider* o
     assert(m_actor != nullptr);
     assert(other != nullptr);
 
+    TileIndex* tileIndex = m_tilemap->getTileIndex();
+    if (!tileIndex)
+        return false;
+
     if (!isCollidableWith(other) || !m_tilemap)
         return false;
 
@@ -90,8 +99,6 @@ bool TiledCollider::testCollision(float deltaX, float deltaY, const ICollider* o
     bounds.addOffset(deltaX, deltaY);
     if (!other->testCollision(bounds))
         return false;
-
-    TileIndex* tileIndex = m_tilemap->getTileIndex();
 
     // TODO might be more efficient to keep subdividing like a BVH
     // TODO another approach would be to combine adjacent collidable tiles into larger AABBs

@@ -435,15 +435,15 @@ void Canvas::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
     }
 
     if (m_camera)
-        m_camera->serialize(L, "", ref);
+        m_camera->serialize(L, "", serializer, ref);
 
     //ref->setBoolean("", "paused", m_paused);
     if (m_paused)
-        ref->setBoolean("", "paused", true);
+        serializer->setBoolean(ref, "", "paused", true);
 
     //ref->setBoolean("", "visible", m_visible);
     if (!m_visible)
-        ref->setBoolean("", "visible", false);
+        serializer->setBoolean(ref, "", "visible", false);
 }
 
 int Canvas::canvas_addActor(lua_State *L)

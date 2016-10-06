@@ -46,10 +46,10 @@ void TileIndex::construct(lua_State* L)
 
 void TileIndex::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
 {
-    ref->setString("", "sprite", m_image);
+    serializer->setString(ref, "", "sprite", m_image);
     int size[] = {m_cols, m_rows};
-    ref->setArray("", "size", size, 2);
-    ref->setArray("", "data", m_flags.data(), m_cols * m_rows);
+    serializer->setArray(ref, "", "size", size, 2);
+    serializer->setArray(ref, "", "data", m_flags.data(), m_cols * m_rows);
 }
 
 int TileIndex::script_getSize(lua_State* L)
@@ -135,8 +135,8 @@ void TileMap::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
     }
 
     int size[] = {m_cols, m_rows};
-    ref->setArray("", "size", size, 2);
-    ref->setArray("", "data", m_map.data(), m_cols * m_rows);
+    serializer->setArray(ref, "", "size", size, 2);
+    serializer->setArray(ref, "", "data", m_map.data(), m_cols * m_rows);
 }
 
 int TileMap::script_setTileIndex(lua_State* L)

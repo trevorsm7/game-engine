@@ -30,8 +30,8 @@ void IGraphics::construct(lua_State* L)
 
 void IGraphics::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
 {
-    ref->setArray("", "color", &(m_color.r), 3);
-    ref->setBoolean("", "visible", isVisible());
+    serializer->setArray(ref, "", "color", &(m_color.r), 3);
+    serializer->setBoolean(ref, "", "visible", isVisible());
 }
 
 int IGraphics::script_setVisible(lua_State* L)

@@ -15,7 +15,7 @@ public:
     ~BasicCamera() override {}
 
     void construct(lua_State* L, int index) override;
-    void serialize(lua_State* L, const char* table, ObjectRef* ref) const override;
+    void serialize(lua_State* L, const char* table, Serializer* serializer, ObjectRef* ref) const override;
 
     void resize(int width, int height) override;
 

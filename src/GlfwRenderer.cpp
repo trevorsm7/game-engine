@@ -200,6 +200,8 @@ void GlfwRenderer::drawTiles(TileMap* tilemap)
 {
     assert(tilemap != nullptr);
     TileIndex* tileindex = tilemap->getTileIndex();
+    if (!tileindex)
+        return;
 
     // Get texture resource
     GlfwTexturePtr texture = GlfwTexture::loadTexture(m_resources, tileindex->getImageFile());

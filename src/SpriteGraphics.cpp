@@ -43,5 +43,5 @@ void SpriteGraphics::construct(lua_State* L)
 
 void SpriteGraphics::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
 {
-    ref->setString("", "sprite", m_filename);
+    serializer->setString(ref, "", "sprite", m_filename);
 }

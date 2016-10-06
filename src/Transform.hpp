@@ -18,7 +18,7 @@ public:
     Transform(float x, float y, float w, float h): m_x(x), m_y(y), m_w(w), m_h(h) {}
 
     void construct(lua_State* L, int index);
-    void serialize(lua_State* L, const char* table, ObjectRef* ref) const;
+    void serialize(lua_State* L, const char* table, Serializer* serializer, ObjectRef* ref) const;
 
     Aabb getAabb() const {return Aabb(m_x, m_y, m_x + m_w, m_y + m_h);}
 

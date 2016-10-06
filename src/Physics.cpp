@@ -59,17 +59,17 @@ void Physics::construct(lua_State* L, int index)
     lua_pop(L, 1);
 }
 
-void Physics::serialize(lua_State* L, const char* table, ObjectRef* ref) const
+void Physics::serialize(lua_State* L, const char* table, Serializer* serializer, ObjectRef* ref) const
 {
-    ref->setNumber(table, "mass", m_mass);
-    ref->setNumber(table, "cor", m_cor);
-    ref->setNumber(table, "cof", m_cof);
+    serializer->setNumber(ref, table, "mass", m_mass);
+    serializer->setNumber(ref, table, "cor", m_cor);
+    serializer->setNumber(ref, table, "cof", m_cof);
 
     float vel[2] = {m_vel.x, m_vel.y};
-    ref->setArray(table, "velocity", vel, 2);
+    serializer->setArray(ref, table, "velocity", vel, 2);
 
     float acc[2] = {m_acc.x, m_acc.y};
-    ref->setArray(table, "acceleration", acc, 2);
+    serializer->setArray(ref, table, "acceleration", acc, 2);
 }
 
 void Physics::preUpdate(float delta)
