@@ -7,14 +7,6 @@ mult = function(x, y)
     return x * y
 end
 
---[[local fake = {}
-hacker = function()
-    return fake
-end--]]
---[[hacker = load("\27LuaS\0\25\147\13\n\26\n\4\8\4\8\8xV\0\0\0\0\0\0\0\0\0\0\0(w@\1\0\13\0\0\0\15\0\0\0\0\0\2\3\0\0\0\5\0\0\0&\0\0\1&\0\128\0\0\0\0\0\1\0\0\0\1\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0")
-globals = hacker()
-globals[1] = "fuck"--]]
-
 local hidden = Canvas{size={8, 6}, fixed=true}
 addCanvas(hidden)
 
@@ -37,6 +29,9 @@ setmetatable(table1, meta)
 --print("\226\156\132")
 
 _G[1] = "non-string global key"
+_G[mult] = function() print("TODO broken") end
+local temp = function() print("TODO also broken") end
+_G[temp] = function() print("because of this") end
 
 local tableKey = {}
 table1[tableKey] = {tableKey}

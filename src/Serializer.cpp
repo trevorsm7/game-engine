@@ -33,7 +33,6 @@ void ObjectRef::setSetterRef(ILuaRef* setter, ILuaRef* value)
     // Push setter reference
     m_setters.emplace_back();
     SetterRef& ref = m_setters.back();
-    //sref.setter = setter.empty() ? "."s + key : ":"s + setter;
     ref.setter = setter;
     ref.value = value;
 
@@ -41,14 +40,14 @@ void ObjectRef::setSetterRef(ILuaRef* setter, ILuaRef* value)
     m_inlinable = false;
 }
 
-// TODO replace warnings with asserts
 void Serializer::populateGlobals(const std::string& prefix, lua_State* L, int index)
 {
     assert(lua_type(L, index) == LUA_TTABLE);
 
     // Hide the table itself (probably an error if it's visible somewhere)
     // NOTE this applies to recursively serialized __index tables as well
-    m_globals[lua_topointer(L, index)] = std::string();
+    // TODO can we just remove this? we already boned if user can touch these
+    m_globals[lua_topointer(L, index)] = LiteralRefPtr(new LiteralRef("nil"));
 
     // Iterate over table key/value pairs
     lua_pushnil(L);
@@ -61,31 +60,17 @@ void Serializer::populateGlobals(const std::string& prefix, lua_State* L, int in
         if (ptr != nullptr || m_globals.find(ptr) != m_globals.end())
         {
             // TODO should we allow non-string keys?
-            if (lua_type(L, -2) != LUA_TSTRING)
-            {
-                fprintf(stderr, "WARNING: global with %s key in %s\n", lua_typename(L, lua_type(L, -2)), prefix.c_str());
-                lua_pop(L, 1);
-                continue;
-            }
-
+            assert(lua_type(L, -2) == LUA_TSTRING);
             std::string key = prefix + lua_tostring(L, -2);
-            m_globals[ptr] = key;
+            m_globals[ptr] = LiteralRefPtr(new LiteralRef(key));
 
-            // TODO recurse userdata (warning on tables?)
             if (lua_type(L, -1) == LUA_TUSERDATA)
             {
                 int type = luaL_getmetafield(L, -1, "__index");
                 if (type != LUA_TNIL)
                 {
-                    if (type == LUA_TTABLE)
-                    {
-                        populateGlobals(key + ".", L, -1);
-                    }
-                    else
-                    {
-                        fprintf(stderr, "WARNING: global userdata %s with %s index\n", key.c_str(), lua_typename(L, type));
-                    }
-
+                    assert(type == LUA_TTABLE);
+                    populateGlobals(key + ".", L, -1);
                     lua_pop(L, 1);
                 }
             }
@@ -102,20 +87,6 @@ void Serializer::populateGlobals(const std::string& prefix, lua_State* L, int in
     }
 }
 
-std::string* Serializer::getGlobalName(lua_State* L, int index)
-{
-    const void* ptr = lua_topointer(L, index);
-
-    if (ptr != nullptr)
-    {
-        auto it = m_globals.find(ptr);
-        if (it != m_globals.end())
-            return &it->second;
-    }
-
-    return nullptr;
-}
-
 // TODO possible to overflow the Lua stack if we have a chain of tables; break this up with lua_call as with userdata?
 void Serializer::serializeSubtable(ObjectRef* parent, const std::string& table, lua_State* L, int index)
 {
@@ -129,9 +100,8 @@ void Serializer::serializeSubtable(ObjectRef* parent, const std::string& table, 
     if (index < 0) --index; // adjust relative indices
     while (lua_next(L, index))
     {
-        ILuaRef* key = serializeKey(parent->m_depth + 1, L, -2);
-        // TODO need onStack/shared depths for functions so we can identify when to use a setter for function keys
-        // TODO need to use setter for literals if the key is on stack!
+        ILuaRef* key = serializeValue(parent->m_depth + 1, false, L, -2);
+        assert(key != nullptr);
         serializeMember(parent, table, key, L, -1);
 
         // Remove value, leaving key on top for next iteration of lua_next
@@ -139,229 +109,29 @@ void Serializer::serializeSubtable(ObjectRef* parent, const std::string& table, 
     }
 }
 
-void Serializer::serializeMember(ObjectRef* parent, const std::string& table, const std::string& key, const std::string& setter, lua_State* L, int index)
-{
-    if (parent == nullptr)
-        parent = &m_root;
-
-    const bool isRoot = (parent == &m_root);
-
-    // Filter read-only globals (userdata, table, function)
-    std::string* global = getGlobalName(L, index);
-    if (global != nullptr)
-    {
-        if (!global->empty())
-            setLiteral(parent, table, key, *global);
-        return;
-    }
-
-    int type = lua_type(L, index);
-    switch (type)
-    {
-    case LUA_TNUMBER:
-        lua_pushvalue(L, index);
-        setLiteral(parent, table, key, lua_tostring(L, -1));
-        lua_pop(L, 1);
-        break;
-    case LUA_TSTRING:
-        setString(parent, table, key, lua_tostring(L, index));
-        break;
-    case LUA_TBOOLEAN:
-        setBoolean(parent, table, key, lua_toboolean(L, index));
-        break;
-    case LUA_TFUNCTION:
-        {
-            FunctionRef* ref = serializeFunction(parent->m_depth + 1, L, index);
-
-            // Use a setter unless the function is global
-            if (isRoot)
-            {
-                ref->setGlobalName(key);
-                setLiteral(parent, table, key, ref->m_name); // NOTE only need to set this if key != m_name
-            }
-            else
-            {
-                setSetter(parent, key, setter, ref);
-            }
-
-            break;
-        }
-    case LUA_TTABLE:
-    case LUA_TUSERDATA:
-        {
-            ObjectRef* ref = serializeObject(parent->m_depth + 1, true, L, index);
-
-            // Break cycle if object is already on the stack
-            if (ref->m_onStack || key.empty())
-            {
-                assert(!isRoot);
-                // Force setter instead of inlining
-                setSetter(parent, key, setter, ref);
-                ref->m_inlinable = false;
-            }
-            else
-            {
-                // Add ref to parent
-                LiteralRef* keyRef = serializeLiteral("."s + key);
-                parent->setInlineRef(table, keyRef, ref);
-
-                // Set name if object is global
-                if (isRoot)
-                    ref->setGlobalName(key);
-            }
-
-            break;
-        }
-    default:
-        // TODO light userdata, thread? shouldn't ever encounter these
-        fprintf(stderr, "can't set attrib %s: unsupported type %s\n", key.c_str(), lua_typename(L, type));
-        break;
-    }
-}
-
-// TODO how can we refactor this with the version that takes strings?
-// Give LiteralRef 3 strings: key, setter, value??
 void Serializer::serializeMember(ObjectRef* parent, const std::string& table, ILuaRef* key, lua_State* L, int index)
 {
     if (parent == nullptr)
         parent = &m_root;
 
-    const bool isRoot = (parent == &m_root);
+    ILuaRef* ref = serializeValue(parent->m_depth + 1, !key->isSetterOnly(), L, index);
+    assert(ref != nullptr);
 
-    // Filter read-only globals (userdata, table, function)
-    std::string* global = getGlobalName(L, index);
-    if (global != nullptr)
+    if (parent == &m_root)
     {
-        if (!global->empty())
-        {
-            LiteralRef* value = serializeLiteral(*global);
-            parent->setInlineRef(table, key, value);
-        }
-        return;
+        parent->setInlineRef(table, key, ref);
+        ref->setGlobalName(key->getAsKey()); // TODO try to remove this
     }
-
-    int type = lua_type(L, index);
-    switch (type)
+    else
     {
-    case LUA_TNUMBER:
-        lua_pushvalue(L, index);
-        parent->setInlineRef(table, key, serializeLiteral(lua_tostring(L, -1)));
-        // TODO parent->setInlineRef(table, key, serializeNumber(L, -1))
-        lua_pop(L, 1);
-        break;
-    case LUA_TSTRING:
-        parent->setInlineRef(table, key, serializeLiteral("\""s + lua_tostring(L, index) + "\""));
-        // TODO parent->setInlineRef(table, key, serializeString(L, index))
-        break;
-    case LUA_TBOOLEAN:
-        parent->setInlineRef(table, key, serializeLiteral(lua_toboolean(L, index) ? "true" : "false"));
-        // TODO parent->setInlineRef(table, key, serializeBoolean(L, index))
-        break;
-    case LUA_TFUNCTION:
+        if (ref->isSetterOnly() || key->isSetterOnly())
         {
-            FunctionRef* ref = serializeFunction(parent->m_depth + 1, L, index);
-
-            // Use a setter unless the function is global
-            if (isRoot)
-            {
-                ref->setGlobalName(key->getAsKey());
-                parent->setInlineRef(table, key, ref);
-            }
-            else
-            {
-                parent->setSetterRef(key, ref);
-            }
-
-            break;
+            parent->setSetterRef(key, ref);
         }
-    case LUA_TTABLE:
-    case LUA_TUSERDATA:
+        else
         {
-            ObjectRef* ref = serializeObject(parent->m_depth + 1, true, L, index);
-
-            // Break cycle if object is already on the stack
-            if (ref->m_onStack || key->isOnStack()) // TODO checking key on stack here is correct?
-            {
-                assert(!isRoot);
-                // Force setter instead of inlining
-                parent->setSetterRef(key, ref);
-                ref->m_inlinable = false;
-            }
-            else
-            {
-                // Add ref to parent
-                parent->setInlineRef(table, key, ref);
-
-                // Set name if object is global
-                if (isRoot)
-                    ref->setGlobalName(key->getAsKey());
-            }
-
-            break;
+            parent->setInlineRef(table, key, ref);
         }
-    default:
-        // TODO light userdata, thread? shouldn't ever encounter these
-        fprintf(stderr, "can't set attrib %s: unsupported type %s\n", key->getAsKey().c_str(), lua_typename(L, type));
-        break;
-    }
-}
-
-void Serializer::serializeUpvalue(FunctionRef* parent, lua_State* L, int index)
-{
-    assert(parent != nullptr);
-
-    // Filter read-only globals (userdata, table, function)
-    std::string* global = getGlobalName(L, index);
-    if (global != nullptr)
-    {
-        if (!global->empty())
-        {
-            // TODO parent->setLiteral(table, key, it->second);
-            parent->m_upvalues.emplace_back(serializeLiteral(*global));
-        }
-        return;
-    }
-
-    int type = lua_type(L, index);
-    switch (type)
-    {
-    case LUA_TNUMBER:
-        lua_pushvalue(L, index);
-        parent->m_upvalues.emplace_back(serializeLiteral(lua_tostring(L, -1)));
-        lua_pop(L, 1);
-        break;
-    case LUA_TSTRING:
-        parent->m_upvalues.emplace_back(serializeLiteral("\""s + lua_tostring(L, index) + "\""));
-        // TODO serializeString(L, index)
-        break;
-    case LUA_TBOOLEAN:
-        parent->m_upvalues.emplace_back(serializeLiteral(lua_toboolean(L, index) ? "true" : "false"));
-        // TODO serializeBoolean(L, index)
-        break;
-    case LUA_TNIL:
-        parent->m_upvalues.emplace_back(serializeLiteral("nil"));
-        break;
-    case LUA_TFUNCTION:
-        {
-            FunctionRef* ref = serializeFunction(parent->m_depth + 1, L, index);
-
-            // TODO move this to FunctionRef::setUpvalue
-            // Make sure depth is less than all inline children
-            if (parent->m_depth >= ref->m_depth)
-                parent->m_depth = ref->m_depth - 1;
-
-            parent->m_upvalues.emplace_back(ref);
-            break;
-        }
-    case LUA_TTABLE:
-    case LUA_TUSERDATA:
-        parent->m_upvalues.emplace_back(serializeObject(parent->m_depth + 1, false, L, index));
-        // TODO rebalance depth here if we collapse into same lists as functions
-        break;
-    default:
-        // TODO light userdata, thread? shouldn't ever encounter these
-        fprintf(stderr, "can't set upvalue: unsupported type %s\n", lua_typename(L, type));
-        return;
     }
 }
 
@@ -369,94 +139,57 @@ void Serializer::serializeSetter(const std::string& setter, lua_State* L, std::i
 {
     // Push a new ref at the back of the vector
     m_setters.emplace_back();
-    SetterRef& ref = m_setters.back();
-    ref.setter = setter;
+    SetterRef& setterRef = m_setters.back();
+    setterRef.setter = setter;
 
     for (auto& index : list)
     {
-        std::string* global = getGlobalName(L, index);
-        if (global != nullptr)
-        {
-            // TODO will raise an error in print if global is restricted/empty
-            ref.args.emplace_back(serializeLiteral(*global));
-        }
-        else
-        {
-            int type = lua_type(L, index);
-            switch (type)
-            {
-            case LUA_TNUMBER:
-                lua_pushvalue(L, index);
-                ref.args.emplace_back(serializeLiteral(lua_tostring(L, -1)));
-                lua_pop(L, 1);
-                break;
-            case LUA_TSTRING:
-                ref.args.emplace_back(serializeLiteral("\""s + lua_tostring(L, index) + "\""));
-                break;
-            case LUA_TBOOLEAN:
-                ref.args.emplace_back(serializeLiteral(lua_toboolean(L, index) ? "true" : "false"));
-                break;
-            case LUA_TNIL:
-                ref.args.emplace_back(serializeLiteral("nil"));
-                break;
-            case LUA_TFUNCTION:
-                ref.args.emplace_back(serializeFunction(0, L, index));
-                break;
-            case LUA_TTABLE:
-            case LUA_TUSERDATA:
-                ref.args.emplace_back(serializeObject(0, false, L, index));
-                break;
-            default:
-                // TODO light userdata, thread? shouldn't ever encounter these
-                fprintf(stderr, "can't set argument: unsupported type %s\n", lua_typename(L, type));
-                break;
-            }
-        }
+        ILuaRef* ref = serializeValue(0, false, L, index);
+        assert(ref != nullptr);
+        setterRef.args.emplace_back(ref);
     }
 }
 
-ILuaRef* Serializer::serializeKey(int depth, lua_State* L, int index)
+LiteralRef* Serializer::serializeNumber(lua_State* L, int index)
 {
-    ILuaRef* ptr = nullptr;
+    lua_pushvalue(L, index);
+    LiteralRef* ref = serializeLiteral(lua_tostring(L, -1));
+    // if (!lua_isinteger(L, index) string.unpack(\"<f\",") + ??
+    lua_pop(L, 1);
+    return ref;
+}
 
-    // Filter read-only globals (userdata, table, function)
-    std::string* global = getGlobalName(L, index);
-    if (global != nullptr)
+ILuaRef* Serializer::serializeValue(int depth, bool inlinable, lua_State* L, int index)
+{
+    const void* ptr = lua_topointer(L, index);
+    if (ptr != nullptr)
     {
-        if (!global->empty())
-            ptr = serializeLiteral(*global);
-
-        return ptr;
+        auto it = m_globals.find(ptr);
+        if (it != m_globals.end())
+            return it->second.get();
     }
 
     int type = lua_type(L, index);
     switch (type)
     {
     case LUA_TNUMBER:
-        lua_pushvalue(L, index);
-        ptr = serializeLiteral(lua_tostring(L, -1));
-        lua_pop(L, 1);
-        break;
+        return serializeNumber(L, index);
     case LUA_TSTRING:
-        ptr = serializeLiteral("\""s + lua_tostring(L, index) + "\"");
-        break;
+        return serializeLiteral("\""s + lua_tostring(L, index) + "\"");
     case LUA_TBOOLEAN:
-        ptr = serializeLiteral(lua_toboolean(L, index) ? "true" : "false");
-        break;
+        return lua_toboolean(L, index) ? &m_true : &m_false;
+    case LUA_TNIL:
+        return &m_nil;
     case LUA_TFUNCTION:
-        ptr = serializeFunction(depth, L, index);
-        break;
+        return serializeFunction(depth, L, index);
     case LUA_TTABLE:
     case LUA_TUSERDATA:
-        ptr = serializeObject(depth, false, L, index);
-        // NOTE handle ptr->m_onStack in serializeMember
-        break;
+        return serializeObject(depth, inlinable, L, index);
     default:
-        fprintf(stderr, "unsupported table key type: %s", lua_typename(L, type));
-        break;
+        // TODO light userdata, thread? shouldn't ever encounter these
+        fprintf(stderr, "unsupported type: %s", lua_typename(L, type));
+        return nullptr;
     }
-
-    return ptr;
 }
 
 ObjectRef* Serializer::serializeObject(int depth, bool inlinable, lua_State* L, int index)
@@ -515,51 +248,46 @@ ObjectRef* Serializer::serializeObject(int depth, bool inlinable, lua_State* L, 
     return ref;
 }
 
-// TODO we could combine writer and format (elimate the vector) efficiently if we
-// keep a bool to track if the previous char was an escaped number--if so, and if
-// the next char is a digit, we can work back to the \ and add 0s until we hit 3
-int vectorWriter(lua_State *L, const void* p, size_t sz, void* ud)
+static int stringWriter(lua_State *L, const void* ptr, size_t size, void* user)
 {
-    auto data = reinterpret_cast<std::vector<char>*>(ud);
-    auto chunk = reinterpret_cast<const char*>(p);
-    data->insert(data->end(), chunk, chunk + sz);
-    return 0;
-}
+    auto data = reinterpret_cast<std::string*>(user);
+    auto chunk = reinterpret_cast<const char*>(ptr);
 
-void formatDump(const std::vector<char>& in, std::string& out)
-{
-    // adapted from private function 'addquoted' in lstrlib.c
-    size_t size = in.size();
-    const char* ptr = in.data();
+    bool escapeDigit = (data->size() > 0 && isdigit(data->back()));
+
     while (size--)
     {
-        const char ch = *(ptr++);
+        const char ch = *(chunk++);
         const unsigned char uch = (unsigned char)ch;
-        const unsigned char unext = size > 0 ? (unsigned char)*ptr : '\0';
-        if (ch == '"' || ch == '\\')// || ch == '\n')
+
+        if (ch == '"' || ch == '\\')
         {
-            out.push_back('\\');
-            out.push_back(ch);
+            data->push_back('\\');
+            data->push_back(ch);
+            escapeDigit = false;
         }
         else if (ch == '\n')
         {
-            out.push_back('\\');
-            out.push_back('n');
+            data->push_back('\\');
+            data->push_back('n');
+            escapeDigit = false;
         }
-        else if (ch < ' ' || ch > '~')//iscntrl(uch)) // TODO keep UTF-8 codes or escape them?
+        //else if (ch < ' ' || ch > '~' || (isdigit(ch) && escapeDigit))
+        else if (iscntrl(uch) || (isdigit(ch) && escapeDigit)) // Keep utf8 codes?
         {
             char buffer[5];
-            if (!isdigit(unext))
-                snprintf(buffer, sizeof(buffer), "\\%d", int(uch));
-            else
-                snprintf(buffer, sizeof(buffer), "\\%03d", int(uch));
-            out += buffer;
+            int n = snprintf(buffer, sizeof(buffer), "\\%d", int(uch));
+            escapeDigit = (n < 4);
+            data->append(buffer);
         }
         else
         {
-            out.push_back(ch);
+            data->push_back(ch);
+            escapeDigit = false;
         }
     }
+
+    return 0;
 }
 
 FunctionRef* Serializer::serializeFunction(int depth, lua_State* L, int index)
@@ -578,16 +306,25 @@ FunctionRef* Serializer::serializeFunction(int depth, lua_State* L, int index)
     ref = new FunctionRef(depth);
     m_functions[ptr] = FunctionRefPtr(ref); // take ownership of bare ptr
 
-    std::vector<char> data;
-    lua_dump(L, vectorWriter, &data, true); // func must be on top of stack
-    formatDump(data, ref->m_code);
+    // NOTE lua_dump expected func on top of stack
+    lua_pushvalue(L, index);
+    lua_dump(L, stringWriter, &ref->m_code, true);
+    lua_pop(L, 1);
 
+    // Serialize upvalues
     for (int i = 1; true; ++i)
     {
         if (!lua_getupvalue(L, index, i))
             break;
 
-        serializeUpvalue(ref, L, -1);
+        ILuaRef* upvalue = serializeValue(ref->m_depth + 1, false, L, -1);
+        assert(upvalue != nullptr);
+
+        const int depth = upvalue->getDepth();
+        if (ref->m_depth >= depth)
+            ref->m_depth = depth - 1;
+
+        ref->m_upvalues.emplace_back(upvalue);
 
         lua_pop(L, 1);
     }
@@ -617,7 +354,7 @@ void Serializer::print()
 
         // Print object
         printf("%s%s = ", (ref->m_tempName ? "local " : ""), ref->m_name.c_str());
-        ref->print(this, 0, false);
+        ref->print(0, false);
         printf("\n");
     }
 
@@ -634,23 +371,22 @@ void Serializer::print()
             ref->m_name = "_temp"s + std::to_string(tempIndex++);
 
         printf("%s%s = ", (ref->m_tempName ? "local " : ""), ref->m_name.c_str());
-        ref->print(this, 0, false);
+        ref->print(0, false);
         printf("\n");
     }
 
     // Iterate over setters
     for (auto& parent : objectsSorted)
-        printSetters(parent);
+        parent->printSetters();
 
     // Print global inlines
     // NOTE must be after functions since root inlines can reference them by name
-    printInlines(&m_root, 0);
+    m_root.printInlines(0, true);
 
     // Iterate over global setters
     for (auto& ref : m_setters)
     {
         printf("%s(", ref.setter.c_str());
-        //for (auto& arg : ref.args)
         if (!ref.args.empty())
         {
             auto it = ref.args.begin();
@@ -664,48 +400,39 @@ void Serializer::print()
     }
 }
 
-void Serializer::printSetters(const ObjectRef* ref)
+void ObjectRef::printSetters() const
 {
-    assert(ref != nullptr);
-
-    for (auto& sref : ref->m_setters)
+    for (auto& ref : m_setters)
     {
-        std::string setter = sref.setter->getAsSetter();
-        std::string value = sref.value->getAsValue();
-        if (setter.empty() || value.empty())
-        {
-            fprintf(stderr, "warning: empty setter/value in %s - (%s, %s)\n", ref->m_name.c_str(), setter.c_str(), value.c_str());
-            continue;
-        }
+        std::string setter = ref.setter->getAsSetter();
+        std::string value = ref.value->getAsValue();
+        assert(!setter.empty() && !value.empty());
 
         if (setter[0] == ':')
-            printf("%s%s(%s)\n", ref->m_name.c_str(), setter.c_str(), value.c_str());
+            printf("%s%s(%s)\n", m_name.c_str(), setter.c_str(), value.c_str());
         else
-            printf("%s%s = %s\n", ref->m_name.c_str(), setter.c_str(), value.c_str());
+            printf("%s%s = %s\n", m_name.c_str(), setter.c_str(), value.c_str());
     }
 }
 
-void Serializer::printInlines(const ObjectRef* ref, int indent)
+void ObjectRef::printInlines(int indent, bool isRoot) const
 {
-    assert(ref != nullptr);
-    const bool isRoot = (ref == &m_root);
-
     bool firstLine = true;
     std::string lastTable;
 
-    for (auto& iref : ref->m_inlines)
+    for (auto& ref : m_inlines)
     {
-        std::string key = iref.key->getAsKey();
+        std::string key = ref.key->getAsKey();
         assert(!key.empty());
 
         // Skip global objects that have already been printed
         // NOTE will always be true unless more than one global points at the object
         // TODO HACK removing redundant function/global inlines here (currently stored as literal)
-        if (isRoot && (key == iref.value->getAsValue()))
+        if (isRoot && (key == ref.value->getAsValue()))
             continue;
 
         // Handle change of subtable formatting
-        bool tableChanged = (lastTable != iref.table);
+        bool tableChanged = (lastTable != ref.table);
 
         // Close previous subtable
         if (tableChanged && !lastTable.empty())
@@ -723,10 +450,10 @@ void Serializer::printInlines(const ObjectRef* ref, int indent)
         // Open new subtable
         if (tableChanged)
         {
-            printf("%*s%s =\n%*s{\n", indent, "", iref.table.c_str(), indent, "");
+            printf("%*s%s =\n%*s{\n", indent, "", ref.table.c_str(), indent, "");
             indent += 2;
 
-            lastTable = iref.table;
+            lastTable = ref.table;
         }
 
         // Print the next line
@@ -734,7 +461,7 @@ void Serializer::printInlines(const ObjectRef* ref, int indent)
             printf("%*s_G%s = ", indent, "", key.c_str());
         else
             printf("%*s%s = ", indent, "", key.c_str());
-        iref.value->print(this, indent, true);
+        ref.value->print(indent, true);
     }
 
     // Close the subtable
@@ -748,7 +475,7 @@ void Serializer::printInlines(const ObjectRef* ref, int indent)
         printf("\n");
 }
 
-void ObjectRef::print(Serializer* serializer, int indent, bool isInline) const
+void ObjectRef::print(int indent, bool isInline) const
 {
     if (isInline && !m_inlinable)
     {
@@ -761,7 +488,7 @@ void ObjectRef::print(Serializer* serializer, int indent, bool isInline) const
         if (!m_inlines.empty())
         {
             printf("\n%*s{\n", indent, "");
-            serializer->printInlines(this, indent + 2); // TODO move this into ObjectRef too!
+            printInlines(indent + 2, false);
             printf("%*s}", indent, "");
         }
         else

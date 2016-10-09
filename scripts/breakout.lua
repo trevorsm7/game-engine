@@ -1,5 +1,5 @@
 -- create a 20x15 game window
-local game = Canvas({20, 15}, true)
+local game = Canvas{size = {20, 15}, fixed = true}
 addCanvas(game)
 
 -- put invisible walls around the edges of the screen
@@ -27,17 +27,19 @@ game:addActor(topWall)
 local bottomWall = Actor
 {
     collider = AabbCollider{group = 4, mask = 1},
-    transform = {position = {0, 16}, scale = {20, 1}}
+    transform = {position = {0, 16}, scale = {20, 1}},
+    members =
+    {
+        -- reset the ball if it hits the bottom wall
+        collided = function (self, hit)
+            if hit == ball then
+                ball.attached = true
+                ball:update()
+            end
+        end
+    }
 }
 game:addActor(bottomWall)
-
--- reset the ball if it hits the bottom wall
-function bottomWall:collided(hit)
-    if hit == ball then
-        ball.attached = true
-        ball:update()
-    end
-end
 
 -- create the paddle
 -- TODO can we have COR=0 between paddle-walls while still having COR=1 between paddle-ball and ball-walls?
@@ -47,15 +49,17 @@ paddle = Actor
     graphics = SpriteGraphics{sprite = "square.tga"},
     collider = AabbCollider{group = 2, mask = 5},
     physics = {mass = math.huge},
-    transform = {scale = {4, 1}}
+    transform = {scale = {4, 1}},
+    members =
+    {
+        vel = 0,
+        update = function (self)
+            velx = self:getVelocity()
+            self:addAcceleration((self.vel - velx) * 5, 0)
+        end
+    }
 }
 game:addActor(paddle)
-
-paddle.vel = 0
-function paddle:update()
-    velx = self:getVelocity()
-    self:addAcceleration((self.vel - velx) * 5, 0)
-end
 
 -- create the ball
 ball = Actor
