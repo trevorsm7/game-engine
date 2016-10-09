@@ -6,6 +6,64 @@
 
 using namespace std::string_literals;
 
+std::string KeyRef::getAsSetter() const
+{
+    if (m_setter.empty())
+    {
+        assert(!m_key.empty());
+        return "."s + m_key;
+    }
+
+    return ":"s + m_setter;
+}
+
+std::string LiteralRef::getAsKey() const
+{
+    assert(!m_literal.empty());
+
+    if (m_literal.front() == '\"' && m_literal.back() == '\"')
+        return m_literal.substr(1, m_literal.size() - 2);
+
+    return "["s + m_literal + "]";
+}
+
+std::string LiteralRef::getAsSetter() const
+{
+    assert(!m_literal.empty());
+
+    if (m_literal.front() == '\"' && m_literal.back() == '\"')
+        return "."s + m_literal.substr(1, m_literal.size() - 2);
+
+    return "["s + m_literal + "]";
+}
+
+bool FunctionRef::setGlobalName(const ILuaRef* key)
+{
+    // Only set name the first time this is called
+    std::string name = key->getAsKey();
+    if (m_tempName && !name.empty() && name.front() != '[')
+    {
+        m_name = name;
+        m_tempName = false;
+        return true;
+    }
+    return false;
+}
+
+bool ObjectRef::setGlobalName(const ILuaRef* key)
+{
+    // Only set name the first time this is called
+    std::string name = key->getAsKey();
+    if (m_tempName && !name.empty() && name.front() != '[')
+    {
+        m_name = name;
+        m_inlinable = false;
+        m_tempName = false;
+        return true;
+    }
+    return false;
+}
+
 void ObjectRef::setInlineRef(const std::string& table, ILuaRef* key, ILuaRef* value)
 {
     // Alphabetical search from the end by subtable name
@@ -47,7 +105,7 @@ void Serializer::populateGlobals(const std::string& prefix, lua_State* L, int in
     // Hide the table itself (probably an error if it's visible somewhere)
     // NOTE this applies to recursively serialized __index tables as well
     // TODO can we just remove this? we already boned if user can touch these
-    m_globals[lua_topointer(L, index)] = LiteralRefPtr(new LiteralRef("nil"));
+    m_globals[lua_topointer(L, index)] = LiteralRefPtr(new LiteralRef("{}"));
 
     // Iterate over table key/value pairs
     lua_pushnil(L);
@@ -119,8 +177,8 @@ void Serializer::serializeMember(ObjectRef* parent, const std::string& table, IL
 
     if (parent == &m_root)
     {
-        parent->setInlineRef(table, key, ref);
-        ref->setGlobalName(key->getAsKey()); // TODO try to remove this
+        if (!ref->setGlobalName(key))
+            parent->setInlineRef(table, key, ref);
     }
     else
     {
@@ -216,17 +274,27 @@ ObjectRef* Serializer::serializeObject(int depth, bool inlinable, lua_State* L, 
     // Handle userdata and tables separately
     if (type == LUA_TUSERDATA)
     {
+        int top = lua_gettop(L);
+
+        // Set constructor to the userdata class name
+        luaL_getmetafield(L, index, "__metatable");
+        assert(lua_gettop(L) > top && lua_type(L, -1) == LUA_TSTRING);
+        ref->m_constructor = lua_tostring(L, -1);
+        lua_settop(L, top);
+
         // Get userdata serialize function
         luaL_getmetafield(L, index, "serialize");
-        assert(lua_type(L, -1) == LUA_TFUNCTION);
+        assert(lua_gettop(L) > top && lua_type(L, -1) == LUA_TFUNCTION);
 
         // Push the userdata after the function
         const int adjIndex = (index < 0) ? index - 1 : index;
         lua_pushvalue(L, adjIndex);
         lua_pushlightuserdata(L, this);
+        lua_pushlightuserdata(L, ref);
 
         // Do a regular call; pops function and udata
-        lua_call(L, 2, 0);
+        lua_call(L, 3, 0);
+        assert(lua_gettop(L) == top);
     }
     else
     {
@@ -272,8 +340,8 @@ static int stringWriter(lua_State *L, const void* ptr, size_t size, void* user)
             data->push_back('n');
             escapeDigit = false;
         }
-        //else if (ch < ' ' || ch > '~' || (isdigit(ch) && escapeDigit))
-        else if (iscntrl(uch) || (isdigit(ch) && escapeDigit)) // Keep utf8 codes?
+        else if (ch < ' ' || ch > '~' || (isdigit(ch) && escapeDigit))
+        //else if (iscntrl(uch) || (isdigit(ch) && escapeDigit))
         {
             char buffer[5];
             int n = snprintf(buffer, sizeof(buffer), "\\%d", int(uch));
@@ -362,7 +430,6 @@ void Serializer::print()
     std::list<FunctionRef*> functionsSorted;
     sortRefsByDepth(m_functions, functionsSorted);
 
-    // TODO handle duplicated globals in printInlines
     // TODO refactor with objectsSorted
     for (auto& ref : functionsSorted)
     {
@@ -400,6 +467,20 @@ void Serializer::print()
     }
 }
 
+void FunctionRef::print(int indent, bool isInline) const
+{
+    if (isInline)
+    {
+        printf("%s", m_name.c_str());
+        return;
+    }
+
+    printf("loadClosure(\"%s\"", m_code.c_str());
+    for (auto& upvalue : m_upvalues)
+        printf(", %s", upvalue->getAsValue().c_str());
+    printf(")");
+}
+
 void ObjectRef::printSetters() const
 {
     for (auto& ref : m_setters)
@@ -422,15 +503,6 @@ void ObjectRef::printInlines(int indent, bool isRoot) const
 
     for (auto& ref : m_inlines)
     {
-        std::string key = ref.key->getAsKey();
-        assert(!key.empty());
-
-        // Skip global objects that have already been printed
-        // NOTE will always be true unless more than one global points at the object
-        // TODO HACK removing redundant function/global inlines here (currently stored as literal)
-        if (isRoot && (key == ref.value->getAsValue()))
-            continue;
-
         // Handle change of subtable formatting
         bool tableChanged = (lastTable != ref.table);
 
@@ -457,6 +529,8 @@ void ObjectRef::printInlines(int indent, bool isRoot) const
         }
 
         // Print the next line
+        std::string key = ref.key->getAsKey();
+        assert(!key.empty());
         if (isRoot && key.front() == '[')
             printf("%*s_G%s = ", indent, "", key.c_str());
         else

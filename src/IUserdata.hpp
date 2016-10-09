@@ -1,16 +1,13 @@
 #pragma once
 
-#include "Serializer.hpp"
-
 #include <new>
 #include <cassert>
 #include "lua.hpp"
 // TODO limit to lua_State* in this file so we can remove header
 //struct lua_State;
 
-// TODO limit to Serializer ptr in this file so we can remove header
-//class Serializer;
-//class ObjectRef;
+class Serializer;
+class ObjectRef;
 
 class IUserdata
 {
@@ -185,13 +182,9 @@ private:
         // Validate userdata
         T* ptr = testUserdata(L, 1);
         assert(ptr != nullptr);
-        assert(lua_type(L, 2) == LUA_TLIGHTUSERDATA);
+        assert(lua_type(L, 2) == LUA_TLIGHTUSERDATA && lua_type(L, 3) == LUA_TLIGHTUSERDATA);
         Serializer* serializer = reinterpret_cast<Serializer*>(lua_touserdata(L, 2));
-
-        // Get the object ref and update the constructor name
-        ObjectRef* ref = serializer->getObjectRef(ptr);
-        assert(ref != nullptr);
-        ref->setConstructor(T::CLASS_NAME);
+        ObjectRef* ref = reinterpret_cast<ObjectRef*>(lua_touserdata(L, 3));
 
         // Call specialized helper function
         serializeHelper(L, ptr, serializer, ref);

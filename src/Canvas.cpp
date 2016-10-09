@@ -4,6 +4,7 @@
 #include "BasicCamera.hpp"
 #include "ICollider.hpp"
 #include "Physics.hpp"
+#include "Serializer.hpp"
 
 #include <algorithm>
 #include <limits>

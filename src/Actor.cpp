@@ -6,6 +6,7 @@
 #include "TiledGraphics.hpp"
 #include "TiledCollider.hpp"
 #include "Physics.hpp"
+#include "Serializer.hpp"
 
 #include <limits>
 #include <cstdint>

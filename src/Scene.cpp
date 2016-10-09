@@ -2,6 +2,7 @@
 #include "Canvas.hpp"
 #include "Actor.hpp"
 #include "IRenderer.hpp"
+#include "Serializer.hpp"
 
 #include "TileMap.hpp"
 #include "SpriteGraphics.hpp"

@@ -16,7 +16,7 @@ class Serializer;
 class ILuaRef
 {
 public:
-    virtual void setGlobalName(const std::string& name) = 0;
+    virtual bool setGlobalName(const ILuaRef* key) = 0;
 
     virtual std::string getAsKey() const = 0;
     virtual std::string getAsSetter() const = 0;
@@ -29,6 +29,7 @@ public:
     virtual void print(int indent, bool isInline) const = 0;
 };
 
+// TODO can we replace this with just LiteralRef?
 class KeyRef : public ILuaRef
 {
     friend class Serializer;
@@ -40,21 +41,10 @@ private:
         m_key(key), m_setter(setter) {}
 
 public:
-    void setGlobalName(const std::string& name) override {};
+    bool setGlobalName(const ILuaRef* key) override {return false;};
 
     std::string getAsKey() const override {assert(!m_key.empty()); return m_key;}
-
-    std::string getAsSetter() const override
-    {
-        if (m_setter.empty())
-        {
-            assert(!m_key.empty());
-            return std::string(".") + m_key;
-        }
-
-        return std::string(":") + m_setter;
-    }
-
+    std::string getAsSetter() const override;
     std::string getAsValue() const override {assert(false); return std::string("nil");}
 
     int getDepth() const override {return std::numeric_limits<int>::max();}
@@ -73,37 +63,16 @@ private:
 public:
     LiteralRef(const std::string& literal): m_literal(literal) {}
 
-    void setGlobalName(const std::string& name) override {};
+    bool setGlobalName(const ILuaRef* key) override {return false;};
 
-    std::string getAsKey() const override
-    {
-        assert(!m_literal.empty());
-
-        if (m_literal.front() == '\"' && m_literal.back() == '\"')
-            return m_literal.substr(1, m_literal.size() - 2);
-
-        return std::string("[") + m_literal + "]";
-    }
-
-    std::string getAsSetter() const override
-    {
-        assert(!m_literal.empty());
-
-        if (m_literal.front() == '\"' && m_literal.back() == '\"')
-            return std::string(".") + m_literal.substr(1, m_literal.size() - 2);
-
-        return std::string("[") + m_literal + "]";
-    }
-
+    std::string getAsKey() const override;
+    std::string getAsSetter() const override;
     std::string getAsValue() const override {return m_literal;}
 
     int getDepth() const override {return std::numeric_limits<int>::max();}
     bool isSetterOnly() const override {return false;}
 
-    void print(int indent, bool isInline) const override
-    {
-        printf("%s", m_literal.c_str());
-    }
+    void print(int indent, bool isInline) const override {printf("%s", m_literal.c_str());}
 };
 
 class FunctionRef : public ILuaRef
@@ -120,15 +89,7 @@ private:
 public:
     FunctionRef(int depth): m_depth(depth), m_tempName(true) {}
 
-    void setGlobalName(const std::string& name) override
-    {
-        // Only set name the first time this is called
-        if (m_tempName)
-        {
-            m_name = name;
-            m_tempName = false;
-        }
-    }
+    bool setGlobalName(const ILuaRef* key) override;
 
     std::string getAsKey() const override {return std::string("[") + m_name + "]";}
     std::string getAsSetter() const override {return std::string("[") + m_name + "]";}
@@ -137,19 +98,7 @@ public:
     int getDepth() const override {return m_depth;}
     bool isSetterOnly() const override {return true;}
 
-    void print(int indent, bool isInline) const override
-    {
-        if (isInline)
-        {
-            printf("%s", m_name.c_str());
-            return;
-        }
-
-        printf("loadClosure(\"%s\"", m_code.c_str());
-        for (auto& upvalue : m_upvalues)
-            printf(", %s", upvalue->getAsValue().c_str());
-        printf(")");
-    }
+    void print(int indent, bool isInline) const override;
 };
 
 class ObjectRef : public ILuaRef
@@ -158,9 +107,6 @@ class ObjectRef : public ILuaRef
 
     struct InlineRef {std::string table; ILuaRef* key; ILuaRef* value;};
     struct SetterRef {ILuaRef* setter; ILuaRef* value;};
-
-public:
-    void setConstructor(const std::string& constructor) {m_constructor = constructor;}
 
 private:
     std::string m_name;
@@ -175,16 +121,7 @@ private:
 public:
     ObjectRef(int depth, bool inlinable): m_depth(depth), m_inlinable(inlinable), m_tempName(true), m_onStack(true) {}
 
-    void setGlobalName(const std::string& name) override
-    {
-        // Only set name the first time this is called
-        if (m_tempName)
-        {
-            m_name = name;
-            m_inlinable = false;
-            m_tempName = false;
-        }
-    }
+    bool setGlobalName(const ILuaRef* key) override;
 
     std::string getAsKey() const override {return std::string("[") + m_name + "]";}
     std::string getAsSetter() const override {return std::string("[") + m_name + "]";}
@@ -310,8 +247,6 @@ public:
     void print();
 
 private:
-    LiteralRef* getGlobalRef(lua_State* L, int index);
-
     void serializeMember(ObjectRef* parent, const std::string& table, ILuaRef* key, lua_State* L, int index);
 
     KeyRef* serializeKey(const std::string& key, const std::string& setter)

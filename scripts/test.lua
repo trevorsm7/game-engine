@@ -7,6 +7,8 @@ mult = function(x, y)
     return x * y
 end
 
+mult2 = mult
+
 local hidden = Canvas{size={8, 6}, fixed=true}
 addCanvas(hidden)
 
@@ -29,9 +31,12 @@ setmetatable(table1, meta)
 --print("\226\156\132")
 
 _G[1] = "non-string global key"
-_G[mult] = function() print("TODO broken") end
-local temp = function() print("TODO also broken") end
-_G[temp] = function() print("because of this") end
+_G[mult] = function() print("function with global function key") end
+_G[_G[mult]] = function() print("function with temp global function key") end
+
+local temp = {"???"}
+_G[Actor.getCollider] = temp
+--table1.temp = temp
 
 local tableKey = {}
 table1[tableKey] = {tableKey}

@@ -1,4 +1,5 @@
 #include "IUserdata.hpp"
+#include "Serializer.hpp"
 
 void IUserdata::pushUserdata(lua_State* L)
 {
