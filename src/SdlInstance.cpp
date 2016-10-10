@@ -3,6 +3,7 @@
 
 #include <cstdio>
 #include <OpenGL/gl3.h>
+#include <SDL2_mixer/SDL_mixer.h>
 
 SdlInstance::~SdlInstance()
 {
@@ -11,6 +12,8 @@ SdlInstance::~SdlInstance()
 
     if (m_window)
         SDL_DestroyWindow(m_window);
+
+    Mix_CloseAudio();
 
     SDL_Quit();
 }
@@ -56,18 +59,30 @@ bool SdlInstance::init(const char* script)
 {
     //SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Testing", "Hello world", nullptr);
 
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) < 0)
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER) < 0)
     {
         fprintf(stderr, "Failed to init SDL: %s\n", SDL_GetError());
         return false;
     }
 
-    // Text input mode can be enabled by default and can cause significant latency issues; disable it
-    if (SDL_IsTextInputActive())
+    // Make sure text input mode is off when we launch
+    //fprintf(stderr, "Text Input mode is %s\n", SDL_IsTextInputActive() ? "on" : "off");
+    SDL_StopTextInput();
+
+    /*int loaded = Mix_Init(MIX_INIT_MP3);
+    if (loaded & MIX_INIT_MP3 == 0)
     {
-        SDL_StopTextInput();
-        //fprintf(stderr, "Disabling text input mode: %s\n", SDL_IsTextInputActive() ? "failure" : "success");
+        fprintf(stderr, "Failed to init MP3 audio\n");
+    }*/
+
+    // Set up the audio stream
+    if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 512) != 0)
+    {
+        fprintf(stderr, "Unable to open audio: %s\n", SDL_GetError());
+        return false;
     }
+
+    //Mix_AllocateChannels(4);
 
 #if 0
     // Set OpenGL context attributes

@@ -49,6 +49,7 @@ private:
     static int scene_loadClosure(lua_State* L);
     static int scene_saveState(lua_State* L);
     static int scene_writeGlobal(lua_State* L);
+    static int scene_playSample(lua_State* L);
     static int scene_registerControl(lua_State* L);
     static int scene_setPortraitHint(lua_State* L);
     static int scene_quit(lua_State* L);

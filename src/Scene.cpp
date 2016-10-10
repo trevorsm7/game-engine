@@ -3,6 +3,7 @@
 #include "Actor.hpp"
 #include "IRenderer.hpp"
 #include "Serializer.hpp"
+#include "SdlSample.hpp"
 
 #include "TileMap.hpp"
 #include "SpriteGraphics.hpp"
@@ -237,6 +238,10 @@ bool Scene::load(const char *filename)
 
     lua_pushliteral(m_L, "saveState");
     lua_pushcfunction(m_L, scene_saveState);
+    lua_rawset(m_L, -3);
+
+    lua_pushliteral(m_L, "playSample");
+    lua_pushcfunction(m_L, scene_playSample);
     lua_rawset(m_L, -3);
 
     lua_pushliteral(m_L, "registerControl");
@@ -489,6 +494,20 @@ int Scene::scene_writeGlobal(lua_State* L)
     lua_pushvalue(L, 2);
     lua_pushvalue(L, 3);
     lua_rawset(L, 1);
+
+    return 0;
+}
+
+int Scene::scene_playSample(lua_State* L)
+{
+    // Validate input
+    Scene* scene = Scene::checkScene(L);
+    const char* filename = luaL_checkstring(L, 1);
+
+    // Get sample resource
+    SdlSamplePtr sample = SdlSample::loadSample(scene->m_resources, filename);
+    if (sample)
+        sample->playSample();
 
     return 0;
 }

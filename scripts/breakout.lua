@@ -2,25 +2,34 @@
 local game = Canvas{size = {20, 15}, fixed = true}
 addCanvas(game)
 
+local wallHit = function(self, hit)
+    if hit == ball then
+        playSample("drum-kick.wav")
+    end
+end
+
 -- put invisible walls around the edges of the screen
 local leftWall = Actor
 {
     collider = AabbCollider{group = 4, mask = 3},
-    transform = {position = {-1, 0}, scale = {1, 16}}
+    transform = {position = {-1, 0}, scale = {1, 16}},
+    members = {collided = wallHit}
 }
 game:addActor(leftWall)
 
 local rightWall = Actor
 {
     collider = AabbCollider{group = 4, mask = 3},
-    transform = {position = {20, 0}, scale = {1, 16}}
+    transform = {position = {20, 0}, scale = {1, 16}},
+    members = {collided = wallHit}
 }
 game:addActor(rightWall)
 
 local topWall = Actor
 {
     collider = AabbCollider{group = 4, mask = 1},
-    transform = {position = {0, -1}, scale = {20, 1}}
+    transform = {position = {0, -1}, scale = {20, 1}},
+    members = {collided = wallHit}
 }
 game:addActor(topWall)
 
@@ -85,6 +94,7 @@ ball = Actor
                 local padvelx = paddle:getVelocity()
                 local velx, vely = self:getVelocity()
                 self:setVelocity(velx + padvelx * 0.5, vely)
+                playSample("drum-kick.wav")
             end
         end
     }
@@ -99,6 +109,7 @@ local brick_collided = function(self)
     for i, v in ipairs(bricks) do
         if v == self then
             table.remove(bricks, i)
+            playSample("drum-kick.wav")
             break
         end
     end
