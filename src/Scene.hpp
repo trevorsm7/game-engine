@@ -10,6 +10,7 @@
 
 class Canvas;
 class IRenderer;
+class IAudio;
 
 class Scene
 {
@@ -19,6 +20,7 @@ class Scene
 
     ResourceManager& m_resources;
     std::vector<Canvas*> m_canvases;
+    std::vector<std::string> m_tempAudioList; // TODO replace with list of AudioSources
     QuitCallback m_quitCallback;
     RegisterControlCallback m_registerControlCallback;
     lua_State *m_L;
@@ -37,6 +39,7 @@ public:
     ResourceManager& getResourceManager() {return m_resources;}
 
     void update(float delta);
+    void playAudio(IAudio* audio);
     void render(IRenderer* renderer);
     bool mouseEvent(MouseEvent& event);
     bool controlEvent(ControlEvent& event);
@@ -49,7 +52,7 @@ private:
     static int scene_loadClosure(lua_State* L);
     static int scene_saveState(lua_State* L);
     static int scene_writeGlobal(lua_State* L);
-    static int scene_playSample(lua_State* L);
+    static int scene_playSample(lua_State* L); // TODO remove
     static int scene_registerControl(lua_State* L);
     static int scene_setPortraitHint(lua_State* L);
     static int scene_quit(lua_State* L);

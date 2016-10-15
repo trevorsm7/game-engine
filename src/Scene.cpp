@@ -3,7 +3,7 @@
 #include "Actor.hpp"
 #include "IRenderer.hpp"
 #include "Serializer.hpp"
-#include "SdlSample.hpp"
+#include "IAudio.hpp"
 
 #include "TileMap.hpp"
 #include "SpriteGraphics.hpp"
@@ -15,83 +15,6 @@
 #include <cstring>
 #include <cstdio>
 #include <limits>
-
-// TODO remove or keep as a lightweight debug serializer?
-#include <vector>
-#include <string>
-#include <algorithm>
-typedef std::vector<const void*> PtrStack;
-static void dumptable(lua_State* L, PtrStack& stack, std::string key, int index)
-{
-    const int indent = stack.size() * 2;
-    const void* p = lua_topointer(L, index);
-    auto it = std::find(stack.begin(), stack.end(), p);
-    if (it != stack.end())
-    {
-        printf("%*scycle!\n", indent, "");
-        return;
-    }
-    stack.push_back(p);
-
-    lua_pushnil(L);
-    if (index < 0)
-        index -= 1;
-    while (lua_next(L, index))
-    {
-        int type = lua_type(L, -2);
-        std::string nextkey;
-        switch (type)
-        {
-        case LUA_TSTRING:
-            nextkey = lua_tostring(L, -2);
-            break;
-        case LUA_TNUMBER:
-            lua_pushvalue(L, -2);
-            nextkey = lua_tostring(L, -1);
-            lua_pop(L, 1);
-            break;
-        default:
-            nextkey = std::string("type(") + lua_typename(L, type) + ")";
-            break;
-        }
-
-        printf("%*s", indent, "");
-        type = lua_type(L, -1);
-        switch (type)
-        {
-        case LUA_TSTRING:
-            printf("%s[%s] = %s\n", key.c_str(), nextkey.c_str(), lua_tostring(L, -1));
-            break;
-        case LUA_TNUMBER:
-            lua_pushvalue(L, -1);
-            printf("%s[%s] = %s\n", key.c_str(), nextkey.c_str(), lua_tostring(L, -1));
-            lua_pop(L, 1);
-            break;
-        case LUA_TTABLE:
-            printf("%s[%s] = table<%p>\n", key.c_str(), nextkey.c_str(), lua_topointer(L, -1));
-            dumptable(L, stack, nextkey, -1);
-            break;
-        case LUA_TUSERDATA:
-            printf("%s[%s] = userdata<%p>\n", key.c_str(), nextkey.c_str(), lua_topointer(L, -1));
-            break;
-        case LUA_TFUNCTION:
-            printf("%s[%s] = function<%p>\n", key.c_str(), nextkey.c_str(), lua_topointer(L, -1));
-            break;
-        default:
-            printf("%s[%s] = %s\n", key.c_str(), nextkey.c_str(), lua_typename(L, type));
-            break;
-        }
-
-        lua_pop(L, 1);
-    }
-
-    stack.pop_back();
-}
-static void dumptable(lua_State* L, std::string key, int index)
-{
-    PtrStack stack;
-    dumptable(L, stack, key, index);
-}
 
 static void copyglobal(lua_State* L, const char* name, int src, int dst)
 {
@@ -312,6 +235,15 @@ void Scene::update(float delta)
     lua_gc(m_L, LUA_GCSTEP, 0);
 }
 
+void Scene::playAudio(IAudio* audio)
+{
+    // TODO replace sample list with list of AudioSource classes
+    for (auto& sample : m_tempAudioList)
+        audio->playSample(sample);
+
+    m_tempAudioList.clear();
+}
+
 void Scene::render(IRenderer* renderer)
 {
     assert(renderer != nullptr);
@@ -498,16 +430,14 @@ int Scene::scene_writeGlobal(lua_State* L)
     return 0;
 }
 
+// TODO remove this in favor of AudioSource class
 int Scene::scene_playSample(lua_State* L)
 {
     // Validate input
     Scene* scene = Scene::checkScene(L);
     const char* filename = luaL_checkstring(L, 1);
 
-    // Get sample resource
-    SdlSamplePtr sample = SdlSample::loadSample(scene->m_resources, filename);
-    if (sample)
-        sample->playSample();
+    scene->m_tempAudioList.push_back(filename);
 
     return 0;
 }

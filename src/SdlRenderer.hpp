@@ -1,11 +1,44 @@
 #pragma once
 
 #include "IRenderer.hpp"
-#include "SdlTexture.hpp"
 #include "ResourceManager.hpp"
 
 #include <cstdint>
-#include <SDL2/SDL.h>
+
+struct SDL_Window;
+struct SDL_Texture;
+struct SDL_Renderer;
+
+class SdlTexture;
+typedef std::shared_ptr<SdlTexture> SdlTexturePtr;
+
+// TODO make private to SdlRenderer? Can differentiate SDL GL textures and SDL 2D textures this way
+class SdlTexture : public IResource
+{
+    SDL_Texture* m_texture;
+    int m_width, m_height;
+
+protected:
+    SdlTexture(SDL_Texture* texture, int width, int height): m_texture(texture), m_width(width), m_height(height) {}
+
+public:
+    ~SdlTexture() override;
+
+    SDL_Texture* getPtr() {return m_texture;}
+    int getWidth() const {return m_width;}
+    int getHeight() const {return m_height;}
+
+    static SdlTexturePtr loadTexture(ResourceManager& manager, SDL_Renderer* renderer, std::string filename);
+
+protected:
+    static SDL_Texture* createTexture(SDL_Renderer* renderer, int width, int height, const void* data, int pitch, uint32_t format);
+
+private:
+    static SdlTexturePtr loadTGA(SDL_Renderer* renderer, std::vector<char>& data);
+
+    static SdlTexturePtr getPlaceholder(SDL_Renderer* renderer);
+    static SdlTexturePtr m_placeholder;
+};
 
 class SdlRenderer : public IRenderer
 {
@@ -18,16 +51,10 @@ class SdlRenderer : public IRenderer
     struct {uint8_t r, g, b;} m_color;
 
 public:
-    SdlRenderer(SDL_Window* window, ResourceManager& resources): m_window(window), m_renderer(nullptr), m_resources(resources) {}
-    ~SdlRenderer() override
-    {
-        if (m_renderer)
-            SDL_DestroyRenderer(m_renderer);
-    }
+    SdlRenderer(ResourceManager& resources): m_window(nullptr), m_renderer(nullptr), m_resources(resources) {}
+    ~SdlRenderer() override;
 
-    bool init() override;
-
-    void getSize(int& width, int& height) {SDL_GetRendererOutputSize(m_renderer, &width, &height);}
+    bool init(int width, int height);
 
     void preRender() override;
     void postRender() override;

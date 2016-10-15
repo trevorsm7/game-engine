@@ -28,7 +28,8 @@ public:
     GlfwRenderer(GLFWwindow* window, ResourceManager& resources): m_window(window), m_resources(resources) {}
     ~GlfwRenderer() override {} // TODO: cleanup buffers
 
-    bool init() override;
+    bool init();
+
     void preRender() override;
     void postRender() override;
 

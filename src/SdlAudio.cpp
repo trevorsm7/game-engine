@@ -1,4 +1,4 @@
-#include "SdlSample.hpp"
+#include "SdlAudio.hpp"
 
 #include <SDL2/SDL.h>
 #include <SDL2_mixer/SDL_mixer.h>
@@ -7,12 +7,6 @@ SdlSample::~SdlSample()
 {
     if (m_sample)
         Mix_FreeChunk(m_sample);
-}
-
-void SdlSample::playSample()
-{
-    if (m_sample)
-        Mix_PlayChannel(-1, m_sample, 0);
 }
 
 SdlSamplePtr SdlSample::loadSample(ResourceManager& manager, const std::string& filename)
@@ -42,4 +36,39 @@ SdlSamplePtr SdlSample::loadSample(ResourceManager& manager, const std::string& 
     // Cache the resource and return it
     manager.bindResource(filename, sample);
     return sample;
+}
+
+SdlAudio::~SdlAudio()
+{
+    // TODO need to stop all audio first?
+
+    Mix_CloseAudio();
+}
+
+bool SdlAudio::init()
+{
+    /*int loaded = Mix_Init(MIX_INIT_MP3);
+    if (loaded & MIX_INIT_MP3 == 0)
+    {
+        fprintf(stderr, "Failed to init MP3 audio\n");
+    }*/
+
+    // Set up the audio stream
+    if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 512) != 0)
+    {
+        fprintf(stderr, "Unable to open audio: %s\n", SDL_GetError());
+        return false;
+    }
+
+    //Mix_AllocateChannels(4);
+
+    return true;
+}
+
+void SdlAudio::playSample(const std::string& name) const
+{
+    SdlSamplePtr sample = SdlSample::loadSample(m_resources, name);
+
+    if (sample)
+        Mix_PlayChannel(-1, sample->m_sample, 0);
 }

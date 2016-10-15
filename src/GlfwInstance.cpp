@@ -143,9 +143,13 @@ bool GlfwInstance::init(const char* script)
     glfwSwapInterval(1);
 
     // Lastly, initialize Renderer
-    m_renderer = IRendererPtr(new GlfwRenderer(m_window, m_resources));
-    if (!m_renderer->init())
+    GlfwRenderer* renderer = new GlfwRenderer(m_window, m_resources);
+    m_renderer = IRendererPtr(renderer);
+    if (!renderer->init())
+    {
+        m_renderer = nullptr;
         return false;
+    }
 
     return true;
 }

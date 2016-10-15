@@ -1,5 +1,6 @@
 #pragma once
 
+#include "IAudio.hpp"
 #include "IResource.hpp"
 #include "ResourceManager.hpp"
 
@@ -10,6 +11,8 @@ typedef std::shared_ptr<SdlSample> SdlSamplePtr;
 
 class SdlSample : public IResource
 {
+    friend class SdlAudio;
+
     Mix_Chunk* m_sample;
 
 protected:
@@ -20,7 +23,18 @@ public:
 
     Mix_Chunk* getPtr() {return m_sample;}
 
-    void playSample();
-
     static SdlSamplePtr loadSample(ResourceManager& manager, const std::string& filename);
+};
+
+class SdlAudio : public IAudio
+{
+     ResourceManager& m_resources;
+
+public:
+    SdlAudio(ResourceManager& resources): m_resources(resources) {}
+    ~SdlAudio() override;
+
+    bool init();
+
+    void playSample(const std::string& name) const override;
 };

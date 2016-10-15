@@ -11,7 +11,6 @@ class IRenderer
 public:
     virtual ~IRenderer() {}
 
-    virtual bool init() = 0;
     virtual void preRender() = 0;
     virtual void postRender() = 0;
 

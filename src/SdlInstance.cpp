@@ -1,20 +1,12 @@
 #include "SDLInstance.hpp"
 #include "SdlRenderer.hpp"
+#include "SdlAudio.hpp"
 
 #include <cstdio>
 #include <OpenGL/gl3.h>
-#include <SDL2_mixer/SDL_mixer.h>
 
 SdlInstance::~SdlInstance()
 {
-    //if (m_context)
-    //    SDL_GL_DeleteContext(m_context);
-
-    if (m_window)
-        SDL_DestroyWindow(m_window);
-
-    Mix_CloseAudio();
-
     SDL_Quit();
 }
 
@@ -69,55 +61,6 @@ bool SdlInstance::init(const char* script)
     //fprintf(stderr, "Text Input mode is %s\n", SDL_IsTextInputActive() ? "on" : "off");
     SDL_StopTextInput();
 
-    /*int loaded = Mix_Init(MIX_INIT_MP3);
-    if (loaded & MIX_INIT_MP3 == 0)
-    {
-        fprintf(stderr, "Failed to init MP3 audio\n");
-    }*/
-
-    // Set up the audio stream
-    if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 512) != 0)
-    {
-        fprintf(stderr, "Unable to open audio: %s\n", SDL_GetError());
-        return false;
-    }
-
-    //Mix_AllocateChannels(4);
-
-#if 0
-    // Set OpenGL context attributes
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-
-    // Create the window
-    m_window = SDL_CreateWindow("Engine", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-    //m_window = SDL_CreateWindow("Test", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 0, 0, SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_FULLSCREEN_DESKTOP);
-    if (!m_window)
-    {
-        fprintf(stderr, "Failed to create SDL window: %s\n", SDL_GetError());
-        return false;
-    }
-
-    //SDL_SetWindowFullscreen(m_window, SDL_WINDOW_FULLSCREEN_DESKTOP); // 0, SDL_WINDOW_FULLSCREEN
-
-    // Create the OpenGL context
-    m_context = SDL_GL_CreateContext(m_window);
-    if (!m_context)
-    {
-        fprintf(stderr, "Failed to create GL context: %s\n", SDL_GetError());
-        return false;
-    }
-
-    // Set vertical retrace synchronization
-    SDL_GL_SetSwapInterval(1);
-
-    int width, height;
-    SDL_GL_GetDrawableSize(m_window, &width, &height);
-    fprintf(stderr, "Framebuffer size: %d, %d\n", width, height);
-#else
     m_scene = ScenePtr(new Scene(m_resources));
     m_scene->setQuitCallback([&] {m_bQuit = true;});
     m_scene->setRegisterControlCallback([&](const char* action)->bool
@@ -126,6 +69,7 @@ bool SdlInstance::init(const char* script)
         //fprintf(stderr, "TODO: implement register control callback\n");
         return false;
     });
+
     if (!m_scene->load(script))
         return false;
 
@@ -142,22 +86,23 @@ bool SdlInstance::init(const char* script)
         height = 600;
     }
 
-    // Create the window
-    m_window = SDL_CreateWindow("Engine", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-        width, height, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-    if (!m_window)
+    SdlRenderer* renderer = new SdlRenderer(m_resources);
+    m_renderer = IRendererPtr(renderer);
+    if (!renderer->init(width, height))
     {
-        fprintf(stderr, "Failed to create SDL window: %s\n", SDL_GetError());
+        m_renderer = nullptr;
         return false;
     }
-#endif
 
-    m_renderer = IRendererPtr(new SdlRenderer(m_window, m_resources));
-    if (!m_renderer->init())
-        return false;
-
-    //reinterpret_cast<SdlRenderer*>(m_renderer.get())->getSize(width, height);
     m_scene->resize(width, height);
+
+    SdlAudio* audio = new SdlAudio(m_resources);
+    m_audio = IAudioPtr(audio);
+    if (!audio->init())
+    {
+        m_audio = nullptr;
+        return false;
+    }
 
     //SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Testing", "Hello world", m_window);
 
@@ -236,11 +181,13 @@ void SdlInstance::pollEvents()
             switch (e.window.event)
             {
             case SDL_WINDOWEVENT_RESIZED:
-                int width, height;
+                //int width, height;
                 //SDL_GL_GetDrawableSize(m_window, &width, &height);
-                reinterpret_cast<SdlRenderer*>(m_renderer.get())->getSize(width, height);
-                //fprintf(stderr, "Framebuffer size: %d, %d\n", width, height);
-                m_scene->resize(width, height);
+                //SDL_GetRendererOutputSize(m_renderer, &width, &height);
+                //fprintf(stderr, "Framebuffer size: %dx%d\n", width, height);
+                //fprintf(stderr, "Window size: %dx%d\n", e.window.data1, e.window.data2);
+                // NOTE just using logical window size instead of framebuffer pixel size
+                m_scene->resize(e.window.data1, e.window.data2);
                 break;
             }
             break;
@@ -259,6 +206,8 @@ void SdlInstance::update(double elapsedTime)
 
 void SdlInstance::render()
 {
+    m_scene->playAudio(m_audio.get());
+
     m_renderer->preRender();
     m_scene->render(m_renderer.get());
     m_renderer->postRender();
@@ -324,7 +273,8 @@ void SdlInstance::handleMouseButtonEvent(SDL_MouseButtonEvent& e)
         return;
 
     int width, height;
-    SDL_GetWindowSize(m_window, &width, &height);
+    SDL_Window* window = SDL_GetWindowFromID(e.windowID);
+    SDL_GetWindowSize(window, &width, &height);
 
     // Map mouse click to event structure
     MouseEvent event;
