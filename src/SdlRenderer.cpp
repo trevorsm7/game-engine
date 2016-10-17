@@ -79,6 +79,7 @@ void SdlRenderer::preRender()
 {
     //glClearColor(0.0, 0.0, 0.0, 1.0);
     //glClear(GL_COLOR_BUFFER_BIT);
+    SDL_SetRenderDrawColor(m_renderer, 0, 0, 0, 255);
     SDL_RenderClear(m_renderer);
     SDL_GetRendererOutputSize(m_renderer, &m_width, &m_height);
 }
@@ -179,6 +180,53 @@ void SdlRenderer::drawTiles(TileMap* tilemap)
 
             // Draw the texture
             SDL_RenderCopy(m_renderer, texture->getPtr(), &source, &target);
+        }
+    }
+}
+
+inline void mapColorScale(SDL_Renderer* renderer, float step)
+{
+    if (step < 1.f)
+        SDL_SetRenderDrawColor(renderer, 255, uint8_t(255*step), 0, 255);
+    else if (step < 2.f)
+        SDL_SetRenderDrawColor(renderer, uint8_t(255*(2.f-step)), 255, 0, 255);
+    else if (step < 3.f)
+        SDL_SetRenderDrawColor(renderer, 0, 255, uint8_t(255*(step-2.f)), 255);
+    else if (step < 4.f)
+        SDL_SetRenderDrawColor(renderer, 0, uint8_t(255*(4.f-step)), 255, 255);
+    else if (step < 5.f)
+        SDL_SetRenderDrawColor(renderer, uint8_t(255*(step-4.f)), 0, 255, 255);
+    else
+        SDL_SetRenderDrawColor(renderer, 255, 0, 255, 255);
+}
+
+void SdlRenderer::drawLines(const std::vector<float>& points)
+{
+    const float scaleW = m_width / m_camera.getW();
+    const float scaleH = m_height / m_camera.getH();
+
+
+    for (size_t i = 0; i < points.size(); i++)
+    {
+        int segments = points[i];
+
+        assert(segments >= 2);
+        assert(i + segments * 2 < points.size());
+
+        int lastX = (points[++i] - m_camera.getX()) * scaleW;
+        int lastY = (points[++i] - m_camera.getY()) * scaleH;
+
+        float stepSize = 5.f / (segments-1);
+        float step = 0.f;
+
+        while (segments-- >= 2)
+        {
+            int thisX = (points[++i] - m_camera.getX()) * scaleW;
+            int thisY = (points[++i] - m_camera.getY()) * scaleH;
+            mapColorScale(m_renderer, step); step += stepSize;
+            SDL_RenderDrawLine(m_renderer, lastX, lastY, thisX, thisY);
+            lastX = thisX;
+            lastY = thisY;
         }
     }
 }

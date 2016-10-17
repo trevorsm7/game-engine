@@ -252,6 +252,11 @@ void GlfwRenderer::drawTiles(TileMap* tilemap)
     glBindVertexArray(0);
 }
 
+void GlfwRenderer::drawLines(const std::vector<float>& points)
+{
+    // TODO
+}
+
 void GlfwRenderer::popModelTransform()
 {
     // TODO: do we need a transform stack?

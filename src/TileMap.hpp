@@ -18,12 +18,12 @@ public:
     ~TileIndex() {}
 
     const std::string& getImageFile() const {return m_image;}
-    bool isCollidable(int i) const {return isValidIndex(i) && (m_flags[i-1] & 1);}
+    bool isCollidable(int i) const {assert(isValidIndex(i)); return i > 0 && m_flags[i-1] & 1;}
     int getCols() const {return m_cols;}
     int getRows() const {return m_rows;}
 
     // NOTE using 0 as null tile and 1 as first real tile
-    bool isValidIndex(int i) const {return i > 0 && i <= m_cols * m_rows;}
+    bool isValidIndex(int i) const {return i >= 0 && i <= m_cols * m_rows;}
     int getIndexCol(int i) const {return (i-1) % m_cols;}
     int getIndexRow(int i) const {return (i-1) / m_cols;}
 
@@ -55,8 +55,8 @@ public:
     ~TileMap() {}
 
     TileIndex* getTileIndex() {return m_index;}
-    int getIndex(int i) const {if (isValidIndex(i)) return m_map[i]; return 0;}
-    int getIndex(int x, int y) const {if (isValidIndex(x, y)) return m_map[toIndex(x, y)]; return 0;}
+    int getIndex(int i) const {assert(isValidIndex(i)); return m_map[i];}
+    int getIndex(int x, int y) const {assert(isValidIndex(x, y)); return m_map[toIndex(x, y)];}
     int getCols() const {return m_cols;}
     int getRows() const {return m_rows;}
 

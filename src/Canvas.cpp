@@ -1,6 +1,7 @@
 #include "Canvas.hpp"
 #include "Scene.hpp"
 #include "Actor.hpp"
+#include "Pathfinding.hpp"
 #include "BasicCamera.hpp"
 #include "ICollider.hpp"
 #include "Physics.hpp"
@@ -69,6 +70,10 @@ void Canvas::render(IRenderer *renderer)
 
         (*it)->render(renderer);
     }
+
+    // Render pathfinding for debugging
+    if (m_pathfinding)
+        m_pathfinding->render(renderer);
 
     m_camera->postRender(renderer);
 }
@@ -373,6 +378,14 @@ void Canvas::construct(lua_State* L)
 
     m_camera = ICameraPtr(new BasicCamera());
     m_camera->construct(L, 2);
+
+    lua_pushliteral(L, "pathfinding");
+    if (lua_rawget(L, 2) != LUA_TNIL)
+    {
+        m_pathfinding = Pathfinding::checkUserdata(L, -1);
+        m_pathfinding->refAdded(L, -1);
+    }
+    lua_pop(L, 1);
 
     lua_pushliteral(L, "paused");
     if (lua_rawget(L, 2) != LUA_TNIL)

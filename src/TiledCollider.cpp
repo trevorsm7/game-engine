@@ -31,6 +31,8 @@ bool TiledCollider::testCollision(float x, float y) const
     // NOTE don't need floor() since x, y guranteed to be non-negative
     const int tileX = int(x * m_tilemap->getCols() / transform.getW());
     const int tileY = int(y * m_tilemap->getRows() / transform.getH());
+    if (!m_tilemap->isValidIndex(x, y))
+        return false;
 
     // Get the collision flag at the tile map index
     int index = m_tilemap->getIndex(tileX, tileY);

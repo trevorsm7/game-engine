@@ -6,11 +6,14 @@
 #include <vector>
 #include <memory>
 #include <functional>
-#include "lua.hpp"
+#include <chrono>
 
 class Canvas;
 class IRenderer;
 class IAudio;
+
+struct lua_State;
+struct lua_Debug;
 
 class Scene
 {
@@ -23,12 +26,15 @@ class Scene
     std::vector<std::string> m_tempAudioList; // TODO replace with list of AudioSources
     QuitCallback m_quitCallback;
     RegisterControlCallback m_registerControlCallback;
-    lua_State *m_L;
+    lua_State* m_L;
+    std::chrono::steady_clock::time_point m_watchdog;
+    int m_watchdogTotal;
+    int m_watchdogCount;
     bool m_isPortraitHint;
 
 public:
     Scene(ResourceManager& resources): m_resources(resources), m_L(nullptr), m_isPortraitHint(false) {}
-    ~Scene() {if (m_L) lua_close(m_L);} // TODO remove Canvas references; will be deleted anyway when closing Lua state, but would be nice to do?
+    ~Scene();
 
     bool load(const char *filename);
     void setQuitCallback(QuitCallback cb) {m_quitCallback = cb;}
@@ -45,8 +51,13 @@ public:
     bool controlEvent(ControlEvent& event);
     void resize(int width, int height);
 
-private:
+    void setWatchdog(int millis);
+    void clearWatchdog();
+
     static Scene* checkScene(lua_State* L);
+
+private:
+    static void hook_watchdog(lua_State* L, lua_Debug* ar);
 
     static int scene_addCanvas(lua_State* L);
     static int scene_loadClosure(lua_State* L);

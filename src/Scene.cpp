@@ -10,11 +10,13 @@
 #include "TiledGraphics.hpp"
 #include "AabbCollider.hpp"
 #include "TiledCollider.hpp"
+#include "Pathfinding.hpp"
 
 #include <cassert>
 #include <cstring>
 #include <cstdio>
 #include <limits>
+#include "lua.hpp"
 
 static void copyglobal(lua_State* L, const char* name, int src, int dst)
 {
@@ -58,6 +60,13 @@ static void copyglobal(lua_State* L, const char* name, int src, int dst)
         lua_pop(L, 2);
         break;
     }
+}
+
+Scene::~Scene()
+{
+    // TODO remove Canvas/other references; will be deleted anyway when closing Lua state, but would be nice to do?
+    if (m_L)
+        lua_close(m_L);
 }
 
 bool Scene::load(const char *filename)
@@ -142,6 +151,7 @@ bool Scene::load(const char *filename)
     TiledGraphics::initMetatable(m_L);
     AabbCollider::initMetatable(m_L);
     TiledCollider::initMetatable(m_L);
+    Pathfinding::initMetatable(m_L);
 
     lua_pushliteral(m_L, "inf");
     lua_pushnumber(m_L, std::numeric_limits<lua_Number>::infinity());
@@ -215,13 +225,52 @@ bool Scene::load(const char *filename)
     // Pop global tables
     lua_pop(m_L, 2);
 
+    setWatchdog(2000);
     if (luaL_loadfile(m_L, filename) != 0 || lua_pcall(m_L, 0, 0, 0) != 0)
     {
         fprintf(stderr, "%s\n", lua_tostring(m_L, -1));
+        clearWatchdog();
         return false;
     }
+    clearWatchdog();
 
     return true;
+}
+
+void Scene::setWatchdog(int millis)
+{
+    using namespace std::chrono;
+    m_watchdog = steady_clock::now();
+    m_watchdogTotal = millis;
+    m_watchdogCount = 0;
+    lua_sethook(m_L, hook_watchdog, LUA_MASKCOUNT, 2000);
+}
+
+void Scene::clearWatchdog()
+{
+    using namespace std::chrono;
+    lua_sethook(m_L, nullptr, 0, 0);
+
+    /*auto current = steady_clock::now();
+    auto elapsed = duration_cast<milliseconds>(current - m_watchdog);
+    if (elapsed.count() > 0)
+        fprintf(stderr, "watchdog woke %d times over %d ms\n", m_watchdogCount, int(elapsed.count()));*/
+}
+
+void Scene::hook_watchdog(lua_State* L, lua_Debug* ar)
+{
+    using namespace std::chrono;
+    Scene* scene = checkScene(L);
+    ++(scene->m_watchdogCount);
+
+    //if (ar->event != LUA_HOOKCOUNT)
+    //    fprintf(stderr, "===watchdog with event %d===\n", ar->event);
+
+    auto current = steady_clock::now();
+    auto elapsed = duration_cast<milliseconds>(current - scene->m_watchdog);
+
+    if (elapsed.count() > scene->m_watchdogTotal)
+        luaL_error(L, "watchdog reset after %d milliseconds", scene->m_watchdogTotal);
 }
 
 void Scene::update(float delta)
@@ -300,8 +349,8 @@ Scene* Scene::checkScene(lua_State* L)
 {
     // Get light userdata from registry
     lua_pushliteral(L, "Scene");
-    int type = lua_rawget(L, LUA_REGISTRYINDEX);
-    assert(type == LUA_TLIGHTUSERDATA);
+    lua_rawget(L, LUA_REGISTRYINDEX);
+    assert(lua_type(L, -1) == LUA_TLIGHTUSERDATA);
 
     // Cast light userdata to Scene*
     auto scene = reinterpret_cast<Scene*>(lua_touserdata(L, -1));

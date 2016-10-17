@@ -1,5 +1,6 @@
 #include "IUserdata.hpp"
 #include "Serializer.hpp"
+#include "Scene.hpp"
 
 void IUserdata::pushUserdata(lua_State* L)
 {
@@ -62,13 +63,20 @@ bool IUserdata::pcall(lua_State* L, const char* method, int in, int out)
     lua_pop(L, 1); // remove the uservalue from the stack
     lua_insert(L, -(in + 1)); // insert udata before args
 
+    // Set 30 ms watchdog to protect against malformed or excessively slow code
+    Scene* scene = Scene::checkScene(L);
+    scene->setWatchdog(30);
+
     // Do a protected call; pops function, udata, and args
     if (lua_pcall(L, in + 1, out, 0) != 0)
     {
         fprintf(stderr, "%s\n", lua_tostring(L, -1));
         lua_pop(L, 1); // remove the error string from the stack
+        scene->clearWatchdog();
         return false;
     }
+
+    scene->clearWatchdog();
 
     return true;
 }

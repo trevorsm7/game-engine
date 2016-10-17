@@ -3,6 +3,7 @@
 #include "Transform.hpp"
 
 #include <string>
+#include <vector>
 
 class TileMap;
 
@@ -20,6 +21,7 @@ public:
     virtual void setColor(float red, float green, float blue) = 0;
     virtual void drawSprite(const std::string& name) = 0;
     virtual void drawTiles(TileMap* tilemap) = 0;
+    virtual void drawLines(const std::vector<float>& points) = 0;
 
     virtual void popModelTransform() = 0;
     virtual void popCameraTransform() = 0;
