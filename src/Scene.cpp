@@ -10,7 +10,7 @@
 #include "TiledGraphics.hpp"
 #include "AabbCollider.hpp"
 #include "TiledCollider.hpp"
-#include "Pathfinding.hpp"
+#include "TiledPathing.hpp"
 
 #include <cassert>
 #include <cstring>
@@ -151,7 +151,7 @@ bool Scene::load(const char *filename)
     TiledGraphics::initMetatable(m_L);
     AabbCollider::initMetatable(m_L);
     TiledCollider::initMetatable(m_L);
-    Pathfinding::initMetatable(m_L);
+    TiledPathing::initMetatable(m_L);
 
     lua_pushliteral(m_L, "inf");
     lua_pushnumber(m_L, std::numeric_limits<lua_Number>::infinity());

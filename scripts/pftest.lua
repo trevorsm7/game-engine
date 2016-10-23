@@ -1,27 +1,3 @@
-pf = Pathfinding{};
-
-local game = Canvas
-{
-    pathfinding = pf,
-    size = {20, 15},
-    fixed = true
-}
-addCanvas(game)
-
-pawnA = Actor
-{
-    graphics = SpriteGraphics{sprite = "hero.tga"},
-    transform = {position = {1, 1}}
-}
-game:addActor(pawnA)
-
-pawnB = Actor
-{
-    graphics = SpriteGraphics{sprite = "nerd.tga"},
-    transform = {position = {18, 13}}
-}
-game:addActor(pawnB)
-
 map = TileMap
 {
     index = TileIndex
@@ -46,16 +22,38 @@ map:setTiles(1, 1, 18, 13, 1)
 map:setTiles(5, 5, 10, 1, 3)
 map:setTiles(5, 10, 10, 1, 3)
 
+local game = Canvas
+{
+    size = {20, 15},
+    fixed = true
+}
+addCanvas(game)
+
+pawnA = Actor
+{
+    graphics = SpriteGraphics{sprite = "hero.tga"},
+    transform = {position = {1, 1}}
+}
+game:addActor(pawnA)
+
+pawnB = Actor
+{
+    graphics = SpriteGraphics{sprite = "nerd.tga"},
+    transform = {position = {18, 13}}
+}
+game:addActor(pawnB)
+
+pf = TiledPathing{tilemap=map};
+
 local mapActor = Actor
 {
     graphics = TiledGraphics{tilemap=map},
     collider = TiledCollider{tilemap=map},
+    pathing = pf,
     transform = {position = {0, 0}, scale = {map:getSize()}},
     layer = -1
 }
 game:addActor(mapActor)
-
-pf:addTiles(map)
 
 function moveFunc(actor, dx, dy)
     return function(down)
@@ -64,6 +62,7 @@ function moveFunc(actor, dx, dy)
             actor:setPosition(x+dx, y+dy)
             local x1, y1 = pawnA:getPosition()
             local x2, y2 = pawnB:getPosition()
+            pf:clearPath()
             pf:findPath(x1, y1, x2, y2)
         end
     end

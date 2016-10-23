@@ -10,7 +10,6 @@
 
 class Scene;
 class Actor;
-class Pathfinding;
 class ResourceManager;
 
 class Canvas : public TUserdata<Canvas>
@@ -24,12 +23,11 @@ class Canvas : public TUserdata<Canvas>
     ActorVector m_actors;
     ActorVector m_added;
     ICameraPtr m_camera;
-    Pathfinding* m_pathfinding;
     Scene* m_scene;
     bool m_paused, m_visible;
     bool m_actorRemoved;
 
-    Canvas(): m_pathfinding(nullptr), m_scene(nullptr), m_paused(false), m_visible(true), m_actorRemoved(false) {}
+    Canvas(): m_scene(nullptr), m_paused(false), m_visible(true), m_actorRemoved(false) {}
 
 public:
     ~Canvas() {}

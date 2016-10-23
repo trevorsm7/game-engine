@@ -1,10 +1,9 @@
 #include "Actor.hpp"
 #include "Canvas.hpp"
 #include "IRenderer.hpp"
-#include "SpriteGraphics.hpp"
-#include "AabbCollider.hpp"
-#include "TiledGraphics.hpp"
-#include "TiledCollider.hpp"
+#include "IGraphics.hpp"
+#include "ICollider.hpp"
+#include "IPathing.hpp"
 #include "Physics.hpp"
 #include "Serializer.hpp"
 
@@ -43,6 +42,11 @@ void Actor::render(IRenderer* renderer)
     if (m_graphics)
         m_graphics->render(renderer);
     // TODO: render children? need to check if visible?
+
+    // TODO this is for debugging only; remove
+    if (m_pathing)
+        m_pathing->render(renderer);
+
     renderer->popModelTransform();
 }
 
@@ -85,79 +89,6 @@ bool Actor::testCollision(float x, float y) const
     return m_collider->testCollision(x, y);
 }
 
-// TODO could be templated at some point (esp. if we store components in a generic array)
-// TODO also could make generic addComponent w/ sequential testGraphics, testCollider, etc
-void Actor::setGraphics(lua_State* L, int index)
-{
-    IGraphics* graphics = IGraphics::checkInterface(L, index);
-
-    // Do nothing if we already own the component
-    if (m_graphics == graphics)
-        return;
-
-    // Clear old component first
-    if (m_graphics != nullptr)
-    {
-        assert(m_graphics->m_actor == this);
-        m_graphics->m_actor = nullptr;
-        m_graphics->refRemoved(L);
-        //m_graphics = nullptr;
-    }
-
-    // If component already owned, clone it
-    if (graphics->m_actor != nullptr)
-    {
-        graphics->pushClone(L);
-        m_graphics = IGraphics::testInterface(L, -1);
-        m_graphics->refAdded(L, -1);
-        m_graphics->m_actor = this;
-        lua_pop(L, 1);
-        fprintf(stderr, "cloned graphics\n");
-    }
-    else
-    {
-        graphics->refAdded(L, index);
-        m_graphics = graphics;
-        graphics->m_actor = this;
-    }
-}
-
-// TODO could be templated at some point (esp. if we store components in a generic array)
-// TODO also could make generic addComponent w/ sequential testGraphics, testCollider, etc
-void Actor::setCollider(lua_State* L, int index)
-{
-    ICollider* collider = ICollider::checkInterface(L, index);
-
-    // Do nothing if we already own the component
-    if (m_collider == collider)
-        return;
-
-    // Clear old component first
-    if (m_collider != nullptr)
-    {
-        assert(m_collider->m_actor == this);
-        m_collider->m_actor = nullptr;
-        m_collider->refRemoved(L);
-        //m_collider = nullptr;
-    }
-
-    // If component already owned, clone it
-    if (collider->m_actor != nullptr)
-    {
-        collider->pushClone(L);
-        m_collider = ICollider::testInterface(L, -1);
-        m_collider->refAdded(L, -1);
-        m_collider->m_actor = this;
-        lua_pop(L, 1);
-    }
-    else
-    {
-        collider->refAdded(L, index);
-        m_collider = collider;
-        collider->m_actor = this;
-    }
-}
-
 // =============================================================================
 // Lua library functions
 // =============================================================================
@@ -166,12 +97,17 @@ void Actor::construct(lua_State* L)
 {
     lua_pushliteral(L, "graphics");
     if (lua_rawget(L, 2) != LUA_TNIL)
-        setGraphics(L, -1);
+        set(L, m_graphics, -1);
     lua_pop(L, 1);
 
     lua_pushliteral(L, "collider");
     if (lua_rawget(L, 2) != LUA_TNIL)
-        setCollider(L, -1);
+        set(L, m_collider, -1);
+    lua_pop(L, 1);
+
+    lua_pushliteral(L, "pathing");
+    if (lua_rawget(L, 2) != LUA_TNIL)
+        set(L, m_pathing, -1);
     lua_pop(L, 1);
 
     lua_pushliteral(L, "physics");
@@ -202,14 +138,21 @@ void Actor::clone(lua_State* L, Actor* source)
     if (source->m_graphics)
     {
         source->m_graphics->pushClone(L);
-        setGraphics(L, -1);
+        set(L, m_graphics, -1);
         lua_pop(L, 1);
     }
 
     if (source->m_collider)
     {
         source->m_collider->pushClone(L);
-        setCollider(L, -1);
+        set(L, m_collider, -1);
+        lua_pop(L, 1);
+    }
+
+    if (source->m_pathing)
+    {
+        source->m_pathing->pushClone(L);
+        set(L, m_pathing, -1);
         lua_pop(L, 1);
     }
 
@@ -222,19 +165,9 @@ void Actor::clone(lua_State* L, Actor* source)
 
 void Actor::destroy(lua_State* L)
 {
-    if (m_graphics)
-    {
-        m_graphics->m_actor = nullptr;
-        m_graphics->refRemoved(L);
-        m_graphics = nullptr;
-    }
-
-    if (m_collider)
-    {
-        m_collider->m_actor = nullptr;
-        m_collider->refRemoved(L);
-        m_collider = nullptr;
-    }
+    remove(L, m_graphics);
+    remove(L, m_collider);
+    remove(L, m_pathing);
 }
 
 void Actor::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
@@ -253,6 +186,13 @@ void Actor::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
         lua_pop(L, 1);
     }
 
+    if (m_pathing)
+    {
+        m_pathing->pushUserdata(L);
+        serializer->serializeMember(ref, "", "pathing", "setPathing", L, -1);
+        lua_pop(L, 1);
+    }
+
     if (m_physics)
         m_physics->serialize(L, "physics", serializer, ref);
 
@@ -263,63 +203,46 @@ void Actor::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
 
 int Actor::actor_getCanvas(lua_State* L)
 {
-    // Validate function arguments
     Actor* actor = Actor::checkUserdata(L, 1);
-
-    if (actor->m_canvas != nullptr)
-    {
-        actor->m_canvas->pushUserdata(L);
-        return 1;
-    }
-
-    return 0;
+    return actor->push(L, actor->m_canvas);
 }
 
 int Actor::actor_getGraphics(lua_State* L)
 {
-    // Validate function arguments
     Actor* actor = Actor::checkUserdata(L, 1);
-
-    if (actor->m_graphics != nullptr)
-    {
-        actor->m_graphics->pushUserdata(L);
-        return 1;
-    }
-
-    return 0;
+    return actor->push(L, actor->m_graphics);
 }
 
 int Actor::actor_setGraphics(lua_State* L)
 {
-    // Validate function arguments
     Actor* actor = Actor::checkUserdata(L, 1);
-
-    actor->setGraphics(L, 2);
-
+    actor->set(L, actor->m_graphics, 2);
     return 0;
 }
 
 int Actor::actor_getCollider(lua_State* L)
 {
-    // Validate function arguments
     Actor* actor = Actor::checkUserdata(L, 1);
-
-    if (actor->m_collider != nullptr)
-    {
-        actor->m_collider->pushUserdata(L);
-        return 1;
-    }
-
-    return 0;
+    return actor->push(L, actor->m_collider);
 }
 
 int Actor::actor_setCollider(lua_State* L)
 {
-    // Validate function arguments
     Actor* actor = Actor::checkUserdata(L, 1);
+    actor->set(L, actor->m_collider, 2);
+    return 0;
+}
 
-    actor->setCollider(L, 2);
+int Actor::actor_getPathing(lua_State* L)
+{
+    Actor* actor = Actor::checkUserdata(L, 1);
+    return actor->push(L, actor->m_pathing);
+}
 
+int Actor::actor_setPathing(lua_State* L)
+{
+    Actor* actor = Actor::checkUserdata(L, 1);
+    actor->set(L, actor->m_pathing, 2);
     return 0;
 }
 
@@ -373,31 +296,6 @@ int Actor::actor_testCollision(lua_State* L)
     lua_pushboolean(L, result);
     return 1;
 }
-
-/*int Actor::actor_getEarliestCollision(lua_State* L)
-{
-    // Validate function arguments
-    Actor* actor = Actor::checkUserdata(L, 1);
-
-    Actor* hit = nullptr;
-    float start = std::numeric_limits<float>::max();
-    float end = std::numeric_limits<float>::max();;
-
-    bool result = false;
-    if (actor->m_collider && actor->m_canvas)
-        result = actor->m_canvas->getEarliestCollision(actor, hit, start, end);
-
-    lua_pushboolean(L, result);
-    if (hit != nullptr)
-    {
-        hit->pushUserdata();
-        lua_pushnumber(L, start);
-        lua_pushnumber(L, end);
-        return 4;
-    }
-
-    return 1;
-}*/
 
 int Actor::actor_setVelocity(lua_State* L)
 {

@@ -27,6 +27,7 @@ local function newPlayer(canvas, x, y)
         if not canvas then return end
 
         gameTime = gameTime + self.stepTime
+        pf:clearPath()
     end
 
     function player:attack(target)
@@ -51,6 +52,7 @@ local function newPlayer(canvas, x, y)
         elseif hit.interact then
             gameTime = gameTime + hit:interact(self)
         end
+        pf:clearPath()
     end
 
     return player
@@ -172,11 +174,8 @@ local function newRoom(map, x, y, w, h)
     end
 end
 
-pf = Pathfinding{};
-
 local game = Canvas
 {
-    pathfinding = pf,
     size = {20, 20},
     fixed = false
 }
@@ -197,10 +196,13 @@ local map = TileMap
     size = {16, 11}
 }
 
+pf = TiledPathing{};
+
 tiles = Actor
 {
     graphics = TiledGraphics{tilemap=map},
     collider = TiledCollider{tilemap=map},
+    pathing = pf,
     transform = {position = {0, 0}, scale = {map:getSize()}},
     layer = -1
 }
@@ -219,7 +221,7 @@ newDoor(game, map, 5, 8)
 newDoor(game, map, 10, 7)
 newDoor(game, map, 12, 5)
 
-pf:addTiles(map)
+pf:setTileMap(map)
 
 newNerd(game, 13, 3)
 newNerd(game, 3, 8)
