@@ -404,6 +404,43 @@ void Canvas::construct(lua_State* L)
     lua_pop(L, 1);
 }
 
+void Canvas::clone(lua_State* L, Canvas* source)
+{
+    if (source->m_camera)
+        m_camera = ICameraPtr(source->m_camera->clone());
+
+    for (auto& actor : source->m_actors)
+    {
+        if (actor->m_canvas != source)
+            continue;
+
+        actor->pushClone(L);
+        Actor* ptr = Actor::testUserdata(L, -1);
+        assert(ptr != nullptr);
+        ptr->refAdded(L, -1);
+        lua_pop(L, 1);
+        ptr->m_canvas = this;
+        m_actors.push_back(ptr);
+    }
+
+    for (auto& actor : source->m_added)
+    {
+        if (actor->m_canvas != source)
+            continue;
+
+        actor->pushClone(L);
+        Actor* ptr = Actor::testUserdata(L, -1);
+        assert(ptr != nullptr);
+        ptr->refAdded(L, -1);
+        lua_pop(L, 1);
+        ptr->m_canvas = this;
+        m_added.push_back(ptr);
+    }
+
+    m_paused = source->m_paused;
+    m_visible = source->m_visible;
+}
+
 void Canvas::destroy(lua_State* L)
 {
     // Mark each Actor in primary list for removal

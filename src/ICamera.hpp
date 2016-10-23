@@ -13,6 +13,8 @@ class ICamera
 public:
     virtual ~ICamera() {}
 
+    virtual ICamera* clone() const = 0;
+
     virtual void construct(lua_State* L, int index) = 0;
     virtual void serialize(lua_State* L, const char* table, Serializer* serializer, ObjectRef* ref) const = 0;
 

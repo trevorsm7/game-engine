@@ -32,6 +32,7 @@ public:
 private:
     friend class TUserdata<IGraphics>;
     void construct(lua_State* L);
+    void clone(lua_State* L, IGraphics* source);
     //void destroy(lua_State* L) {}
     void serialize(lua_State* L, Serializer* serializer, ObjectRef* ref);
 

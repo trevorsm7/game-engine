@@ -14,6 +14,8 @@ public:
     BasicCamera(): m_width(20.f), m_height(15.f), m_center{10.f, 7.5f}, m_fixed(true) {}
     ~BasicCamera() override {}
 
+    ICamera* clone() const override {return new BasicCamera(*this);}
+
     void construct(lua_State* L, int index) override;
     void serialize(lua_State* L, const char* table, Serializer* serializer, ObjectRef* ref) const override;
 

@@ -44,6 +44,14 @@ void TileIndex::construct(lua_State* L)
     lua_pop(L, 1);
 }
 
+void TileIndex::clone(lua_State* L, TileIndex* source)
+{
+    m_image = source->m_image;
+    m_flags = source->m_flags;
+    m_cols = source->m_cols;
+    m_rows = source->m_rows;
+}
+
 void TileIndex::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
 {
     serializer->setString(ref, "", "sprite", m_image);
@@ -114,6 +122,22 @@ void TileMap::construct(lua_State* L)
         }
     }
     lua_pop(L, 1);
+}
+
+void TileMap::clone(lua_State* L, TileMap* source)
+{
+    if (source->m_index)
+    {
+        // Don't need to clone TileIndex; just copy
+        //source->m_index->pushClone(L);
+        source->m_index->pushUserdata(L);
+        setTileIndex(L, -1);
+        lua_pop(L, 1);
+    }
+
+    m_map = source->m_map;
+    m_cols = source->m_cols;
+    m_rows = source->m_rows;
 }
 
 void TileMap::destroy(lua_State* L)

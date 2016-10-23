@@ -11,6 +11,28 @@ void IUserdata::pushUserdata(lua_State* L)
     assert(testInterface(L, -1) == this); // upcast to IUserdata
 }
 
+void IUserdata::pushClone(lua_State* L)
+{
+    pushUserdata(L);
+
+    // Get userdata clone function
+    luaL_getmetafield(L, -1, "clone");
+    if (lua_type(L, -1) != LUA_TFUNCTION)
+    {
+        lua_pop(L, 2);
+        lua_pushnil(L);
+        return;
+    }
+
+    // Swap the userdata and the function
+    lua_rotate(L, -2, -1);
+
+    // Do a regular call; pops function and arguments
+    // TODO use pcall? see script_clone behavior
+    lua_call(L, 1, 1);
+    assert(lua_touserdata(L, -1) != nullptr);
+}
+
 void IUserdata::refAdded(lua_State* L, int index)
 {
     //assert(lua_type(L, index) == LUA_TUSERDATA);
@@ -96,11 +118,11 @@ void IUserdata::initInterface(lua_State* L)
     lua_rawset(L, -3);
 }
 
-void IUserdata::constructHelper(lua_State* L, IUserdata* ptr)
+void IUserdata::constructHelper(lua_State* L, IUserdata* ptr, int index)
 {
     // Copy the member table if specified
     lua_pushliteral(L, "members");
-    if (lua_rawget(L, 2) != LUA_TNIL)
+    if (lua_rawget(L, index) != LUA_TNIL)
     {
         luaL_checktype(L, -1, LUA_TTABLE);
 
@@ -118,7 +140,32 @@ void IUserdata::constructHelper(lua_State* L, IUserdata* ptr)
         }
 
         // Set table as uservalue of userdata
-        // NOTE is it expected that userdata be at -1 at the start
+        // NOTE userdata should have been on top before helper called
+        assert(lua_type(L, -3) == LUA_TUSERDATA);
+        lua_setuservalue(L, -3);
+    }
+    lua_pop(L, 1);
+}
+
+void IUserdata::cloneHelper(lua_State* L, IUserdata* ptr, IUserdata* source, int index)
+{
+    if (lua_getuservalue(L, index) == LUA_TTABLE)
+    {
+        // Create a new table for shallow copy
+        lua_newtable(L);
+
+        // Iterate over table, copying key/value pairs into the uservalue table
+        lua_pushnil(L);
+        while (lua_next(L, -3))
+        {
+            // Duplicate key, set key/value, leave key on stack for next iteration of lua_next
+            lua_pushvalue(L, -2);
+            lua_insert(L, -2);
+            lua_rawset(L, -4);
+        }
+
+        // Set table as uservalue of userdata
+        // NOTE userdata should have been on top before helper called
         assert(lua_type(L, -3) == LUA_TUSERDATA);
         lua_setuservalue(L, -3);
     }

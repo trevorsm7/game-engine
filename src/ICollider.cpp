@@ -30,6 +30,13 @@ void ICollider::construct(lua_State* L)
     lua_pop(L, 1);
 }
 
+void ICollider::clone(lua_State* L, ICollider* source)
+{
+    m_colliderGroup = source->m_colliderGroup;
+    m_colliderMask = source->m_colliderMask;
+    m_collidable = source->m_collidable;
+}
+
 void ICollider::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
 {
     serializer->setNumber(ref, "", "group", m_colliderGroup);

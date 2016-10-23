@@ -11,7 +11,7 @@ class ObjectRef;
 
 class IUserdata
 {
-    int m_refCount;
+    mutable int m_refCount;
 
 protected:
     IUserdata(): m_refCount(0) {}
@@ -20,6 +20,7 @@ protected:
 
 public:
     void pushUserdata(lua_State* L);
+    void pushClone(lua_State* L);
     // NOTE should be protected? Wrap in unique_ptr-like class?
     void refAdded(lua_State* L, int index);
     void refRemoved(lua_State* L);
@@ -42,7 +43,8 @@ protected:
 
     // Base cases for TUserdata helper recursion
     static void initInterface(lua_State* L); // TODO rename initHelper or similar?
-    static void constructHelper(lua_State* L, IUserdata* ptr);
+    static void constructHelper(lua_State* L, IUserdata* ptr, int index);
+    static void cloneHelper(lua_State* L, IUserdata* ptr, IUserdata* source, int index);
     static void destroyHelper(lua_State* L, IUserdata* ptr) {}
     static void serializeHelper(lua_State* L, IUserdata* ptr, Serializer* serializer, ObjectRef* ref);
 
@@ -108,11 +110,20 @@ protected:
     }
 
     void construct(lua_State* L) {} // child inherits no-op
-    static void constructHelper(lua_State* L, T* ptr)
+    static void constructHelper(lua_State* L, T* ptr, int index)
     {
-        B::constructHelper(L, ptr);
+        B::constructHelper(L, ptr, index);
         int top = lua_gettop(L);
         ptr->construct(L); // if T::construct is protected, requires friend class
+        assert(top == lua_gettop(L));
+    }
+
+    void clone(lua_State* L, T* source) {} // child inherits no-op
+    static void cloneHelper(lua_State* L, T* ptr, T* source, int index)
+    {
+        B::cloneHelper(L, ptr, source, index);
+        int top = lua_gettop(L);
+        ptr->clone(L, source);
         assert(top == lua_gettop(L));
     }
 
@@ -149,7 +160,12 @@ private:
     {
         // Validate constructor arguments
         //luaL_checktype(L, 1, LUA_TTABLE); // table/class; unused for now
-        luaL_checktype(L, 2, LUA_TTABLE); // arguments
+        T* source = nullptr;
+        if (lua_type(L, 2) != LUA_TTABLE)
+        {
+            source = testUserdata(L, 2);
+            luaL_argcheck(L, source != nullptr, 2, "expected table or class");
+        }
 
         // Create userdata with the full size of the object
         T* ptr = reinterpret_cast<T*>(lua_newuserdata(L, sizeof(T)));
@@ -160,7 +176,27 @@ private:
         lua_setmetatable(L, -2);
 
         new(ptr) T();
-        constructHelper(L, ptr);
+        source ? cloneHelper(L, ptr, source, 2) : constructHelper(L, ptr, 2);
+
+        return 1;
+    }
+
+    static int script_clone(lua_State* L)
+    {
+        // Validate userdata
+        T* source = testUserdata(L, 1);
+        assert(source != nullptr);
+
+        // Create userdata with the full size of the object
+        T* ptr = reinterpret_cast<T*>(lua_newuserdata(L, sizeof(T)));
+
+        // Get the metatable for this class
+        luaL_getmetatable(L, T::CLASS_NAME);
+        assert(lua_type(L, -1) == LUA_TTABLE);
+        lua_setmetatable(L, -2);
+
+        new(ptr) T(); // TODO can try copy ctor, but will also have issues
+        cloneHelper(L, ptr, source, 1);
 
         return 1;
     }
@@ -239,6 +275,11 @@ void TUserdata<T, B>::initMetatable(lua_State* L)
     // Add serialization functionality to all userdata types
     lua_pushliteral(L, "serialize");
     lua_pushcfunction(L, script_serialize);
+    lua_rawset(L, -3);
+
+    // Add upcast converter needed for testInterface
+    lua_pushliteral(L, "clone");
+    lua_pushcfunction(L, script_clone);
     lua_rawset(L, -3);
 
     // Add upcast converter needed for testInterface

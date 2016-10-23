@@ -104,21 +104,22 @@ void Actor::setGraphics(lua_State* L, int index)
         //m_graphics = nullptr;
     }
 
-    // If component already owned, remove from owner
-    // TODO treat as an error or allow components to be shared?
-    Actor* const oldActor = graphics->m_actor;
-    if (oldActor != nullptr)
+    // If component already owned, clone it
+    if (graphics->m_actor != nullptr)
     {
-        //oldActor->m_graphics->refRemoved(L); // <-
-        oldActor->m_graphics = nullptr;
+        graphics->pushClone(L);
+        m_graphics = IGraphics::testInterface(L, -1);
+        m_graphics->refAdded(L, -1);
+        m_graphics->m_actor = this;
+        lua_pop(L, 1);
+        fprintf(stderr, "cloned graphics\n");
     }
-    else // Only increase ref if we don't recycle from an old owner
-        graphics->refAdded(L, index); // <-
-
-    // Add component to new actor
-    //graphics->refAdded(L, index); // <-
-    m_graphics = graphics;
-    graphics->m_actor = this;
+    else
+    {
+        graphics->refAdded(L, index);
+        m_graphics = graphics;
+        graphics->m_actor = this;
+    }
 }
 
 // TODO could be templated at some point (esp. if we store components in a generic array)
@@ -140,21 +141,21 @@ void Actor::setCollider(lua_State* L, int index)
         //m_collider = nullptr;
     }
 
-    // If component already owned, remove from owner
-    // TODO treat as an error or allow components to be shared?
-    Actor* const oldActor = collider->m_actor;
-    if (oldActor != nullptr)
+    // If component already owned, clone it
+    if (collider->m_actor != nullptr)
     {
-        //oldActor->m_collider->refRemoved(L); // <-
-        oldActor->m_collider = nullptr;
+        collider->pushClone(L);
+        m_collider = ICollider::testInterface(L, -1);
+        m_collider->refAdded(L, -1);
+        m_collider->m_actor = this;
+        lua_pop(L, 1);
     }
-    else // Only increase ref if we don't recycle from an old owner
-        collider->refAdded(L, index); // <-
-
-    // Add component to new actor
-    //collider->refAdded(L, index); // <-
-    m_collider = collider;
-    collider->m_actor = this;
+    else
+    {
+        collider->refAdded(L, index);
+        m_collider = collider;
+        collider->m_actor = this;
+    }
 }
 
 // =============================================================================
@@ -194,6 +195,29 @@ void Actor::construct(lua_State* L)
     if (lua_rawget(L, 2) != LUA_TNIL)
         setLayer(luaL_checkinteger(L, -1));
     lua_pop(L, 1);
+}
+
+void Actor::clone(lua_State* L, Actor* source)
+{
+    if (source->m_graphics)
+    {
+        source->m_graphics->pushClone(L);
+        setGraphics(L, -1);
+        lua_pop(L, 1);
+    }
+
+    if (source->m_collider)
+    {
+        source->m_collider->pushClone(L);
+        setCollider(L, -1);
+        lua_pop(L, 1);
+    }
+
+    if (source->m_physics)
+        m_physics = PhysicsPtr(new Physics(*source->m_physics));
+
+    m_transform = source->m_transform;
+    m_layer = source->m_layer;
 }
 
 void Actor::destroy(lua_State* L)

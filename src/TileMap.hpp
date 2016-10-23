@@ -30,6 +30,7 @@ public:
 private:
     friend class TUserdata<TileIndex>;
     void construct(lua_State* L);
+    void clone(lua_State* L, TileIndex* source);
     void destroy(lua_State* L) {}
     void serialize(lua_State* L, Serializer* serializer, ObjectRef* ref);
 
@@ -71,6 +72,7 @@ private:
 private:
     friend class TUserdata<TileMap>;
     void construct(lua_State* L);
+    void clone(lua_State* L, TileMap* source);
     void destroy(lua_State* L);
     void serialize(lua_State* L, Serializer* serializer, ObjectRef* ref);
 

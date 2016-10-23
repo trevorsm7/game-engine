@@ -26,6 +26,7 @@ private:
 private:
     friend class TUserdata<TiledGraphics, IGraphics>;
     void construct(lua_State* L);
+    void clone(lua_State* L, TiledGraphics* source);
     void destroy(lua_State* L);
     void serialize(lua_State* L, Serializer* serializer, ObjectRef* ref);
 

@@ -21,6 +21,7 @@ public:
 private:
     friend class TUserdata<SpriteGraphics, IGraphics>;
     void construct(lua_State* L);
+    void clone(lua_State* L, SpriteGraphics* source) {m_filename = source->m_filename;}
     //void destroy(lua_State* L) {}
     void serialize(lua_State* L, Serializer* serializer, ObjectRef* ref);
 

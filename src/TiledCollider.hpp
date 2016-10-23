@@ -30,6 +30,7 @@ private:
 private:
     friend class TUserdata<TiledCollider, ICollider>;
     void construct(lua_State* L);
+    void clone(lua_State* L, TiledCollider* source);
     void destroy(lua_State* L);
     void serialize(lua_State* L, Serializer* serializer, ObjectRef* ref);
 

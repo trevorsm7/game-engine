@@ -28,6 +28,12 @@ void IGraphics::construct(lua_State* L)
     lua_pop(L, 1);
 }
 
+void IGraphics::clone(lua_State* L, IGraphics* source)
+{
+    m_color = source->m_color;
+    m_isVisible = source->m_isVisible;
+}
+
 void IGraphics::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
 {
     serializer->setArray(ref, "", "color", &(m_color.r), 3);

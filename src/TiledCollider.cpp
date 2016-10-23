@@ -172,6 +172,18 @@ void TiledCollider::construct(lua_State* L)
     lua_pop(L, 1);
 }
 
+void TiledCollider::clone(lua_State* L, TiledCollider* source)
+{
+    if (source->m_tilemap)
+    {
+        // Don't need to clone TileMap; just copy
+        //source->m_tilemap->pushClone(L);
+        source->m_tilemap->pushUserdata(L);
+        setTileMap(L, -1);
+        lua_pop(L, 1);
+    }
+}
+
 void TiledCollider::destroy(lua_State* L)
 {
     if (m_tilemap)
