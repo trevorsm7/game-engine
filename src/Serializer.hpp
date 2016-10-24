@@ -151,6 +151,7 @@ class Serializer
 
 private:
     ObjectRef m_root;
+    ILuaRef* m_env; // used only if the _ENV upvalue differs from _G
     LiteralRef m_true, m_false, m_nil;
     std::unordered_map<const void*, ObjectRefPtr> m_objects;
     std::unordered_map<const void*, FunctionRefPtr> m_functions;
@@ -177,7 +178,7 @@ private:
     }
 
 public:
-    Serializer(): m_root(0, false), m_true("true"), m_false("false"), m_nil("nil") {}
+    Serializer(): m_root(0, false), m_env(nullptr), m_true("true"), m_false("false"), m_nil("nil") {}
 
     ObjectRef* getObjectRef(const void* ptr)
     {
@@ -243,6 +244,12 @@ public:
 
     void serializeMember(ObjectRef* parent, const std::string& table, const std::string& key, const std::string& setter, lua_State* L, int index)
         {serializeMember(parent, table, serializeKey(key, setter), L, index);}
+
+    void serializeEnv(lua_State* L, int index)
+    {
+        m_env = serializeValue(0, false, L, index);
+        assert(m_env != nullptr);
+    }
 
     void print();
 

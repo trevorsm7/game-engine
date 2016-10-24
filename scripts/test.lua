@@ -67,3 +67,6 @@ end
 
 table1[player.update] = "function key"
 table1[Actor.getGraphics] = "global key"
+
+--Test overriding the _ENV upvalue
+_ENV = {print=print, mult=mult, saveState=saveState, quit=quit}

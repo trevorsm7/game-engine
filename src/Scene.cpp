@@ -225,14 +225,28 @@ bool Scene::load(const char *filename)
     // Pop global tables
     lua_pop(m_L, 2);
 
-    setWatchdog(2000);
-    if (luaL_loadfile(m_L, filename) != 0 || lua_pcall(m_L, 0, 0, 0) != 0)
+    if (luaL_loadfile(m_L, filename) != 0)
     {
         fprintf(stderr, "%s\n", lua_tostring(m_L, -1));
-        clearWatchdog();
+        lua_pop(m_L, 1);
         return false;
     }
+
+    // Save the global chunk so we can check the _ENV upvalue later
+    lua_pushliteral(m_L, "GLOBAL_CHUNK");
+    lua_pushvalue(m_L, -2);
+    lua_rawset(m_L, LUA_REGISTRYINDEX);
+
+    setWatchdog(2000);
+    int ret = lua_pcall(m_L, 0, 0, 0);
     clearWatchdog();
+
+    if (ret != 0)
+    {
+        fprintf(stderr, "%s\n", lua_tostring(m_L, -1));
+        lua_pop(m_L, 1);
+        return false;
+    }
 
     return true;
 }
@@ -448,13 +462,25 @@ int Scene::scene_saveState(lua_State* L)
     }
     lua_pop(L, 1);
 
-    // Serilaize portrait hint, if set
+    // Serialize portrait hint, if set
     if (scene->m_isPortraitHint)
     {
         lua_pushboolean(L, scene->m_isPortraitHint);
         serializer.serializeSetter("setPortraitHint", L, {-1});
         lua_pop(L, 1);
     }
+
+    // Serialize the _ENV upvalue if it differs from _G
+    lua_pushliteral(L, "GLOBAL_CHUNK");
+    lua_rawget(L, LUA_REGISTRYINDEX);
+    if (lua_getupvalue(L, -1, 1))
+    {
+        lua_pushglobaltable(L);
+        if (lua_compare(L, -1, -2, LUA_OPEQ) == 0)
+            serializer.serializeEnv(L, -2);
+        lua_pop(L, 2);
+    }
+    lua_pop(L, 1);
 
     serializer.print();
 

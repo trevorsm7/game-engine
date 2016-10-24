@@ -465,6 +465,9 @@ void Serializer::print()
         }
         printf(")\n");
     }
+
+    if (m_env != nullptr)
+        printf("_ENV = %s\n", m_env->getAsValue().c_str());
 }
 
 void FunctionRef::print(int indent, bool isInline) const
