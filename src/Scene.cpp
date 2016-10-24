@@ -105,15 +105,9 @@ bool Scene::load(const char *filename)
 
     // TODO seed math.random since we're taking away os.time
 
-    /*lua_pushglobaltable(m_L);
-    dumptable(m_L, "_ENV", -1);
-    lua_pop(m_L, 1);*/
-
-    // Create table for read-only globals
+    // ==== Create table for read-only globals ====
+    int top = lua_gettop(m_L);
     lua_newtable(m_L);
-    lua_pushliteral(m_L, "GLOBAL_RO");
-    lua_pushvalue(m_L, -2); // push copy of globals
-    lua_rawset(m_L, LUA_REGISTRYINDEX);
 
     // Get the initial global table to copy from
     lua_pushglobaltable(m_L);
@@ -189,29 +183,37 @@ bool Scene::load(const char *filename)
     lua_pushcfunction(m_L, scene_quit);
     lua_rawset(m_L, -3);
 
-    //dumptable(m_L, "_RO", -1);
-
-
-    // Create table for user globals
-    lua_newtable(m_L);
+    // ==== Create userdata wrapper for globals ====
+    lua_newuserdata(m_L, 0);
     lua_pushvalue(m_L, -1); // Replace globals table; old one should be freed?
     lua_rawseti(m_L, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS);
 
-    // Set reference to user global table in read-only globals
-    // NOTE we must expose this when we serialize closures
+    // Set reference to global table in read-only globals
     lua_pushliteral(m_L, "_G");
     lua_pushvalue(m_L, -2);
-    lua_rawset(m_L, -4);
+    lua_rawset(m_L, -4); // <-- read-only globals --
 
-
-    // Create metatable for user globals
+    // ==== Create the read-write table ====
     lua_newtable(m_L);
 
-    // Have metatable expose read-only globals
+    // Create metatable for read-write which indexes read-only
+    lua_newtable(m_L);
+
     lua_pushliteral(m_L, "__index");
-    lua_pushvalue(m_L, -4);
+    lua_pushvalue(m_L, -5); // <-- read-only globals --
     lua_rawset(m_L, -3);
 
+    lua_setmetatable(m_L, -2);
+
+    // ==== Create metatable for globals wrapper ====
+    lua_newtable(m_L);
+
+    // Index from read-write table (which indexes from read-only)
+    lua_pushliteral(m_L, "__index");
+    lua_rotate(m_L, -3, -1); // rotate read-write table to the top
+    lua_rawset(m_L, -3);
+
+    // Write to table using helper function
     lua_pushliteral(m_L, "__newindex");
     lua_pushcfunction(m_L, scene_writeGlobal);
     lua_rawset(m_L, -3);
@@ -220,11 +222,13 @@ bool Scene::load(const char *filename)
     lua_pushliteral(m_L, "read-only");
     lua_rawset(m_L, -3);
 
-    lua_setmetatable(m_L, -2);
+    lua_setmetatable(m_L, -2); // <-- globals wrapper --
 
     // Pop global tables
-    lua_pop(m_L, 2);
+    assert(lua_gettop(m_L) == top + 2);
+    lua_settop(m_L, top);
 
+    // ==== Load the user script ====
     if (luaL_loadfile(m_L, filename) != 0)
     {
         fprintf(stderr, "%s\n", lua_tostring(m_L, -1));
@@ -427,18 +431,31 @@ int Scene::scene_saveState(lua_State* L)
     // TODO make sure this object is safe from lua_errors (memory leak!)
     Serializer serializer;
 
+    // Push global tables
+    int top = lua_gettop(L);
+    lua_pushglobaltable(L);
+    const void* G = lua_topointer(L, -1);
+    luaL_getmetafield(L, -1, "__index"); // read-write table
+    assert(lua_gettop(L) == top + 2);
+
     // Populate read-only globals
-    lua_pushliteral(L, "GLOBAL_RO");
-    lua_rawget(L, LUA_REGISTRYINDEX);
-    assert(lua_type(L, -1) == LUA_TTABLE);
-    serializer.populateGlobals("", L, -1);
+    luaL_getmetafield(L, -1, "__index"); // read-only table
+    assert(lua_gettop(L) == top + 3);
+    serializer.populateGlobals(G, "", L, -1);
     lua_pop(L, 1);
 
-    // Serialize globals
-    lua_pushglobaltable(L);
-    assert(lua_type(L, -1) == LUA_TTABLE);
+    // Serialize the _ENV upvalue if it differs from _G
+    lua_pushliteral(L, "GLOBAL_CHUNK");
+    lua_rawget(L, LUA_REGISTRYINDEX);
+    lua_getupvalue(L, -1, 1); // get _ENV
+    assert(lua_gettop(L) == top + 4);
+    if (lua_topointer(L, -1) != G)
+        serializer.serializeEnv(L, -1);
+    lua_pop(L, 2);
+
+    // Serialize read-write globals
     serializer.serializeSubtable(nullptr, "", L, -1);
-    lua_pop(L, 1);
+    lua_settop(L, top);
 
     // Serialize all Canvases with an addCanvas setter
     for (Canvas*& canvas : scene->m_canvases)
@@ -470,18 +487,6 @@ int Scene::scene_saveState(lua_State* L)
         lua_pop(L, 1);
     }
 
-    // Serialize the _ENV upvalue if it differs from _G
-    lua_pushliteral(L, "GLOBAL_CHUNK");
-    lua_rawget(L, LUA_REGISTRYINDEX);
-    if (lua_getupvalue(L, -1, 1))
-    {
-        lua_pushglobaltable(L);
-        if (lua_compare(L, -1, -2, LUA_OPEQ) == 0)
-            serializer.serializeEnv(L, -2);
-        lua_pop(L, 2);
-    }
-    lua_pop(L, 1);
-
     serializer.print();
 
     return 0;
@@ -489,8 +494,12 @@ int Scene::scene_saveState(lua_State* L)
 
 int Scene::scene_writeGlobal(lua_State* L)
 {
-    int type = luaL_getmetafield(L, 1, "__index");
-    assert(type == LUA_TTABLE);
+    int top = lua_gettop(L);
+    luaL_getmetafield(L, 1, "__index"); // read-write table
+    assert(lua_gettop(L) == top + 1);
+
+    luaL_getmetafield(L, -1, "__index"); // read-only table
+    assert(lua_gettop(L) == top + 2);
 
     // Fail if key exists in read-only globals table
     lua_pushvalue(L, 2);
@@ -500,7 +509,7 @@ int Scene::scene_writeGlobal(lua_State* L)
     // Write the new value to the user table
     lua_pushvalue(L, 2);
     lua_pushvalue(L, 3);
-    lua_rawset(L, 1);
+    lua_rawset(L, top + 1);
 
     return 0;
 }

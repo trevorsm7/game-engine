@@ -319,7 +319,7 @@ void TUserdata<T, B>::initMetatable(lua_State* L)
     // Assign class as a global variable
     lua_pushstring(L, T::CLASS_NAME);
     lua_insert(L, -2); // swap name and class
-    lua_rawset(L, -4); // globals
+    lua_rawset(L, -4); // globals TODO replace with index passed into function
 
     // Pop the methods table
     lua_pop(L, 1);

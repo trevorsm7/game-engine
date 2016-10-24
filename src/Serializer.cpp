@@ -98,7 +98,7 @@ void ObjectRef::setSetterRef(ILuaRef* setter, ILuaRef* value)
     m_inlinable = false;
 }
 
-void Serializer::populateGlobals(const std::string& prefix, lua_State* L, int index)
+void Serializer::populateGlobals(const void* G, const std::string& prefix, lua_State* L, int index)
 {
     assert(lua_type(L, index) == LUA_TTABLE);
 
@@ -115,28 +115,30 @@ void Serializer::populateGlobals(const std::string& prefix, lua_State* L, int in
         const void* ptr = lua_topointer(L, -1);
 
         // Skip non-reference types and break cycles
-        if (ptr != nullptr || m_globals.find(ptr) != m_globals.end())
+        if (ptr != nullptr && m_globals.find(ptr) == m_globals.end())
         {
             // TODO should we allow non-string keys?
             assert(lua_type(L, -2) == LUA_TSTRING);
             std::string key = prefix + lua_tostring(L, -2);
             m_globals[ptr] = LiteralRefPtr(new LiteralRef(key));
 
-            if (lua_type(L, -1) == LUA_TUSERDATA)
+            if (ptr != G)
             {
-                int type = luaL_getmetafield(L, -1, "__index");
-                if (type != LUA_TNIL)
+                if (lua_type(L, -1) == LUA_TUSERDATA)
                 {
-                    assert(type == LUA_TTABLE);
-                    populateGlobals(key + ".", L, -1);
-                    lua_pop(L, 1);
+                    if (luaL_getmetafield(L, -1, "__index") != LUA_TNIL)
+                    {
+                        assert(lua_type(L, -1) == LUA_TTABLE);
+                        populateGlobals(G, key + ".", L, -1);
+                        lua_pop(L, 1);
+                    }
                 }
-            }
-            else if (lua_type(L, -1) == LUA_TTABLE)
-            {
-                fprintf(stderr, "WARNING: global table %s is mutable\n", key.c_str());
-                // NOTE the table itself can be treated as a const global, but it's children cannot
-                //populateGlobals(key + ".", L, -1);
+                else if (lua_type(L, -1) == LUA_TTABLE)
+                {
+                    fprintf(stderr, "WARNING: global table %s is mutable\n", key.c_str());
+                    // NOTE the table itself can be treated as a const global, but it's children cannot
+                    //populateGlobals(key + ".", L, -1);
+                }
             }
         }
 

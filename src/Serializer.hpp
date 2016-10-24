@@ -237,7 +237,7 @@ public:
         ref->setInlineRef(table, keyRef, valueRef);
     }
 
-    void populateGlobals(const std::string& prefix, lua_State* L, int index);
+    void populateGlobals(const void* G, const std::string& prefix, lua_State* L, int index);
 
     void serializeSubtable(ObjectRef* parent, const std::string& table, lua_State* L, int index);
     void serializeSetter(const std::string& setter, lua_State* L, std::initializer_list<int> list);
