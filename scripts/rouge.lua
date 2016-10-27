@@ -10,17 +10,17 @@ local function newPlayer(canvas, x, y)
         members =
         {
             player = true,
-            stepTime = 1
+            stepTime = 1,
+            hp = 3
         }
     }
     canvas:addActor(player)
-    --canvas:setCenter(player)
-    canvas:setCenter(8, 5.5)
+    canvas:setCenter(player)
 
-    --[[function player:update(delta)
+    function player:update(delta)
         local canvas = self:getCanvas()
         if canvas then canvas:setCenter(self) end
-    end--]]
+    end
 
     function player:idle()
         local canvas = self:getCanvas()
@@ -31,7 +31,8 @@ local function newPlayer(canvas, x, y)
     end
 
     function player:attack(target)
-        print("Player attacks!")
+        print("Take that, nerd!")
+        target:getCanvas():removeActor(target)
     end
 
     function player:move(dir)
@@ -74,7 +75,13 @@ local function newNerd(canvas, x, y)
     canvas:addActor(nerd)
 
     function nerd:attack(target)
-        print("Nerd attacks!")
+        local hp = target.hp
+        hp = hp - 1
+        target.hp = hp
+        print("Ouch! HP left: "..hp)
+        if hp <= 0 then
+            target:getCanvas():removeActor(target)
+        end
     end
 
     function nerd:update(delta)
@@ -174,10 +181,27 @@ local function newRoom(map, x, y, w, h)
     end
 end
 
+spawnPoints = {{3,2}, {7, 3}, {13, 2}, {2,3}, {8, 2}, {12, 3}}
+
 local game = Canvas
 {
     size = {20, 20},
-    fixed = false
+    fixed = false,
+    members =
+    {
+        time = gameTime,
+        spawnTime = 10,
+        update = function(self)
+            if self.spawnTime <= gameTime - self.time then
+                self.time = self.time + self.spawnTime
+                local idx = math.random(1, #spawnPoints)
+                newNerd(self, table.unpack(spawnPoints[idx]))
+                if self.spawnTime > 2 then
+                    self.spawnTime = self.spawnTime - 1
+                end
+            end
+        end
+    }
 }
 addCanvas(game)
 
@@ -230,7 +254,7 @@ player = newPlayer(game, 1, 1)
 
 function keyDown(actor, method, arg)
     return function(down)
-        if down then actor[method](actor, arg) end
+        if down and actor then actor[method](actor, arg) end
     end
 end
 
