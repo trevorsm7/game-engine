@@ -3,6 +3,7 @@
 #include "IPathing.hpp"
 
 #include <vector>
+#include <queue>
 
 class TileMap;
 
@@ -11,27 +12,14 @@ class TiledPathing : public TUserdata<TiledPathing, IPathing>
     struct Node
     {
         int weight;
+        int from;
         bool valid;
     };
 
-    void pushNode(int node, int depth, std::vector<int>& visit, bool& foundCheaper)
-    {
-        if (m_graph[node].valid)
-        {
-            if (m_graph[node].weight > depth+1)
-            {
-                m_graph[node].weight = depth+1;
-                visit.push_back(node);
-            }
-            else if (m_graph[node].weight < depth-1)
-                foundCheaper = true;
-        }
-    }
+    inline bool visitNode(int node, int next, int end, std::vector<Node>& graph, std::queue<int>& toVisit);
 
 private:
     TileMap* m_tilemap;
-    int m_width, m_height;
-    std::vector<Node> m_graph;
     std::vector<float> m_points;
 
     TiledPathing(): m_tilemap(nullptr) {}
@@ -43,10 +31,6 @@ public:
     void render(IRenderer* renderer) override;
 
     bool findPath(int x1, int y1, int x2, int y2, int& xOut, int& yOut) override;
-
-private:
-    void rebuildGraph();
-    void setTileMap(lua_State* L, int index);
 
 private:
     friend class TUserdata<TiledPathing, IPathing>;

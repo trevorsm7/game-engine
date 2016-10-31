@@ -60,8 +60,8 @@ function moveFunc(actor, dx, dy)
         if down then
             local x, y = actor:getPosition()
             actor:setPosition(x+dx, y+dy)
-            local x1, y1 = pawnA:getPosition()
-            local x2, y2 = pawnB:getPosition()
+            local x1, y1 = pawnB:getPosition()
+            local x2, y2 = pawnA:getPosition()
             pf:clearPath()
             pf:findPath(x1, y1, x2, y2)
         end

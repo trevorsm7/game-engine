@@ -64,10 +64,11 @@ public:
     bool isValidIndex(int i) const {return i >= 0 && i < m_cols * m_rows;}
     bool isValidIndex(int x, int y) const {return x >= 0 && y >= 0 && x < m_cols && y < m_rows;}
 
+    bool isCollidable(int i) const {assert(m_index); return m_index->isCollidable(getIndex(i));}
+    bool isCollidable(int x, int y) const {assert(m_index); return m_index->isCollidable(getIndex(x, y));}
+
 private:
     int toIndex(int x, int y) const {return y * m_cols + x;}
-
-    void setTileIndex(lua_State* L, int index);
 
 private:
     friend class TUserdata<TileMap>;

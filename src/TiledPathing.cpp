@@ -19,193 +19,146 @@ void TiledPathing::render(IRenderer* renderer)
         renderer->drawLines(m_points);
 }
 
-// TODO remove this or make it automatic
-void TiledPathing::rebuildGraph()
+bool TiledPathing::visitNode(int node, int next, int end, std::vector<Node>& graph, std::queue<int>& toVisit)
 {
-    if (!m_tilemap) return;
-    TileIndex* index = m_tilemap->getTileIndex();
-    if (!index) return;
+    if (graph[next].valid)
+    {
+        graph[next].from = node;
+        graph[next].valid = false;
+        graph[next].weight = graph[node].weight + 1;
 
-    m_width = m_tilemap->getCols();
-    m_height = m_tilemap->getRows();
-    int size = m_width * m_height;
-    m_graph.resize(size);
+#if 0
+        // HACK debug visualization
+        m_points.reserve(m_points.size() + 5);
+        m_points.push_back(2);
+        int width = m_tilemap->getCols();
+        m_points.push_back(node % width + 0.4f);
+        m_points.push_back(node / width + 0.4f);
+        m_points.push_back(next % width + 0.4f);
+        m_points.push_back(next / width + 0.4f);
+#endif
 
-    for (int i = 0; i < size; ++i)
-        m_graph[i].valid = !index->isCollidable(m_tilemap->getIndex(i));
+        if (next == end)
+            return true;
+
+        toVisit.push(next);
+    }
+    return false;
 }
 
 bool TiledPathing::findPath(int x1, int y1, int x2, int y2, int& xOut, int& yOut)
 {
-    if (x1 < 0 || x1 >= m_width || y1 < 0 || y1 >= m_height ||
-        x2 < 0 || x2 >= m_width || y2 < 0 || y2 >= m_height)
+    if (!m_tilemap)
         return false;
 
-    int src = x1 + y1 * m_width;
-    int dst = x2 + y2 * m_width;
-    if (!m_graph[src].valid || !m_graph[dst].valid)
+    TileIndex* tileIndex = m_tilemap->getTileIndex();
+    if (!tileIndex)
         return false;
 
-    using namespace std::chrono;
-    high_resolution_clock::time_point t1 = high_resolution_clock::now();
+    const int width = m_tilemap->getCols();
+    const int height = m_tilemap->getRows();
+    const int size = width * height;
 
-    for (int i = 0; i < m_width * m_height; ++i)
-        m_graph[i].weight = std::numeric_limits<int>::max();
-
-    std::vector<int> allNodes;
-
-    int node = src;
-    int depth = 0;
-    std::vector<int> stack;
-    std::vector<int> counts;
-    std::vector<int> visit;
-    while (node != dst)
-    {
-        int y = node / m_width;
-        int x = node % m_width;
-
-        if (depth <= m_graph[node].weight)
-        {
-            m_graph[node].weight = depth;
-            bool foundCheaper = false;
-            int dx = x2 - x;
-            int dy = y2 - y;
-
-            allNodes.push_back(node); // HACK debug
-
-            int before = visit.size();
-            if (abs(dx) >= abs(dy))
-            {
-                dx = (dx >= 0) ? 1 : -1;
-                dy = (dy >= 0) ? 1 : -1;
-                if (x-dx >= 0 && x-dx < m_width) pushNode(node-dx, depth, visit, foundCheaper);
-                if (y-dy >= 0 && y-dy < m_height) pushNode(node-dy*m_width, depth, visit, foundCheaper);
-                if (y+dy >= 0 && y+dy < m_height) pushNode(node+dy*m_width, depth, visit, foundCheaper);
-                if (x+dx >= 0 && x+dx < m_width) pushNode(node+dx, depth, visit, foundCheaper);
-            }
-            else
-            {
-                dx = (dx >= 0) ? 1 : -1;
-                dy = (dy >= 0) ? 1 : -1;
-                if (y-dy >= 0 && y-dy < m_height) pushNode(node-dy*m_width, depth, visit, foundCheaper);
-                if (x-dx >= 0 && x-dx < m_width) pushNode(node-dx, depth, visit, foundCheaper);
-                if (x+dx >= 0 && x+dx < m_width) pushNode(node+dx, depth, visit, foundCheaper);
-                if (y+dy >= 0 && y+dy < m_height) pushNode(node+dy*m_width, depth, visit, foundCheaper);
-            }
-            int pushed = visit.size() - before;
-
-            if (pushed > 0)
-            {
-                if (!foundCheaper)
-                {
-                    stack.push_back(node);
-                    counts.push_back(pushed-1);
-                    node = visit.back();
-                    visit.pop_back();
-                    ++depth;
-                    continue;
-                }
-                else
-                    visit.resize(before);
-            }
-        }
-
-        while (!counts.empty())
-        {
-            allNodes.push_back(stack.back()); // HACK debug
-
-            if (counts.back() > 0)
-            {
-                assert(!visit.empty());
-                node = visit.back();
-                visit.pop_back();
-                --(counts.back());
-                break;
-            }
-
-            stack.pop_back();
-            counts.pop_back();
-            --depth;
-        }
-
-        if (!counts.empty())
-            continue;
-
-        fprintf(stderr, "ran out of nodes\n");
+    if (x1 < 0 || x1 >= width || y1 < 0 || y1 >= height ||
+        x2 < 0 || x2 >= width || y2 < 0 || y2 >= height)
         return false;
-    }
-    stack.push_back(dst);
 
-    high_resolution_clock::time_point t2 = high_resolution_clock::now();
-    microseconds time_span = duration_cast<microseconds>(t2 - t1);
-    //fprintf(stderr, "pathfinding took %lld usec\n", int64_t(time_span.count()));
+    const int src = x1 + y1 * width;
+    const int dst = x2 + y2 * width;
+    if (m_tilemap->isCollidable(src) || m_tilemap->isCollidable(dst))
+        return false;
 
-    if (allNodes.size() >= 2)
+    if (src == dst)
     {
-        float step = 0.2f / allNodes.size();
-        float offset = 0.5f;
-
-        m_points.reserve(m_points.size() + allNodes.size() * 2 + 1);
-        m_points.push_back(allNodes.size());
-        for (auto& i : allNodes)
-        {
-            m_points.push_back(i % m_width + offset);
-            m_points.push_back(i / m_width + offset);
-            offset += step;
-        }
-    }
-
-    //lua_createtable(L, stack.size(), 0);
-    if (stack.size() >= 2)
-    {
-        m_points.reserve(m_points.size() + stack.size() * 2 + 1);
-        m_points.push_back(stack.size());
-        //for (auto& i : stack)
-        for (auto it = stack.rbegin(); it != stack.rend(); ++it)
-        {
-            m_points.push_back(*it % m_width + 0.4f);
-            m_points.push_back(*it / m_width + 0.4f);
-        }
-
-        node = stack[1];
-        xOut = node % m_width;
-        yOut = node / m_width;
+        xOut = x1;
+        yOut = y1;
         return true;
     }
 
-    xOut = x2;
-    yOut = y2;
+    //using namespace std::chrono;
+    //high_resolution_clock::time_point t1 = high_resolution_clock::now();
+
+    std::vector<Node> graph(size);
+    for (int i = 0; i < size; ++i)
+    {
+        //graph[i].weight = std::numeric_limits<int>::max();
+        graph[i].valid = !m_tilemap->isCollidable(i);
+    }
+
+    // Start at source
+    std::queue<int> toVisit;
+    toVisit.push(src);
+    graph[src].weight = 1;
+
+    while (!toVisit.empty())
+    {
+        int node = toVisit.front();
+        assert(node != dst);
+        toVisit.pop();
+
+        int y = node / width;
+        int x = node % width;
+        int dx = x2 - x;
+        int dy = y2 - y;
+
+        // Prefer path facing destination
+        if (abs(dx) >= abs(dy))
+        {
+            dx = (dx >= 0) ? 1 : -1;
+            dy = (dy >= 0) ? width : -width;
+            if (x+dx >= 0 && x+dx < width && visitNode(node, node+dx, dst, graph, toVisit)) break;
+            if (node+dy >= 0 && node+dy < size && visitNode(node, node+dy, dst, graph, toVisit)) break;
+            if (node-dy >= 0 && node-dy < size && visitNode(node, node-dy, dst, graph, toVisit)) break;
+            if (x-dx >= 0 && x-dx < width && visitNode(node, node-dx, dst, graph, toVisit)) break;
+        }
+        else
+        {
+            dx = (dx >= 0) ? 1 : -1;
+            dy = (dy >= 0) ? width : -width;
+            if (node+dy >= 0 && node+dy < size && visitNode(node, node+dy, dst, graph, toVisit)) break;
+            if (x+dx >= 0 && x+dx < width && visitNode(node, node+dx, dst, graph, toVisit)) break;
+            if (x-dx >= 0 && x-dx < width && visitNode(node, node-dx, dst, graph, toVisit)) break;
+            if (node-dy >= 0 && node-dy < size && visitNode(node, node-dy, dst, graph, toVisit)) break;
+        }
+    }
+
+    // If node still valid, it wasn't visited
+    if (graph[dst].valid != false)
+        return false;
+
+    //high_resolution_clock::time_point t2 = high_resolution_clock::now();
+    //microseconds time_span = duration_cast<microseconds>(t2 - t1);
+    //fprintf(stderr, "pathfinding took %lld usec\n", int64_t(time_span.count()));
+
+    // TODO Walk forwards to build path
+    const int pathLength = graph[dst].weight;
+    m_points.reserve(1 + pathLength * 2);
+    m_points.push_back(pathLength);
+    m_points.push_back(dst % width + 0.6f);
+    m_points.push_back(dst / width + 0.6f);
+
+    // Walk backwards from destination to source
+    int node = dst, prev = dst;
+    for (int i = 1; i < pathLength; ++i)
+    {
+        prev = node;
+        node = graph[node].from;
+        m_points.push_back(node % width + 0.6f);
+        m_points.push_back(node / width + 0.6f);
+    }
+    assert(graph[prev].from == src);
+    assert(node == src);
+
+    xOut = prev % width;
+    yOut = prev / width;
     return true;
-}
-
-void TiledPathing::setTileMap(lua_State* L, int index)
-{
-    TileMap* tilemap = TileMap::checkUserdata(L, index);
-
-    // Do nothing if we already own the component
-    if (m_tilemap == tilemap)
-        return;
-
-    // Clear old component first
-    if (m_tilemap != nullptr)
-        releaseChild(L, m_tilemap);
-
-    // Add component to new actor
-    acquireChild(L, tilemap, index);
-    m_tilemap = tilemap;
-
-    // TODO rebuild pathing graph
-    rebuildGraph();
 }
 
 void TiledPathing::construct(lua_State* L)
 {
     lua_pushliteral(L, "tilemap");
     if (lua_rawget(L, 2) != LUA_TNIL)
-    {
         setChild(L, m_tilemap, -1);
-        rebuildGraph();
-    }
     lua_pop(L, 1);
 }
 
@@ -213,12 +166,9 @@ void TiledPathing::clone(lua_State* L, TiledPathing* source)
 {
     if (source->m_tilemap)
     {
-        // Don't need to clone TileMap; just copy
-        //source->m_tilemap->pushClone(L);
-        source->m_tilemap->pushUserdata(L);
+        source->m_tilemap->pushUserdata(L); // NOTE don't need to clone
         setChild(L, m_tilemap, -1);
         lua_pop(L, 1);
-        rebuildGraph();
     }
 }
 
@@ -237,6 +187,5 @@ int TiledPathing::script_setTileMap(lua_State* L)
 {
     TiledPathing* graphics = TiledPathing::checkUserdata(L, 1);
     graphics->setChild(L, graphics->m_tilemap, 2);
-    graphics->rebuildGraph();
     return 0;
 }
