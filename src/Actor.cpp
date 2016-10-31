@@ -204,13 +204,13 @@ void Actor::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
 int Actor::actor_getCanvas(lua_State* L)
 {
     Actor* actor = Actor::checkUserdata(L, 1);
-    return actor->push(L, actor->m_canvas);
+    return pushMember(L, actor->m_canvas);
 }
 
 int Actor::actor_getGraphics(lua_State* L)
 {
     Actor* actor = Actor::checkUserdata(L, 1);
-    return actor->push(L, actor->m_graphics);
+    return pushMember(L, actor->m_graphics);
 }
 
 int Actor::actor_setGraphics(lua_State* L)
@@ -223,7 +223,7 @@ int Actor::actor_setGraphics(lua_State* L)
 int Actor::actor_getCollider(lua_State* L)
 {
     Actor* actor = Actor::checkUserdata(L, 1);
-    return actor->push(L, actor->m_collider);
+    return pushMember(L, actor->m_collider);
 }
 
 int Actor::actor_setCollider(lua_State* L)
@@ -236,7 +236,7 @@ int Actor::actor_setCollider(lua_State* L)
 int Actor::actor_getPathing(lua_State* L)
 {
     Actor* actor = Actor::checkUserdata(L, 1);
-    return actor->push(L, actor->m_pathing);
+    return pushMember(L, actor->m_pathing);
 }
 
 int Actor::actor_setPathing(lua_State* L)

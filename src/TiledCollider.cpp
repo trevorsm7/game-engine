@@ -146,29 +146,11 @@ bool TiledCollider::getCollisionTime(float velX, float velY, const ICollider* ot
     return false;
 }
 
-// TODO refactor with other similar functions
-void TiledCollider::setTileMap(lua_State* L, int index)
-{
-    TileMap* tilemap = TileMap::checkUserdata(L, index);
-
-    // Do nothing if we already own the component
-    if (m_tilemap == tilemap)
-        return;
-
-    // Clear old component first
-    if (m_tilemap != nullptr)
-        m_tilemap->refRemoved(L);
-
-    // Add component to new actor
-    tilemap->refAdded(L, index);
-    m_tilemap = tilemap;
-}
-
 void TiledCollider::construct(lua_State* L)
 {
     lua_pushliteral(L, "tilemap");
     if (lua_rawget(L, 2) != LUA_TNIL)
-        setTileMap(L, -1);
+        setChild(L, m_tilemap, -1);
     lua_pop(L, 1);
 }
 
@@ -179,17 +161,8 @@ void TiledCollider::clone(lua_State* L, TiledCollider* source)
         // Don't need to clone TileMap; just copy
         //source->m_tilemap->pushClone(L);
         source->m_tilemap->pushUserdata(L);
-        setTileMap(L, -1);
+        setChild(L, m_tilemap, -1);
         lua_pop(L, 1);
-    }
-}
-
-void TiledCollider::destroy(lua_State* L)
-{
-    if (m_tilemap)
-    {
-        m_tilemap->refRemoved(L);
-        m_tilemap = nullptr;
     }
 }
 
@@ -205,23 +178,13 @@ void TiledCollider::serialize(lua_State* L, Serializer* serializer, ObjectRef* r
 
 int TiledCollider::script_getTileMap(lua_State* L)
 {
-    // Validate function arguments
     TiledCollider* collider = TiledCollider::checkUserdata(L, 1);
-
-    TileMap* tilemap = collider->m_tilemap;
-    if (!tilemap)
-        return 0;
-
-    tilemap->pushUserdata(L);
-    return 1;
+    return pushMember(L, collider->m_tilemap);
 }
 
 int TiledCollider::script_setTileMap(lua_State* L)
 {
-    // Validate function arguments
     TiledCollider* collider = TiledCollider::checkUserdata(L, 1);
-
-    collider->setTileMap(L, 2);
-
+    collider->setChild(L, collider->m_tilemap, 2);
     return 0;
 }

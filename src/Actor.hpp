@@ -58,7 +58,6 @@ public:
 
 private:
     template <class T> void set(lua_State* L, T*& component, int index);
-    template <class T> int push(lua_State* L, T*& component);
     template <class T> void remove(lua_State* L, T*& component);
 
 private:
@@ -118,8 +117,7 @@ inline void Actor::set(lua_State* L, T*& component, int index)
     {
         assert(component->m_actor == this);
         component->m_actor = nullptr;
-        component->refRemoved(L);
-        //own = nullptr;
+        releaseChild(L, component);
     }
 
     // If component already owned, clone it
@@ -128,28 +126,16 @@ inline void Actor::set(lua_State* L, T*& component, int index)
         ptr->pushClone(L);
         component = T::testInterface(L, -1);
         assert(component != nullptr);
-        component->refAdded(L, -1);
+        acquireChild(L, component, -1);
         component->m_actor = this;
         lua_pop(L, 1);
     }
     else
     {
         component = ptr;
-        component->refAdded(L, index);
+        acquireChild(L, component, index);
         component->m_actor = this;
     }
-}
-
-template <class T>
-inline int Actor::push(lua_State* L, T*& component)
-{
-    if (component != nullptr)
-    {
-        component->pushUserdata(L);
-        return 1;
-    }
-
-    return 0;
 }
 
 template <class T>
@@ -158,7 +144,7 @@ inline void Actor::remove(lua_State* L, T*& component)
     if (component != nullptr)
     {
         component->m_actor = nullptr;
-        component->refRemoved(L);
+        releaseChild(L, component);
         component = nullptr;
     }
 }

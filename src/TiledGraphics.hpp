@@ -21,13 +21,10 @@ public:
     bool testBounds(float x, float y) const override;
 
 private:
-    void setTileMap(lua_State* L, int index);
-
-private:
     friend class TUserdata<TiledGraphics, IGraphics>;
     void construct(lua_State* L);
     void clone(lua_State* L, TiledGraphics* source);
-    void destroy(lua_State* L);
+    //void destroy(lua_State* L) {}
     void serialize(lua_State* L, Serializer* serializer, ObjectRef* ref);
 
     static int script_getTileMap(lua_State* L);

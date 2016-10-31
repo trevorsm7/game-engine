@@ -228,6 +228,24 @@ bool Scene::load(const char *filename)
     assert(lua_gettop(m_L) == top + 2);
     lua_settop(m_L, top);
 
+    // ==== Create strong ref table for direct children ====
+    lua_pushstring(m_L, CANVASES);
+    lua_newtable(m_L);
+    lua_rawset(m_L, LUA_REGISTRYINDEX);
+
+    // ==== Create weak ref table for userdata lookup by pointer ====
+    lua_pushstring(m_L, WEAK_REFS);
+    lua_newtable(m_L);
+
+    // Use metatable to set weak values mode
+    lua_createtable(m_L, 0, 1);
+    lua_pushliteral(m_L, "__mode");
+    lua_pushliteral(m_L, "v");
+    lua_rawset(m_L, -3);
+    lua_setmetatable(m_L, -2);
+
+    lua_rawset(m_L, LUA_REGISTRYINDEX);
+
     // ==== Load the user script ====
     if (luaL_loadfile(m_L, filename) != 0)
     {
@@ -237,7 +255,7 @@ bool Scene::load(const char *filename)
     }
 
     // Save the global chunk so we can check the _ENV upvalue later
-    lua_pushliteral(m_L, "GLOBAL_CHUNK");
+    lua_pushstring(m_L, GLOBAL_CHUNK);
     lua_pushvalue(m_L, -2);
     lua_rawset(m_L, LUA_REGISTRYINDEX);
 
@@ -378,6 +396,36 @@ Scene* Scene::checkScene(lua_State* L)
     return scene;
 }
 
+void Scene::acquireCanvas(lua_State* L, Canvas* ptr, int index)
+{
+    // Get the child ref table
+    lua_pushstring(L, CANVASES);
+    lua_rawget(L, LUA_REGISTRYINDEX);
+    assert(lua_type(L, -1) == LUA_TTABLE);
+
+    // Add the child ref
+    lua_pushlightuserdata(L, ptr);
+    lua_pushvalue(L, index < 0 ? index - 2 : index);
+    lua_rawset(L, -3);
+
+    lua_pop(L, 1);
+}
+
+void Scene::releaseCanvas(lua_State* L, Canvas* ptr)
+{
+    // Get the child ref table
+    lua_pushstring(L, CANVASES);
+    lua_rawget(L, LUA_REGISTRYINDEX);
+    assert(lua_type(L, -1) == LUA_TTABLE);
+
+    // Delete the child ref
+    lua_pushlightuserdata(L, ptr);
+    lua_pushnil(L);
+    lua_rawset(L, -3);
+
+    lua_pop(L, 1);
+}
+
 int Scene::scene_addCanvas(lua_State *L)
 {
     // Validate and get pointers to Scene and Canvas
@@ -386,7 +434,7 @@ int Scene::scene_addCanvas(lua_State *L)
 
     // Push Canvas on layer above previously pushed Canvases
     scene->m_canvases.push_back(canvas);
-    canvas->refAdded(L, 1);
+    acquireCanvas(L, canvas, 1);
     canvas->m_scene = scene;
 
     return 0;
@@ -445,7 +493,7 @@ int Scene::scene_saveState(lua_State* L)
     lua_pop(L, 1);
 
     // Serialize the _ENV upvalue if it differs from _G
-    lua_pushliteral(L, "GLOBAL_CHUNK");
+    lua_pushstring(L, GLOBAL_CHUNK);
     lua_rawget(L, LUA_REGISTRYINDEX);
     lua_getupvalue(L, -1, 1); // get _ENV
     assert(lua_gettop(L) == top + 4);

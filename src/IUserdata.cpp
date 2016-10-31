@@ -4,10 +4,15 @@
 
 void IUserdata::pushUserdata(lua_State* L)
 {
-    // NOTE IUserdata::this != base address; only use as a registry key
-    lua_pushlightuserdata(L, this);
+    lua_pushstring(L, Scene::WEAK_REFS);
     lua_rawget(L, LUA_REGISTRYINDEX);
-    //assert(lua_type(L, -1) == LUA_TUSERDATA);
+    assert(lua_type(L, -1) == LUA_TTABLE);
+
+    // NOTE IUserdata::this != base address; only use as lookup pointer
+    lua_pushlightuserdata(L, this);
+    lua_rawget(L, -2);
+    lua_remove(L, -2);
+
     assert(testInterface(L, -1) == this); // upcast to IUserdata
 }
 
@@ -17,12 +22,7 @@ void IUserdata::pushClone(lua_State* L)
 
     // Get userdata clone function
     luaL_getmetafield(L, -1, "clone");
-    if (lua_type(L, -1) != LUA_TFUNCTION)
-    {
-        lua_pop(L, 2);
-        lua_pushnil(L);
-        return;
-    }
+    assert(lua_type(L, -1) == LUA_TFUNCTION);
 
     // Swap the userdata and the function
     lua_rotate(L, -2, -1);
@@ -33,30 +33,48 @@ void IUserdata::pushClone(lua_State* L)
     assert(lua_touserdata(L, -1) != nullptr);
 }
 
-void IUserdata::refAdded(lua_State* L, int index)
+void IUserdata::acquireChild(lua_State* L, void* ptr, int index)
 {
-    //assert(lua_type(L, index) == LUA_TUSERDATA);
-    assert(testInterface(L, index) == this); // upcast to IUserdata
-    // TODO use get rid of ref counting? make a container to manage these?
-    // Add userdata to the registry while it is ref'd by engine
-    if (m_refCount++ == 0)
+    // Get the child ref table
+    assert(ptr != nullptr);
+    lua_pushlightuserdata(L, this);
+    int type = lua_rawget(L, LUA_REGISTRYINDEX);
+    assert(type == LUA_TNIL || type == LUA_TTABLE);
+
+    // Create the table if it doesn't exist
+    if (type == LUA_TNIL)
     {
+        lua_pop(L, 1);
+        lua_createtable(L, 0, 1);
+
         lua_pushlightuserdata(L, this);
-        lua_pushvalue(L, (index < 0) ? index - 1 : index); // adjust relative offset
+        lua_pushvalue(L, -2);
         lua_rawset(L, LUA_REGISTRYINDEX);
     }
+
+    // Add the child ref
+    lua_pushlightuserdata(L, ptr);
+    lua_pushvalue(L, index < 0 ? index - 2 : index);
+    assert(lua_type(L, -1) == LUA_TUSERDATA);
+    lua_rawset(L, -3);
+
+    lua_pop(L, 1);
 }
 
-void IUserdata::refRemoved(lua_State* L)
+void IUserdata::releaseChild(lua_State* L, void* ptr)
 {
-    // TODO use get rid of ref counting? make a container to manage these?
-    // Remove from registry if reference count drops to zero
-    if (--m_refCount == 0)
-    {
-        lua_pushlightuserdata(L, this);
-        lua_pushnil(L);
-        lua_rawset(L, LUA_REGISTRYINDEX);
-    }
+    // Get the child ref table
+    assert(ptr != nullptr);
+    lua_pushlightuserdata(L, this);
+    lua_rawget(L, LUA_REGISTRYINDEX);
+    assert(lua_type(L, -1) == LUA_TTABLE);
+
+    // Delete the child ref
+    lua_pushlightuserdata(L, ptr);
+    lua_pushnil(L);
+    lua_rawset(L, -3);
+
+    lua_pop(L, 1);
 }
 
 bool IUserdata::pcall(lua_State* L, const char* method, int in, int out)
@@ -118,58 +136,72 @@ void IUserdata::initInterface(lua_State* L)
     lua_rawset(L, -3);
 }
 
+static inline void add_weak_ref(lua_State* L, IUserdata* ptr)
+{
+    // Add weak ref to userdata lookup table
+    lua_pushstring(L, Scene::WEAK_REFS);
+    lua_rawget(L, LUA_REGISTRYINDEX);
+    assert(lua_type(L, -1) == LUA_TTABLE);
+    // NOTE IUserdata::this != base address; only use as lookup pointer
+    lua_pushlightuserdata(L, ptr);
+    lua_pushvalue(L, -3); // the userdata
+    lua_rawset(L, -3);
+    lua_pop(L, 1);
+}
+
+static inline void copy_uservalues(lua_State* L)
+{
+    // Create a new table for shallow copy
+    lua_newtable(L);
+
+    // Iterate over table, copying key/value pairs into the uservalue table
+    lua_pushnil(L);
+    while (lua_next(L, -3))
+    {
+        // Duplicate key, set key/value, leave key on stack for next iteration of lua_next
+        lua_pushvalue(L, -2);
+        lua_insert(L, -2);
+        lua_rawset(L, -4);
+    }
+
+    // Set table as uservalue of userdata
+    // NOTE userdata should have been on top before helper called
+    assert(lua_type(L, -3) == LUA_TUSERDATA);
+    lua_setuservalue(L, -3);
+}
+
 void IUserdata::constructHelper(lua_State* L, IUserdata* ptr, int index)
 {
+    add_weak_ref(L, ptr);
+
     // Copy the member table if specified
     lua_pushliteral(L, "members");
     if (lua_rawget(L, index) != LUA_TNIL)
     {
         luaL_checktype(L, -1, LUA_TTABLE);
-
-        // Create a new table for shallow copy
-        lua_newtable(L);
-
-        // Iterate over table, copying key/value pairs into the uservalue table
-        lua_pushnil(L);
-        while (lua_next(L, -3))
-        {
-            // Duplicate key, set key/value, leave key on stack for next iteration of lua_next
-            lua_pushvalue(L, -2);
-            lua_insert(L, -2);
-            lua_rawset(L, -4);
-        }
-
-        // Set table as uservalue of userdata
-        // NOTE userdata should have been on top before helper called
-        assert(lua_type(L, -3) == LUA_TUSERDATA);
-        lua_setuservalue(L, -3);
+        copy_uservalues(L);
     }
     lua_pop(L, 1);
 }
 
 void IUserdata::cloneHelper(lua_State* L, IUserdata* ptr, IUserdata* source, int index)
 {
-    if (lua_getuservalue(L, index) == LUA_TTABLE)
+    add_weak_ref(L, ptr);
+
+    if (lua_getuservalue(L, index) != LUA_TNIL)
     {
-        // Create a new table for shallow copy
-        lua_newtable(L);
-
-        // Iterate over table, copying key/value pairs into the uservalue table
-        lua_pushnil(L);
-        while (lua_next(L, -3))
-        {
-            // Duplicate key, set key/value, leave key on stack for next iteration of lua_next
-            lua_pushvalue(L, -2);
-            lua_insert(L, -2);
-            lua_rawset(L, -4);
-        }
-
-        // Set table as uservalue of userdata
-        // NOTE userdata should have been on top before helper called
-        assert(lua_type(L, -3) == LUA_TUSERDATA);
-        lua_setuservalue(L, -3);
+        assert(lua_type(L, -1) == LUA_TTABLE);
+        copy_uservalues(L);
     }
     lua_pop(L, 1);
+}
+
+void IUserdata::destroyHelper(lua_State* L, IUserdata* ptr)
+{
+    // Delete child ref table
+    lua_pushlightuserdata(L, ptr);
+    lua_pushnil(L);
+    lua_rawset(L, LUA_REGISTRYINDEX);
 }
 
 void IUserdata::serializeHelper(lua_State* L, IUserdata* ptr, Serializer* serializer, ObjectRef* ref)

@@ -74,29 +74,11 @@ int TileIndex::script_getSize(lua_State* L)
 // TileMap
 // =============================================================================
 
-// TODO refactor with similar functions in Actor? move template to TUserdata?
-void TileMap::setTileIndex(lua_State* L, int index)
-{
-    TileIndex* tileIndex = TileIndex::checkUserdata(L, index);
-
-    // Do nothing if we already own the component
-    if (m_index == tileIndex)
-        return;
-
-    // Clear old component first
-    if (m_index != nullptr)
-        m_index->refRemoved(L);
-
-    // Add component to new actor
-    tileIndex->refAdded(L, index);
-    m_index = tileIndex;
-}
-
 void TileMap::construct(lua_State* L)
 {
     lua_pushliteral(L, "index");
     if (lua_rawget(L, 2) != LUA_TNIL)
-        setTileIndex(L, -1);
+        setChild(L, m_index, -1);
     lua_pop(L, 1);
 
     lua_pushliteral(L, "size");
@@ -131,22 +113,13 @@ void TileMap::clone(lua_State* L, TileMap* source)
         // Don't need to clone TileIndex; just copy
         //source->m_index->pushClone(L);
         source->m_index->pushUserdata(L);
-        setTileIndex(L, -1);
+        setChild(L, m_index, -1);
         lua_pop(L, 1);
     }
 
     m_map = source->m_map;
     m_cols = source->m_cols;
     m_rows = source->m_rows;
-}
-
-void TileMap::destroy(lua_State* L)
-{
-    if (m_index)
-    {
-        m_index->refRemoved(L);
-        m_index = nullptr;
-    }
 }
 
 void TileMap::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
@@ -165,11 +138,8 @@ void TileMap::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
 
 int TileMap::script_setTileIndex(lua_State* L)
 {
-    // Validate function arguments
     TileMap* tilemap = TileMap::checkUserdata(L, 1);
-
-    tilemap->setTileIndex(L, 2);
-
+    tilemap->setChild(L, tilemap->m_index, 2);
     return 0;
 }
 
@@ -203,10 +173,7 @@ int TileMap::script_setSize(lua_State* L)
     if (w == cols)
     {
         tilemap->m_map.resize(w * h, 0);
-
-        // Return self userdata
-        lua_pushvalue(L, 1);
-        return 1;
+        return 0;
     }
 
     // TODO Do we need to preserve the old data? Could just resize and clear

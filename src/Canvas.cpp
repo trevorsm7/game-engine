@@ -119,7 +119,7 @@ void Canvas::processAddedActors(lua_State *L)
         // Remove actor if it is marked for delete, then skip
         if (actor->m_canvas != this)
         {
-            actor->refRemoved(L);
+            releaseChild(L, actor);
             continue;
         }
 
@@ -148,7 +148,7 @@ void Canvas::processRemovedActors(lua_State *L)
         // Remove actor if it is marked for delete, then skip
         if ((*it)->m_canvas != this)
         {
-            (*it)->refRemoved(L);
+            releaseChild(L, *it);
             continue;
         }
 
@@ -403,8 +403,7 @@ void Canvas::clone(lua_State* L, Canvas* source)
 
         actor->pushClone(L);
         Actor* ptr = Actor::testUserdata(L, -1);
-        assert(ptr != nullptr);
-        ptr->refAdded(L, -1);
+        acquireChild(L, ptr, -1);
         lua_pop(L, 1);
         ptr->m_canvas = this;
         m_actors.push_back(ptr);
@@ -418,7 +417,7 @@ void Canvas::clone(lua_State* L, Canvas* source)
         actor->pushClone(L);
         Actor* ptr = Actor::testUserdata(L, -1);
         assert(ptr != nullptr);
-        ptr->refAdded(L, -1);
+        acquireChild(L, ptr, -1);
         lua_pop(L, 1);
         ptr->m_canvas = this;
         m_added.push_back(ptr);
@@ -435,8 +434,7 @@ void Canvas::destroy(lua_State* L)
     {
         if (actor->m_canvas == this)
             actor->m_canvas = nullptr;
-
-        actor->refRemoved(L);
+        //releaseChild(L, actor); // children automatically released on destroy
     }
 
     // Mark each actor in pending list for removal
@@ -444,8 +442,7 @@ void Canvas::destroy(lua_State* L)
     {
         if (actor->m_canvas == this)
             actor->m_canvas = nullptr;
-
-        actor->refRemoved(L);
+        //releaseChild(L, actor); // children automatically released on destroy
     }
 }
 
@@ -490,6 +487,9 @@ int Canvas::canvas_addActor(lua_State *L)
     Canvas* canvas = Canvas::checkUserdata(L, 1);
     Actor* actor = Actor::checkUserdata(L, 2);
 
+    if (actor->m_canvas == canvas)
+        return 0;
+
     // Don't allow adding an Actor that already belongs to another Canvas
     // NOTE: while we could implicitly remove, might be better to throw an error
     //luaL_argcheck(L, (actor->m_canvas == nullptr), 2, "already belongs to a Canvas\n");
@@ -503,7 +503,7 @@ int Canvas::canvas_addActor(lua_State *L)
     {
         // Queue up the add; will take affect after the update loop
         canvas->m_added.push_back(actor);
-        actor->refAdded(L, 2); // pass index of the full userdata
+        canvas->acquireChild(L, actor, 2);
     }
 
     // Finally, mark Actor as added to this Canvas

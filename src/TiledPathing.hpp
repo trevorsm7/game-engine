@@ -52,7 +52,7 @@ private:
     friend class TUserdata<TiledPathing, IPathing>;
     void construct(lua_State* L);
     void clone(lua_State* L, TiledPathing* source);
-    void destroy(lua_State* L);
+    //void destroy(lua_State* L) {}
     void serialize(lua_State* L, Serializer* serializer, ObjectRef* ref);
 
     static int script_getTileMap(lua_State* L);

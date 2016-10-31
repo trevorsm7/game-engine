@@ -11,19 +11,21 @@ class ObjectRef;
 
 class IUserdata
 {
-    mutable int m_refCount;
-
 protected:
-    IUserdata(): m_refCount(0) {}
-
     static constexpr const char* const CLASS_NAME = "IUserdata";
 
 public:
     void pushUserdata(lua_State* L);
     void pushClone(lua_State* L);
-    // NOTE should be protected? Wrap in unique_ptr-like class?
-    void refAdded(lua_State* L, int index);
-    void refRemoved(lua_State* L);
+
+    static int pushMember(lua_State* L, IUserdata* member)
+    {
+        if (member == nullptr)
+            return 0;
+
+        member->pushUserdata(L);
+        return 1;
+    }
 
     static IUserdata* testInterface(lua_State* L, int index)
     {
@@ -39,13 +41,34 @@ public:
     }
 
 protected:
+    void acquireChild(lua_State* L, void* ptr, int index);
+    void releaseChild(lua_State* L, void* ptr);
+
+    template <class T>
+    void setChild(lua_State* L, T*& child, int index)
+    {
+        T* ptr = T::checkUserdata(L, index);
+
+        // Do nothing if it's already set
+        if (child == ptr)
+            return;
+
+        // Clear old child first
+        if (child != nullptr)
+            releaseChild(L, child);
+
+        // Set the new child
+        acquireChild(L, ptr, index);
+        child = ptr;
+    }
+
     bool pcall(lua_State* L, const char* method, int in, int out);
 
     // Base cases for TUserdata helper recursion
     static void initInterface(lua_State* L); // TODO rename initHelper or similar?
     static void constructHelper(lua_State* L, IUserdata* ptr, int index);
     static void cloneHelper(lua_State* L, IUserdata* ptr, IUserdata* source, int index);
-    static void destroyHelper(lua_State* L, IUserdata* ptr) {}
+    static void destroyHelper(lua_State* L, IUserdata* ptr);
     static void serializeHelper(lua_State* L, IUserdata* ptr, Serializer* serializer, ObjectRef* ref);
 
     static void* testInterfaceBase(lua_State* L, int index, void* className);

@@ -19,6 +19,7 @@ void TiledPathing::render(IRenderer* renderer)
         renderer->drawLines(m_points);
 }
 
+// TODO remove this or make it automatic
 void TiledPathing::rebuildGraph()
 {
     if (!m_tilemap) return;
@@ -187,10 +188,10 @@ void TiledPathing::setTileMap(lua_State* L, int index)
 
     // Clear old component first
     if (m_tilemap != nullptr)
-        m_tilemap->refRemoved(L);
+        releaseChild(L, m_tilemap);
 
     // Add component to new actor
-    tilemap->refAdded(L, index);
+    acquireChild(L, tilemap, index);
     m_tilemap = tilemap;
 
     // TODO rebuild pathing graph
@@ -201,7 +202,10 @@ void TiledPathing::construct(lua_State* L)
 {
     lua_pushliteral(L, "tilemap");
     if (lua_rawget(L, 2) != LUA_TNIL)
-        setTileMap(L, -1);
+    {
+        setChild(L, m_tilemap, -1);
+        rebuildGraph();
+    }
     lua_pop(L, 1);
 }
 
@@ -212,17 +216,9 @@ void TiledPathing::clone(lua_State* L, TiledPathing* source)
         // Don't need to clone TileMap; just copy
         //source->m_tilemap->pushClone(L);
         source->m_tilemap->pushUserdata(L);
-        setTileMap(L, -1);
+        setChild(L, m_tilemap, -1);
         lua_pop(L, 1);
-    }
-}
-
-void TiledPathing::destroy(lua_State* L)
-{
-    if (m_tilemap)
-    {
-        m_tilemap->refRemoved(L);
-        m_tilemap = nullptr;
+        rebuildGraph();
     }
 }
 
@@ -238,23 +234,14 @@ void TiledPathing::serialize(lua_State* L, Serializer* serializer, ObjectRef* re
 
 int TiledPathing::script_getTileMap(lua_State* L)
 {
-    // Validate function arguments
     TiledPathing* graphics = TiledPathing::checkUserdata(L, 1);
-
-    TileMap* tilemap = graphics->m_tilemap;
-    if (!tilemap)
-        return 0;
-
-    tilemap->pushUserdata(L);
-    return 1;
+    return pushMember(L, graphics->m_tilemap);
 }
 
 int TiledPathing::script_setTileMap(lua_State* L)
 {
-    // Validate function arguments
     TiledPathing* graphics = TiledPathing::checkUserdata(L, 1);
-
-    graphics->setTileMap(L, 2);
-
+    graphics->setChild(L, graphics->m_tilemap, 2);
+    graphics->rebuildGraph();
     return 0;
 }

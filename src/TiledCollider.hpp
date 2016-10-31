@@ -25,13 +25,10 @@ public:
     bool getCollisionTime(float velX, float velY, const ICollider* other, float& start, float& end, float& normX, float& normY) const override;
 
 private:
-    void setTileMap(lua_State* L, int index);
-
-private:
     friend class TUserdata<TiledCollider, ICollider>;
     void construct(lua_State* L);
     void clone(lua_State* L, TiledCollider* source);
-    void destroy(lua_State* L);
+    //void destroy(lua_State* L) {}
     void serialize(lua_State* L, Serializer* serializer, ObjectRef* ref);
 
     static int script_getTileMap(lua_State* L);

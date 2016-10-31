@@ -33,6 +33,10 @@ class Scene
     bool m_isPortraitHint;
 
 public:
+    static constexpr const char* const CANVASES = "CANVASES";
+    static constexpr const char* const WEAK_REFS = "WEAK_REFS";
+    static constexpr const char* const GLOBAL_CHUNK = "GLOBAL_CHUNK";
+
     Scene(ResourceManager& resources): m_resources(resources), m_L(nullptr), m_isPortraitHint(false) {}
     ~Scene();
 
@@ -57,6 +61,9 @@ public:
     static Scene* checkScene(lua_State* L);
 
 private:
+    static void acquireCanvas(lua_State* L, Canvas* ptr, int index);
+    static void releaseCanvas(lua_State* L, Canvas* ptr);
+
     static void hook_watchdog(lua_State* L, lua_Debug* ar);
 
     static int scene_addCanvas(lua_State* L);
