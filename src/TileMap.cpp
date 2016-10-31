@@ -124,12 +124,7 @@ void TileMap::clone(lua_State* L, TileMap* source)
 
 void TileMap::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
 {
-    if (m_index)
-    {
-        m_index->pushUserdata(L);
-        serializer->serializeMember(ref, "", "index", "setTileIndex", L, -1);
-        lua_pop(L, 1);
-    }
+    serializer->serializeMember(ref, "", "index", "setTileIndex", L, m_index);
 
     int size[] = {m_cols, m_rows};
     serializer->setArray(ref, "", "size", size, 2);

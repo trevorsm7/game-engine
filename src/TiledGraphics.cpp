@@ -54,12 +54,7 @@ void TiledGraphics::clone(lua_State* L, TiledGraphics* source)
 
 void TiledGraphics::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
 {
-    if (m_tilemap)
-    {
-        m_tilemap->pushUserdata(L);
-        serializer->serializeMember(ref, "", "tilemap", "setTilemap", L, -1);
-        lua_pop(L, 1);
-    }
+    serializer->serializeMember(ref, "", "tilemap", "setTilemap", L, m_tilemap);
 }
 
 int TiledGraphics::script_getTileMap(lua_State* L)

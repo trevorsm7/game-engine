@@ -453,10 +453,7 @@ void Canvas::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
         if (actor->m_canvas != this)
             continue;
 
-        actor->pushUserdata(L);
-        // TODO add a setActor function to set directly to m_actors instead of m_added?
-        serializer->serializeMember(ref, "", "", "addActor", L, -1);
-        lua_pop(L, 1);
+        serializer->serializeMember(ref, "", "", "addActor", L, actor);
     }
 
     for (auto& actor : m_added)
@@ -464,9 +461,7 @@ void Canvas::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
         if (actor->m_canvas != this)
             continue;
 
-        actor->pushUserdata(L);
-        serializer->serializeMember(ref, "", "", "addActor", L, -1);
-        lua_pop(L, 1);
+        serializer->serializeMember(ref, "", "", "addActor", L, actor);
     }
 
     if (m_camera)

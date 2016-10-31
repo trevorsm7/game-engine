@@ -1,4 +1,5 @@
 #include "Serializer.hpp"
+#include "IUserdata.hpp"
 
 #include "lua.hpp"
 #include <algorithm>
@@ -165,6 +166,16 @@ void Serializer::serializeSubtable(ObjectRef* parent, const std::string& table, 
         serializeMember(parent, table, key, L, -1);
 
         // Remove value, leaving key on top for next iteration of lua_next
+        lua_pop(L, 1);
+    }
+}
+
+void Serializer::serializeMember(ObjectRef* parent, const std::string& table, const std::string& key, const std::string& setter, lua_State* L, IUserdata* member)
+{
+    if (member != nullptr)
+    {
+        member->pushUserdata(L);
+        serializeMember(parent, table, serializeKey(key, setter), L, -1);
         lua_pop(L, 1);
     }
 }

@@ -172,26 +172,10 @@ void Actor::destroy(lua_State* L)
 
 void Actor::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
 {
-    if (m_graphics)
-    {
-        m_graphics->pushUserdata(L);
-        serializer->serializeMember(ref, "", "graphics", "setGraphics", L, -1);
-        lua_pop(L, 1);
-    }
 
-    if (m_collider)
-    {
-        m_collider->pushUserdata(L);
-        serializer->serializeMember(ref, "", "collider", "setCollider", L, -1);
-        lua_pop(L, 1);
-    }
-
-    if (m_pathing)
-    {
-        m_pathing->pushUserdata(L);
-        serializer->serializeMember(ref, "", "pathing", "setPathing", L, -1);
-        lua_pop(L, 1);
-    }
+    serializer->serializeMember(ref, "", "graphics", "setGraphics", L, m_graphics);
+    serializer->serializeMember(ref, "", "collider", "setCollider", L, m_collider);
+    serializer->serializeMember(ref, "", "pathing", "setPathing", L, m_pathing);
 
     if (m_physics)
         m_physics->serialize(L, "physics", serializer, ref);

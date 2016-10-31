@@ -12,6 +12,7 @@
 struct lua_State;
 
 class Serializer;
+class IUserdata;
 
 class ILuaRef
 {
@@ -242,8 +243,7 @@ public:
     void serializeSubtable(ObjectRef* parent, const std::string& table, lua_State* L, int index);
     void serializeSetter(const std::string& setter, lua_State* L, std::initializer_list<int> list);
 
-    void serializeMember(ObjectRef* parent, const std::string& table, const std::string& key, const std::string& setter, lua_State* L, int index)
-        {serializeMember(parent, table, serializeKey(key, setter), L, index);}
+    void serializeMember(ObjectRef* parent, const std::string& table, const std::string& key, const std::string& setter, lua_State* L, IUserdata* member);
 
     void serializeEnv(lua_State* L, int index)
     {

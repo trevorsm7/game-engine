@@ -168,12 +168,7 @@ void TiledCollider::clone(lua_State* L, TiledCollider* source)
 
 void TiledCollider::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
 {
-    if (m_tilemap)
-    {
-        m_tilemap->pushUserdata(L);
-        serializer->serializeMember(ref, "", "tilemap", "setTilemap", L, -1);
-        lua_pop(L, 1);
-    }
+    serializer->serializeMember(ref, "", "tilemap", "setTilemap", L, m_tilemap);
 }
 
 int TiledCollider::script_getTileMap(lua_State* L)
