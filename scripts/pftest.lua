@@ -19,6 +19,9 @@ map:setTiles(0, 1, 1, 13, 3)
 map:setTiles(19, 1, 1, 13, 3)
 map:setTiles(1, 1, 18, 13, 1)
 
+map:setTiles(16, 1, 1, 3, 3)
+map:setTiles(17, 3, 2, 1, 3)
+
 map:setTiles(5, 5, 10, 1, 3)
 map:setTiles(5, 10, 10, 1, 3)
 

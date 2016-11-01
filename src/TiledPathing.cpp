@@ -75,8 +75,11 @@ bool TiledPathing::findPath(int x1, int y1, int x2, int y2, int& xOut, int& yOut
         return true;
     }
 
-    //using namespace std::chrono;
-    //high_resolution_clock::time_point t1 = high_resolution_clock::now();
+//#define PATH_TIMING
+#ifdef PATH_TIMING
+    using namespace std::chrono;
+    high_resolution_clock::time_point t1 = high_resolution_clock::now();
+#endif
 
     std::vector<Node> graph(size);
     for (int i = 0; i < size; ++i)
@@ -85,72 +88,67 @@ bool TiledPathing::findPath(int x1, int y1, int x2, int y2, int& xOut, int& yOut
         graph[i].valid = !m_tilemap->isCollidable(i);
     }
 
-    // Start at source
+    // Start at destination
     std::queue<int> toVisit;
-    toVisit.push(src);
-    graph[src].weight = 1;
+    toVisit.push(dst);
+    graph[dst].weight = 1;
 
     while (!toVisit.empty())
     {
         int node = toVisit.front();
-        assert(node != dst);
+        assert(node != src);
         toVisit.pop();
 
         int y = node / width;
         int x = node % width;
-        int dx = x2 - x;
-        int dy = y2 - y;
 
-        // Prefer path facing destination
-        if (abs(dx) >= abs(dy))
+        // At each level, alternate between branching priority
+        if (graph[node].weight & 1)
         {
-            dx = (dx >= 0) ? 1 : -1;
-            dy = (dy >= 0) ? width : -width;
-            if (x+dx >= 0 && x+dx < width && visitNode(node, node+dx, dst, graph, toVisit)) break;
-            if (node+dy >= 0 && node+dy < size && visitNode(node, node+dy, dst, graph, toVisit)) break;
-            if (node-dy >= 0 && node-dy < size && visitNode(node, node-dy, dst, graph, toVisit)) break;
-            if (x-dx >= 0 && x-dx < width && visitNode(node, node-dx, dst, graph, toVisit)) break;
+            if (x+1 < width && visitNode(node, node+1, src, graph, toVisit)) break;
+            if (x-1 >= 0 && visitNode(node, node-1, src, graph, toVisit)) break;
+            if (y+1 < height && visitNode(node, node+width, src, graph, toVisit)) break;
+            if (y-1 >= 0 < size && visitNode(node, node-width, src, graph, toVisit)) break;
         }
         else
         {
-            dx = (dx >= 0) ? 1 : -1;
-            dy = (dy >= 0) ? width : -width;
-            if (node+dy >= 0 && node+dy < size && visitNode(node, node+dy, dst, graph, toVisit)) break;
-            if (x+dx >= 0 && x+dx < width && visitNode(node, node+dx, dst, graph, toVisit)) break;
-            if (x-dx >= 0 && x-dx < width && visitNode(node, node-dx, dst, graph, toVisit)) break;
-            if (node-dy >= 0 && node-dy < size && visitNode(node, node-dy, dst, graph, toVisit)) break;
+            if (y-1 >= 0 < size && visitNode(node, node-width, src, graph, toVisit)) break;
+            if (y+1 < height && visitNode(node, node+width, src, graph, toVisit)) break;
+            if (x-1 >= 0 && visitNode(node, node-1, src, graph, toVisit)) break;
+            if (x+1 < width && visitNode(node, node+1, src, graph, toVisit)) break;
         }
     }
 
+#ifdef PATH_TIMING
+    high_resolution_clock::time_point t2 = high_resolution_clock::now();
+    microseconds time_span = duration_cast<microseconds>(t2 - t1);
+    fprintf(stderr, "pathfinding took %lld usec\n", int64_t(time_span.count()));
+#endif
+
     // If node still valid, it wasn't visited
-    if (graph[dst].valid != false)
+    if (graph[src].valid != false)
         return false;
 
-    //high_resolution_clock::time_point t2 = high_resolution_clock::now();
-    //microseconds time_span = duration_cast<microseconds>(t2 - t1);
-    //fprintf(stderr, "pathfinding took %lld usec\n", int64_t(time_span.count()));
-
-    // TODO Walk forwards to build path
-    const int pathLength = graph[dst].weight;
+#if 1
+    // HACK debug visualization
+    const int pathLength = graph[src].weight;
     m_points.reserve(1 + pathLength * 2);
     m_points.push_back(pathLength);
-    m_points.push_back(dst % width + 0.6f);
-    m_points.push_back(dst / width + 0.6f);
 
-    // Walk backwards from destination to source
-    int node = dst, prev = dst;
-    for (int i = 1; i < pathLength; ++i)
+    int node = src;
+    while (true)
     {
-        prev = node;
-        node = graph[node].from;
         m_points.push_back(node % width + 0.6f);
         m_points.push_back(node / width + 0.6f);
+        if (node == dst)
+            break;
+        node = graph[node].from;
     }
-    assert(graph[prev].from == src);
-    assert(node == src);
+#endif
 
-    xOut = prev % width;
-    yOut = prev / width;
+    int next = graph[src].from;
+    xOut = next % width;
+    yOut = next / width;
     return true;
 }
 
