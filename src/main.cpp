@@ -1,10 +1,48 @@
-#include "GlfwInstance.hpp"
-#include "SDLInstance.hpp"
 #include "Scene.hpp"
 
 #include <cstdio>
+#include <cassert>
 #include <string>
 #include <unistd.h>
+
+typedef void (*RunFunc)(const char*);
+struct Platform {const char* const key; RunFunc func;};
+
+#ifdef PLATFORM_SDL
+#undef PLATFORM_SDL
+#include "SDLInstance.hpp"
+#define PLATFORM_SDL {"-sdl", SdlInstance::run},
+#else
+#define PLATFORM_SDL
+#endif
+
+#ifdef PLATFORM_GLFW
+#undef PLATFORM_GLFW
+#include "GlfwInstance.hpp"
+#define PLATFORM_GLFW {"-glfw", GlfwInstance::run},
+#else
+#define PLATFORM_GLFW
+#endif
+
+static Platform platforms[] = {PLATFORM_SDL PLATFORM_GLFW {nullptr, nullptr}};
+
+bool findPlatform(const char* key, RunFunc& func)
+{
+    Platform* entry = platforms;
+
+    while (entry->key != nullptr)
+    {
+        if (strcmp(key, entry->key) == 0)
+        {
+            func = entry->func;
+            return true;
+        }
+
+        ++entry;
+    }
+
+    return false;
+}
 
 bool findFile(const char* name, std::string& fullpath)
 {
@@ -23,21 +61,14 @@ bool findFile(const char* name, std::string& fullpath)
 
 int main(int argc, char* argv[])
 {
-    const char* script = "snake.lua";
-    bool useSDL = true;
+    const char* script = "breakout.lua";
+    RunFunc platform = platforms[0].func;
+    assert(platform != nullptr);
 
     for (int i = 1; i < argc; ++i)
     {
-        if (strcmp(argv[i], "-sdl") == 0)
-        {
-            useSDL = true;
+        if (findPlatform(argv[i], platform))
             continue;
-        }
-        else if (strcmp(argv[i], "-glfw") == 0)
-        {
-            useSDL = false;
-            continue;
-        }
 
         script = argv[i];
     }
@@ -48,12 +79,9 @@ int main(int argc, char* argv[])
         fprintf(stderr, "Unable to find file %s\n", script);
         return -1;
     }
-    fprintf(stderr, "Loading script %s\n", fullpath.c_str());
 
-    if (useSDL)
-        SdlInstance::run(fullpath.c_str());
-    else
-        GlfwInstance::run(fullpath.c_str());
+    fprintf(stderr, "Loading script %s\n", fullpath.c_str());
+    platform(fullpath.c_str());
 
     return 0;
 }
