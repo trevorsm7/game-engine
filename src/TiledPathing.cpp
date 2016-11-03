@@ -51,8 +51,7 @@ bool TiledPathing::findPath(int x1, int y1, int x2, int y2, int& xOut, int& yOut
     if (!m_tilemap)
         return false;
 
-    TileIndex* tileIndex = m_tilemap->getTileIndex();
-    if (!tileIndex)
+    if (!m_tilemap->getTileIndex())
         return false;
 
     const int width = m_tilemap->getCols();

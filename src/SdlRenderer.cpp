@@ -124,7 +124,7 @@ void SdlRenderer::drawSprite(const std::string& name)
 void SdlRenderer::drawTiles(TileMap* tilemap)
 {
     assert(tilemap != nullptr);
-    TileIndex* tileindex = tilemap->getTileIndex();
+    const TileIndex* tileindex = tilemap->getTileIndex();
     if (!tileindex)
         return;
 

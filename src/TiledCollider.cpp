@@ -13,7 +13,7 @@ bool TiledCollider::testCollision(float x, float y) const
 {
     assert(m_actor != nullptr);
 
-    TileIndex* tileIndex = m_tilemap->getTileIndex();
+    const TileIndex* tileIndex = m_tilemap->getTileIndex();
     if (!tileIndex)
         return false;
 
@@ -43,7 +43,7 @@ bool TiledCollider::testCollision(const Aabb& aabb) const
 {
     assert(m_actor != nullptr);
 
-    TileIndex* tileIndex = m_tilemap->getTileIndex();
+    const TileIndex* tileIndex = m_tilemap->getTileIndex();
     if (!tileIndex)
         return false;
 
@@ -88,7 +88,7 @@ bool TiledCollider::testCollision(float deltaX, float deltaY, const ICollider* o
     assert(m_actor != nullptr);
     assert(other != nullptr);
 
-    TileIndex* tileIndex = m_tilemap->getTileIndex();
+    const TileIndex* tileIndex = m_tilemap->getTileIndex();
     if (!tileIndex)
         return false;
 

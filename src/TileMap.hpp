@@ -18,9 +18,10 @@ public:
     ~TileIndex() {}
 
     const std::string& getImageFile() const {return m_image;}
-    bool isCollidable(int i) const {assert(isValidIndex(i)); return i > 0 && m_flags[i-1] & 1;}
     int getCols() const {return m_cols;}
     int getRows() const {return m_rows;}
+
+    bool isCollidable(int i) const {assert(isValidIndex(i)); return i > 0 && m_flags[i-1] & 1;}
 
     // NOTE using 0 as null tile and 1 as first real tile
     bool isValidIndex(int i) const {return i >= 0 && i <= m_cols * m_rows;}
@@ -55,7 +56,7 @@ class TileMap : public TUserdata<TileMap>
 public:
     ~TileMap() {}
 
-    TileIndex* getTileIndex() {return m_index;}
+    const TileIndex* getTileIndex() const {return m_index;}
     int getIndex(int i) const {assert(isValidIndex(i)); return m_map[i];}
     int getIndex(int x, int y) const {assert(isValidIndex(x, y)); return m_map[toIndex(x, y)];}
     int getCols() const {return m_cols;}
@@ -64,11 +65,13 @@ public:
     bool isValidIndex(int i) const {return i >= 0 && i < m_cols * m_rows;}
     bool isValidIndex(int x, int y) const {return x >= 0 && y >= 0 && x < m_cols && y < m_rows;}
 
-    bool isCollidable(int i) const {assert(m_index); return m_index->isCollidable(getIndex(i));}
-    bool isCollidable(int x, int y) const {assert(m_index); return m_index->isCollidable(getIndex(x, y));}
+    bool isCollidable(int i) const {return isCollidableIndex(getIndex(i));}
+    bool isCollidable(int x, int y) const {return isCollidableIndex(getIndex(x, y));}
 
 private:
     int toIndex(int x, int y) const {return y * m_cols + x;}
+
+    bool isCollidableIndex(int i) const {assert(m_index); return m_index->isValidIndex(i) && m_index->isCollidable(i);}
 
 private:
     friend class TUserdata<TileMap>;
