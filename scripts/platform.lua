@@ -15,11 +15,11 @@ player = Actor
 game:addActor(player)
 player.velX = 0
 
-function player:collided(hit)
+function player:onCollide(hit)
     hit:getGraphics():setColor(red)
 end
 
-function player:update(delta)
+function player:onUpdate(delta)
     self:addAcceleration(0, 10)
 
     local velX, velY = self:getVelocity()
@@ -59,7 +59,7 @@ function addMovingBox(x, y)
         transform = {position = {x, y}}
     }
     game:addActor(box)
-    box.update = updateBox
+    box.onUpdate = updateBox
     allBoxes[num] = box
     return box
 end

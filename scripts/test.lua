@@ -57,7 +57,7 @@ end
 local closure1 = gen(2)
 local closure2 = gen(3)
 
-player.update = function()
+player.onUpdate = function()
     local a = closure1()
     local b = closure2()
     print("result", mult(a, b))
@@ -65,7 +65,7 @@ player.update = function()
     quit()
 end
 
-table1[player.update] = "function key"
+table1[player.onUpdate] = "function key"
 table1[Actor.getGraphics] = "global key"
 
 --Test overriding the _ENV upvalue

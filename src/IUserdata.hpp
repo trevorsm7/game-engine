@@ -64,6 +64,28 @@ protected:
 
     bool pcall(lua_State* L, const char* method, int in, int out);
 
+    template <class T> void pushT(lua_State* L, T arg);
+    template <class T> void popT(lua_State* L, T& arg, int i);
+
+    template <int N=0, class R>
+    R pcallT(lua_State* L, const char* method, R ret)
+    {
+        if (pcall(L, method, N, 1))
+        {
+            popT(L, ret, -1);
+            lua_pop(L, 1);
+        }
+
+        return ret;
+    }
+
+    template <int N=0, class R, class A, class ...As>
+    R pcallT(lua_State* L, const char* method, R ret, A arg, As ...args)
+    {
+        pushT(L, arg);
+        return pcallT<N+1>(L, method, ret, args...);
+    }
+
     // Base cases for TUserdata helper recursion
     static void initInterface(lua_State* L); // TODO rename initHelper or similar?
     static void constructHelper(lua_State* L, IUserdata* ptr, int index);
@@ -85,6 +107,16 @@ private:
     static int script_index(lua_State* L);
     static int script_newindex(lua_State* L);
 };
+
+template <> inline void IUserdata::pushT(lua_State* L, int arg) {lua_pushinteger(L, arg);}
+template <> inline void IUserdata::pushT(lua_State* L, float arg) {lua_pushnumber(L, arg);}
+template <> inline void IUserdata::pushT(lua_State* L, bool arg) {lua_pushboolean(L, arg);}
+template <> inline void IUserdata::pushT(lua_State* L, const char* arg) {lua_pushstring(L, arg);}
+
+template <> inline void IUserdata::popT(lua_State* L, int& arg, int i) {arg = lua_tointeger(L, i);}
+template <> inline void IUserdata::popT(lua_State* L, float& arg, int i) {arg = lua_tonumber(L, i);}
+template <> inline void IUserdata::popT(lua_State* L, bool& arg, int i) {arg = lua_toboolean(L, i);}
+template <> inline void IUserdata::popT(lua_State* L, const char*& arg, int i) {arg = lua_tostring(L, i);}
 
 template <class T, class B=IUserdata>
 class TUserdata : public B

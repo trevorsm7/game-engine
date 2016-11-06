@@ -108,15 +108,15 @@ bool IUserdata::pcall(lua_State* L, const char* method, int in, int out)
     scene->setWatchdog(30);
 
     // Do a protected call; pops function, udata, and args
-    if (lua_pcall(L, in + 1, out, 0) != 0)
+    int rval = lua_pcall(L, in + 1, out, 0);
+    scene->clearWatchdog();
+
+    if (rval != 0)
     {
         fprintf(stderr, "%s\n", lua_tostring(L, -1));
         lua_pop(L, 1); // remove the error string from the stack
-        scene->clearWatchdog();
         return false;
     }
-
-    scene->clearWatchdog();
 
     return true;
 }

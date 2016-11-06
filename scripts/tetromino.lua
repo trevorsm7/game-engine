@@ -492,7 +492,7 @@ current = Actor
             self.ori = ori
         end,
 
-        update = function(self, time)
+        onUpdate = function(self, time)
             local dx, dy = 0, 0
             local x, y = self:getPosition()
             local tetromino = self:getGraphics():getTileMap()

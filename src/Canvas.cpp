@@ -36,15 +36,19 @@ void Canvas::update(lua_State *L, float delta)
         return;
 
     // Call user-defined update method
-    // TODO use preUpdate and postUpdate instead?
     lua_pushnumber(L, delta);
-    pcall(L, "update", 1, 0);
+    pcall(L, "onUpdatePre", 1, 0);
 
     updatePhysics(L, delta);
 
     // Order of update dispatch doesn't really matter; choose bottom to top
     for (auto& actor : m_actors)
         actor->update(L, delta);
+
+    // Call user-defined update method
+    // TODO is this necessary?
+    lua_pushnumber(L, delta);
+    pcall(L, "onUpdatePost", 1, 0);
 
     // Recently added Actors should now be added to the end
     processAddedActors(L);
@@ -84,6 +88,9 @@ bool Canvas::mouseEvent(lua_State *L, MouseEvent& event)
     float x, y;
     m_camera->mouseToWorld(event, x, y);
 
+    if (pcallT(L, "onClickPre", false, event.down))
+        return true;
+
     // NOTE: iterate in reverse order of rendering
     auto end = m_actors.rend();
     for (auto it = m_actors.rbegin(); it != end; ++it)
@@ -102,6 +109,9 @@ bool Canvas::mouseEvent(lua_State *L, MouseEvent& event)
         if ((*it)->mouseEvent(L, event.down))
             return true; // only absorb click if Actor chose to handle it
     }
+
+    if (pcallT(L, "onClickPost", false, event.down))
+        return true;
 
     return false;
 }

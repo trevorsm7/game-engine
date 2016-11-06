@@ -41,13 +41,13 @@ function addPhysicsBox(canvas, x, y, m, cor, ay)
     canvas:addActor(box)
     box:setPosition(x, y)
     if ay then
-        function box:update(delta)
+        function box:onUpdate(delta)
             self:addAcceleration(0, ay)
         end
     end
     box.color = 1
-    box.collided = collideBox
-    --box.update = updateBox
+    box.onCollide = collideBox
+    --box.onUpdate = updateBox
     return box
 end
 
@@ -126,13 +126,13 @@ reset[4] = function(canvas)
     local center = addPhysicsBox(canvas, -1, 1, 1)
     center:setVelocity(speed, 0)
     --canvas:setCenter(center)
-    --[[function center:update()
+    --[[function center:onUpdate()
         canvas:setCenter(self)
     end]]--
     -- note 0 is up, winding is cw
     local angle = -45
     local winding = 360
-    function canvas:update(tick)
+    function canvas:onUpdatePre(tick)
         local freq = speed / 8
         angle = angle + tick * freq * winding
         if angle > 405 then

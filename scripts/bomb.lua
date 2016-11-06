@@ -21,7 +21,7 @@ local function newFire(canvas, x, y)
     fire:setPosition(x, y)
     fire.time = 1
 
-    function fire:update(delta)
+    function fire:onUpdate(delta)
         local canvas = self:getCanvas()
         if not canvas then return end
 
@@ -47,7 +47,7 @@ local function newBomb(canvas, x, y)
     bomb:setPosition(x, y)
     bomb.time = 2
 
-    function bomb:update(delta)
+    function bomb:onUpdate(delta)
         local canvas = self:getCanvas()
         if not canvas then return end
 
@@ -140,7 +140,7 @@ local function newNerd(canvas)--, x, y)
         return true
     end
 
-    function nerd:update(delta)
+    function nerd:onUpdate(delta)
         local canvas = self:getCanvas()
         if not canvas then return end
 
@@ -223,7 +223,7 @@ local function newPlayer(canvas, x, y)
         end
     end
 
-    function player:update(delta)
+    function player:onUpdate(delta)
         if self.moveWait > 0 then
             self.moveWait = self.moveWait - delta
         end

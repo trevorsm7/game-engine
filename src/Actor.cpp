@@ -24,7 +24,7 @@ ResourceManager* Actor::getResourceManager() const
 void Actor::update(lua_State* L, float delta)
 {
     lua_pushnumber(L, delta);
-    pcall(L, "update", 1, 0);
+    pcall(L, "onUpdate", 1, 0);
 
     if (m_graphics)
         m_graphics->update(delta);
@@ -52,16 +52,7 @@ void Actor::render(IRenderer* renderer)
 
 bool Actor::mouseEvent(lua_State* L, bool down)//MouseEvent& event)
 {
-    bool handled = false;
-
-    lua_pushboolean(L, down);
-    if (pcall(L, "mouse", 1, 1))
-    {
-        handled = lua_isboolean(L, -1) && lua_toboolean(L, -1);
-        lua_pop(L, 1);
-    }
-
-    return handled;
+    return pcallT(L, "onClick", false, down);
 }
 
 void Actor::collideEvent(lua_State* L, Actor* with)
@@ -69,7 +60,7 @@ void Actor::collideEvent(lua_State* L, Actor* with)
     // Push other Actor's full userdata on stack
     assert(with != nullptr);
     with->pushUserdata(L);
-    pcall(L, "collided", 1, 0);
+    pcall(L, "onCollide", 1, 0);
 }
 
 bool Actor::testMouse(float x, float y) const

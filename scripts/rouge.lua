@@ -17,7 +17,7 @@ local function newPlayer(canvas, x, y)
     canvas:addActor(player)
     canvas:setCenter(player)
 
-    function player:update(delta)
+    function player:onUpdate(delta)
         local canvas = self:getCanvas()
         if canvas then canvas:setCenter(self) end
     end
@@ -84,7 +84,7 @@ local function newNerd(canvas, x, y)
         end
     end
 
-    function nerd:update(delta)
+    function nerd:onUpdate(delta)
         local canvas = self:getCanvas()
         if not canvas or not player or player:getCanvas() ~= canvas then return end
 
@@ -191,7 +191,7 @@ local game = Canvas
     {
         time = gameTime,
         spawnTime = 10,
-        update = function(self)
+        onUpdatePre = function(self)
             if self.spawnTime <= gameTime - self.time then
                 self.time = self.time + self.spawnTime
                 local idx = math.random(1, #spawnPoints)

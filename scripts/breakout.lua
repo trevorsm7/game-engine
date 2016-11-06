@@ -13,7 +13,7 @@ local leftWall = Actor
 {
     collider = AabbCollider{group = 4, mask = 3},
     transform = {position = {-1, 0}, scale = {1, 16}},
-    members = {collided = wallHit}
+    members = {onCollide = wallHit}
 }
 game:addActor(leftWall)
 
@@ -21,7 +21,7 @@ local rightWall = Actor
 {
     collider = AabbCollider{group = 4, mask = 3},
     transform = {position = {20, 0}, scale = {1, 16}},
-    members = {collided = wallHit}
+    members = {onCollide = wallHit}
 }
 game:addActor(rightWall)
 
@@ -29,7 +29,7 @@ local topWall = Actor
 {
     collider = AabbCollider{group = 4, mask = 1},
     transform = {position = {0, -1}, scale = {20, 1}},
-    members = {collided = wallHit}
+    members = {onCollide = wallHit}
 }
 game:addActor(topWall)
 
@@ -40,10 +40,10 @@ local bottomWall = Actor
     members =
     {
         -- reset the ball if it hits the bottom wall
-        collided = function (self, hit)
+        onCollide = function (self, hit)
             if hit == ball then
                 ball.attached = true
-                ball:update()
+                ball:onUpdate()
             end
         end
     }
@@ -62,7 +62,7 @@ paddle = Actor
     members =
     {
         vel = 0,
-        update = function (self)
+        onUpdate = function (self)
             velx = self:getVelocity()
             self:addAcceleration((self.vel - velx) * 5, 0)
         end
@@ -79,7 +79,7 @@ ball = Actor
     members =
     {
         -- keep the ball stuck to the paddle until it is launched
-        update = function(self)
+        onUpdate = function(self)
             if self.attached then
                 local x, y = paddle:getPosition()
                 self:setPosition(x + 1.5, y - 1)
@@ -89,7 +89,7 @@ ball = Actor
 
         -- simulate friction between the paddle and the ball
         -- TODO add friction coefficient to do this automatically in-engine
-        collided = function(self, hit)
+        onCollide = function(self, hit)
             if hit == paddle then
                 local padvelx = paddle:getVelocity()
                 local velx, vely = self:getVelocity()
@@ -121,7 +121,7 @@ function addBrick(x, y, color)
         graphics = SpriteGraphics{sprite="square.tga", color=color},
         collider = AabbCollider{group=8, mask=1},
         transform = {position = {x, y}, scale = {2, 1}},
-        members = {collided = brick_collided}
+        members = {onCollide = brick_collided}
     }
     game:addActor(brick)
 
@@ -140,11 +140,11 @@ function resetGame()
     -- reset paddle position
     paddle:setPosition(8, 14)
     paddle.vel = 0
-    paddle:update()
+    paddle:onUpdate()
 
     -- reset ball position
     ball.attached = true
-    ball:update()
+    ball:onUpdate()
 
     -- clear any bricks currently in play
     for _, v in ipairs(bricks) do

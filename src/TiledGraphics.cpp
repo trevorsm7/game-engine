@@ -19,17 +19,22 @@ bool TiledGraphics::testBounds(float x, float y) const
 {
     assert(m_actor != nullptr);
 
-    // TODO: shouldn't be able to click invisible sprite...
-    // but we should make an IGraphics impl for invisible triggers
-    //if (!m_visible)
-    //    return false;
+    if (!isVisible() || !m_tilemap)
+        return false;
 
     const Transform& transform = m_actor->getTransform();
-    const float left = transform.getX();
-    const float bottom = transform.getY();
-    const float right = left + transform.getW();
-    const float top = bottom + transform.getH();
-    return (x >= left && x < right && y >= bottom && y < top);
+    x -= transform.getX();
+    y -= transform.getY();
+    const float width = transform.getW();
+    const float height = transform.getH();
+    if (x < 0 || x >= width || y < 0 || y >= height)
+        return false;
+
+    // TODO check for invisible/masked tiles
+    int tileX = x * m_tilemap->getCols() / width;
+    int tileY = y * m_tilemap->getRows() / height;
+    int index = m_tilemap->getIndex(tileX, tileY);
+    return (index != 0);
 }
 
 void TiledGraphics::construct(lua_State* L)

@@ -12,7 +12,7 @@ game:addActor(player)
 game:setCenter(10, 0)
 camY = 0
 --game:setCenter(player)
-function player:update(delta)
+function player:onUpdate(delta)
     local canvas = self:getCanvas()
     if not canvas then return end
 
@@ -51,7 +51,7 @@ function addPlatform(canvas, x, y, w, h)
     }
     canvas:addActor(platform)
     platform:setVelocity(-5, 0)
-    function platform:update()
+    function platform:onUpdate()
         self:addAcceleration(-0.2, 0)
         local x, y = self:getPosition()
         if x < -10 then

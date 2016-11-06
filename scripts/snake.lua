@@ -51,9 +51,9 @@ local function newApple(canvas)
     end
 
     -- godmode: eat apples by clicking on them
-    function apple:mouse(down)
-        if down and god and not god.dead then
-            god.score = god.score + self.score
+    function apple:onClick(down)
+        if down and canvas and not canvas.dead then
+            canvas.score = canvas.score + self.score
             self:eaten()
         end
         return true
@@ -104,7 +104,7 @@ local function newSnake(canvas, name, pos, dir, color)
     end
 
     -- put most of the snake logic in the update function
-    function snake:update(delta)
+    function snake:onUpdate(delta)
         local canvas = self:getCanvas()
         if not canvas then return end
 
@@ -168,23 +168,8 @@ end
 local function resetGame(game)
     game:clear()
 
-    god = Actor
-    {
-        layer = -1,
-        -- NOTE: currently, we need a graphics component to receive mouse events
-        graphics = SpriteGraphics{sprite="unused", visible=false},
-        transform = {scale = {20, 15}}
-    }
-    game:addActor(god)
-    god.score = 0
-
-    function god:mouse(down)
-        if down and not self.dead then
-            print("God is dead! Score: "..self.score)
-            self.dead = true
-        end
-        return true
-    end
+    game.score = 0
+    game.dead = false
 
     local player1 = newSnake(game, "Red", {1, 7}, {1, 0}, red)
     registerControl("a", player1:moveFactory{-1, 0})
@@ -207,6 +192,14 @@ local game = Canvas({20, 15}, true)
 addCanvas(game)
 resetGame(game)
 
+function game:onClickPost(down)
+    if down and not self.dead then
+        print("God is dead! Score: "..self.score)
+        self.dead = true
+    end
+    return true
+end
+
 -- create game menu
 local menu = Canvas({20, 15}, true)
 menu:setCenter(0, 0)
@@ -219,7 +212,7 @@ local continue = Actor
     transform = {position = {-5, -4}, scale = {10, 2}}
 }
 menu:addActor(continue)
-function continue:mouse(down)
+function continue:onClick(down)
     if (down) then
         menu:setVisible(false)
         game:setPaused(false)
@@ -233,7 +226,7 @@ local newGame = Actor
     transform = {position = {-5, -1}, scale = {10, 2}}
 }
 menu:addActor(newGame)
-function newGame:mouse(down)
+function newGame:onClick(down)
     if (down) then
         resetGame(game)
         menu:setVisible(false)
@@ -248,7 +241,7 @@ local endGame = Actor
     transform = {position = {-5, 2}, scale = {10, 2}}
 }
 menu:addActor(endGame)
-function endGame:mouse(down)
+function endGame:onClick(down)
     if (down) then
         quit()
     end

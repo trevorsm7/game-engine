@@ -20,10 +20,8 @@ bool SpriteGraphics::testBounds(float x, float y) const
 {
     assert(m_actor != nullptr);
 
-    // TODO: shouldn't be able to click invisible sprite...
-    // but we should make an IGraphics impl for invisible triggers
-    //if (!m_visible)
-    //    return false;
+    if (!isVisible())
+        return false;
 
     const Transform& transform = m_actor->getTransform();
     const float left = transform.getX();
