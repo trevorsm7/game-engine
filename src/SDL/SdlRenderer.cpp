@@ -133,8 +133,9 @@ void SdlRenderer::drawTiles(TileMap* tilemap)
     if (!texture)
         return; // TODO: we should at least have a placeholder instead of null; assert here?
 
+    const TileMask* tileMask = tilemap->getTileMask();
+
     // Apply the render color to the texture
-    // NOTE will need to modulate per tile if we add color mask to tilemap
     SDL_SetTextureColorMod(texture->getPtr(), m_color.r, m_color.g, m_color.b);
 
     // Set the source rect from which we will draw the texture
@@ -177,6 +178,18 @@ void SdlRenderer::drawTiles(TileMap* tilemap)
             // Draw tilemap from top-left
             target.x = originX + int(x * floatW);
             target.y = originY + int(y * floatH);
+
+            if (tileMask)
+            {
+                const uint8_t mask = tileMask->getMask(x, y);
+                if (mask == 0)
+                    continue;
+
+                uint8_t r = uint16_t(m_color.r) * uint16_t(mask + 1) / 256;
+                uint8_t g = uint16_t(m_color.g) * uint16_t(mask + 1) / 256;
+                uint8_t b = uint16_t(m_color.b) * uint16_t(mask + 1) / 256;
+                SDL_SetTextureColorMod(texture->getPtr(), r, g, b);
+            }
 
             // Draw the texture
             SDL_RenderCopy(m_renderer, texture->getPtr(), &source, &target);

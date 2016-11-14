@@ -13,6 +13,7 @@ void TiledGraphics::render(IRenderer* renderer)
 
     renderer->setColor(m_color.r, m_color.g, m_color.b);
     renderer->drawTiles(m_tilemap);
+    renderer->drawLines(m_tilemap->m_debug); // TODO remove
 }
 
 bool TiledGraphics::testBounds(float x, float y) const

@@ -222,7 +222,7 @@ public:
     }
 
     template <class T>
-    void setArray(ObjectRef* ref, const std::string& table, const std::string& key, T* value, int length)
+    void setArray(ObjectRef* ref, const std::string& table, const std::string& key, const T* value, int length)
     {
         auto str = std::string("{");
         for (int i = 0; i < length; ++i)
@@ -236,6 +236,12 @@ public:
         KeyRef* keyRef = serializeKey(key, "");
         LiteralRef* valueRef = serializeLiteral(str);
         ref->setInlineRef(table, keyRef, valueRef);
+    }
+
+    template <class T>
+    void setArray(ObjectRef* ref, const std::string& table, const std::string& key, const std::vector<T>& value)
+    {
+        setArray(ref, table, key, value.data(), value.size());
     }
 
     void populateGlobals(const void* G, const std::string& prefix, lua_State* L, int index);

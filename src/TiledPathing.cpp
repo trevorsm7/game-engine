@@ -64,7 +64,8 @@ bool TiledPathing::findPath(int x1, int y1, int x2, int y2, int& xOut, int& yOut
 
     const int src = x1 + y1 * width;
     const int dst = x2 + y2 * width;
-    if (m_tilemap->isCollidable(src) || m_tilemap->isCollidable(dst))
+    if (m_tilemap->isFlagSet(src, TileIndex::MoveBlocking) ||
+        m_tilemap->isFlagSet(dst, TileIndex::MoveBlocking))
         return false;
 
     if (src == dst)
@@ -84,7 +85,7 @@ bool TiledPathing::findPath(int x1, int y1, int x2, int y2, int& xOut, int& yOut
     for (int i = 0; i < size; ++i)
     {
         //graph[i].weight = std::numeric_limits<int>::max();
-        graph[i].valid = !m_tilemap->isCollidable(i);
+        graph[i].valid = !m_tilemap->isFlagSet(i, TileIndex::MoveBlocking);
     }
 
     // Start at destination
@@ -107,11 +108,11 @@ bool TiledPathing::findPath(int x1, int y1, int x2, int y2, int& xOut, int& yOut
             if (x+1 < width && visitNode(node, node+1, src, graph, toVisit)) break;
             if (x-1 >= 0 && visitNode(node, node-1, src, graph, toVisit)) break;
             if (y+1 < height && visitNode(node, node+width, src, graph, toVisit)) break;
-            if (y-1 >= 0 < size && visitNode(node, node-width, src, graph, toVisit)) break;
+            if (y-1 >= 0 && visitNode(node, node-width, src, graph, toVisit)) break;
         }
         else
         {
-            if (y-1 >= 0 < size && visitNode(node, node-width, src, graph, toVisit)) break;
+            if (y-1 >= 0 && visitNode(node, node-width, src, graph, toVisit)) break;
             if (y+1 < height && visitNode(node, node+width, src, graph, toVisit)) break;
             if (x-1 >= 0 && visitNode(node, node-1, src, graph, toVisit)) break;
             if (x+1 < width && visitNode(node, node+1, src, graph, toVisit)) break;
@@ -128,7 +129,7 @@ bool TiledPathing::findPath(int x1, int y1, int x2, int y2, int& xOut, int& yOut
     if (graph[src].valid != false)
         return false;
 
-#if 1
+#if 0
     // HACK debug visualization
     const int pathLength = graph[src].weight;
     m_points.reserve(1 + pathLength * 2);

@@ -13,8 +13,7 @@ bool TiledCollider::testCollision(float x, float y) const
 {
     assert(m_actor != nullptr);
 
-    const TileIndex* tileIndex = m_tilemap->getTileIndex();
-    if (!tileIndex)
+    if (!m_tilemap->getTileIndex())
         return false;
 
     if (!isCollidable() || !m_tilemap)
@@ -34,17 +33,14 @@ bool TiledCollider::testCollision(float x, float y) const
     if (!m_tilemap->isValidIndex(x, y))
         return false;
 
-    // Get the collision flag at the tile map index
-    int index = m_tilemap->getIndex(tileX, tileY);
-    return tileIndex->isCollidable(index);
+    return m_tilemap->isFlagSet(tileX, tileY, TileIndex::MoveBlocking);
 }
 
 bool TiledCollider::testCollision(const Aabb& aabb) const
 {
     assert(m_actor != nullptr);
 
-    const TileIndex* tileIndex = m_tilemap->getTileIndex();
-    if (!tileIndex)
+    if (!m_tilemap->getTileIndex())
         return false;
 
     if (!isCollidable() || !m_tilemap)
@@ -71,9 +67,7 @@ bool TiledCollider::testCollision(const Aabb& aabb) const
     {
         for (int x = tileLeft; x < tileRight; ++x)
         {
-            // Get the collision flag at the tile map index
-            int index = m_tilemap->getIndex(x, y);
-            if (tileIndex->isCollidable(index))
+            if (m_tilemap->isFlagSet(x, y, TileIndex::MoveBlocking))
                 return true;
         }
     }
@@ -88,8 +82,7 @@ bool TiledCollider::testCollision(float deltaX, float deltaY, const ICollider* o
     assert(m_actor != nullptr);
     assert(other != nullptr);
 
-    const TileIndex* tileIndex = m_tilemap->getTileIndex();
-    if (!tileIndex)
+    if (!m_tilemap->getTileIndex())
         return false;
 
     if (!isCollidableWith(other) || !m_tilemap)
@@ -113,9 +106,7 @@ bool TiledCollider::testCollision(float deltaX, float deltaY, const ICollider* o
     {
         for (int x = 0; x < cols; ++x)
         {
-            // Get the collision flag at the tile map index
-            int index = m_tilemap->getIndex(x, y);
-            if (!tileIndex->isCollidable(index))
+            if (!m_tilemap->isFlagSet(x, y, TileIndex::MoveBlocking))
                 continue;
 
             // If collidable, compute AABB for tile

@@ -17,6 +17,8 @@ local function newPlayer(canvas, x, y)
     canvas:addActor(player)
     canvas:setCenter(player)
 
+    updateVisibility(x, y)
+
     function player:onUpdate(delta)
         local canvas = self:getCanvas()
         if canvas then canvas:setCenter(self) end
@@ -54,6 +56,8 @@ local function newPlayer(canvas, x, y)
             gameTime = gameTime + hit:interact(self)
         end
         pf:clearPath()
+
+        updateVisibility(self:getPosition())
     end
 
     return player
@@ -73,6 +77,7 @@ local function newNerd(canvas, x, y)
         }
     }
     canvas:addActor(nerd)
+    setActorVisiblity(nerd)
 
     function nerd:attack(target)
         local hp = target.hp
@@ -111,13 +116,15 @@ local function newNerd(canvas, x, y)
                 break
             end
         end
+
+        setActorVisiblity(self)
     end
 
     return nerd
 end
 
 local function newDoor(canvas, map, x, y)
-    map:setTiles(x, y, 1, 1, 1)
+    map:setTiles(x, y, 1, 1, 5) -- block vision
 
     local door = Actor
     {
@@ -131,11 +138,13 @@ local function newDoor(canvas, map, x, y)
                 local canvas = self:getCanvas()
                 if canvas then
                     if self.open then
+                        map:setTiles(x, y, 1, 1, 5) -- block vision
                         self:setScale(1, 1)
                         self:getCollider():setCollidable(true)
                         self.open = false
                         return 1 -- time to close door
                     else
+                        map:setTiles(x, y, 1, 1, 1) -- unblock vision
                         self:setScale(0.1, 1)
                         self:getCollider():setCollidable(false)
                         self.open = true
@@ -143,10 +152,14 @@ local function newDoor(canvas, map, x, y)
                     end
                 end
                 return 0
+            end,
+            onUpdate = function(self)
+                setActorVisiblity(self)
             end
         }
     }
     canvas:addActor(door)
+    setActorVisiblity(door)
 
     return door
 end
@@ -210,15 +223,39 @@ local map = TileMap
     index = TileIndex
     {
         sprite = "tiles.tga",
-        size = {2, 2},
+        size = {2, 3},
         data =
         {
             0, 0,
-            1, 1
+            3, 3,
+            2, 0
         }
     },
     size = {16, 11}
 }
+
+local visibility = TileMask{size = {map:getSize()}}
+local seen = TileMask{size = {map:getSize()}}
+local overlay = TileMask{size = {map:getSize()}}
+map:setTileMask(seen)
+
+function updateVisibility(x, y)
+    map:castShadows(visibility, x, y, 5)
+    overlay:fillCircle(x, y, 6)
+    visibility:blendMin(overlay)
+
+    seen:clampMask(0, 60)
+    seen:blendMax(visibility)
+    --overlay:fillCircle(x, y, 5, 255, 120)
+    --seen:blendMin(overlay)
+    --overlay:fillCircle(x, y, 4, 255, 160)
+    --seen:blendMin(overlay)
+end
+
+function setActorVisiblity(self)
+    local isVisible = visibility:getMask(self:getPosition()) > 0
+    self:getGraphics():setVisible(isVisible)
+end
 
 pf = TiledPathing{};
 
