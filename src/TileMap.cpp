@@ -2,6 +2,8 @@
 #include "Serializer.hpp"
 #include "ResourceManager.hpp"
 
+#include <cstdlib>
+
 const luaL_Reg TileIndex::METHODS[];
 const luaL_Reg TileMask::METHODS[];
 const luaL_Reg TileMap::METHODS[];
@@ -452,30 +454,103 @@ int TileMap::script_moveTiles(lua_State* L)
 class ShadowVector
 {
     std::vector<std::pair<float, float>> m_vec;
+    int m_mode;
+
+    static constexpr const float k_edge = 0.5f;
+    static constexpr const float k_corner = 0.5f;
+    static constexpr const float k_radius = 0.5f;
 
 public:
-    // TODO replace with an iterator over un-shadowed indices
-    bool isShadowed(float slope1, float slope2)
+    ShadowVector(int mode = 1): m_mode(mode) {}
+
+    void offsetToSlopes(int depth, int offset, float& slopeLow, float& slopeHigh)
     {
-        auto it = m_vec.begin();
-        auto end = m_vec.end();
-        for (; it != end; ++it)
+        if (m_mode == 1)
         {
-            if (slope1 < it->first)
-                return false;
-
-            if (slope1 >= it->first && slope2 <= it->second)
-                return true;
+            slopeLow = float(offset - k_edge) / float(depth);
+            slopeHigh = float(offset + k_edge) / float(depth);
         }
-
-        return false;
+        else if (m_mode == 2)
+        {
+            slopeLow = std::min(
+                float(offset - k_edge) / float(depth - k_corner),
+                float(offset - k_edge) / float(depth + k_corner));
+            slopeHigh = std::max(
+                float(offset + k_edge) / float(depth - k_corner),
+                float(offset + k_edge) / float(depth + k_corner));
+        }
+        else if (m_mode == 3)
+        {
+            const float radius2 = k_radius * k_radius;
+            const float length2 = depth * depth + offset * offset;
+            const float factor = std::sqrtf(length2 / radius2 - 1.f);
+            slopeLow = (offset * factor - depth) / (depth * factor + offset);
+            slopeHigh = (offset * factor + depth) / (depth * factor - offset);
+        }
     }
 
-    void castShadow(float slope1, float slope2)
+    void slopesToOffsets(int depth, float slopeLow, float slopeHigh, int& offsetHigh, int& offsetLow)
     {
-        auto it = m_vec.begin();
-        auto end = m_vec.end();
-        for (; it != end; ++it)
+        if (m_mode == 1)
+        {
+            offsetHigh = std::ceil(slopeLow * depth + k_edge - 1.f); // round-up, -1, for >=
+            offsetLow = std::floor(slopeHigh * depth - k_edge + 1.f); // round-down, +1, for <=
+        }
+        else if (m_mode == 2)
+        {
+            offsetHigh = std::ceil(std::max(
+                slopeLow * (depth - k_corner),
+                slopeLow * (depth + k_corner)) + k_edge - 1.f);
+            offsetLow = std::floor(std::min(
+                slopeHigh * (depth - k_corner),
+                slopeHigh * (depth + k_corner)) - k_edge + 1.f);
+        }
+        else if (m_mode == 3)
+        {
+            const float stepLow = k_radius * std::sqrtf(1.f + (slopeLow * slopeLow));
+            const float stepHigh = k_radius * std::sqrtf(1.f + (slopeHigh * slopeHigh));
+            offsetHigh = std::ceil(slopeLow * depth + stepLow - 1.f); // round-up, -1, for >=
+            offsetLow = std::floor(slopeHigh * depth - stepHigh + 1.f); // round-down, +1, for <=
+        }
+    }
+
+    void getVisible(int depth, int limitLow, int limitHigh, std::vector<int>& visible)
+    {
+        visible.clear(); // TODO does this belong here or outside?
+
+        // Start counting at the lower limit
+        int offset = limitLow;
+        for (auto& shadow : m_vec)
+        {
+            int offsetHigh, offsetLow;
+            slopesToOffsets(depth, shadow.first, shadow.second, offsetHigh, offsetLow);
+
+            // Count up to the start of the shadow
+            assert(offsetHigh <= limitHigh);
+            //offsetHigh = std::min(offsetHigh, limitHigh);
+            for (; offset <= offsetHigh; ++offset)
+                visible.push_back(offset);
+
+            // Start counting again at the end of the shadow
+            assert(offsetLow >= limitLow);
+            //offsetLow = std::max(offsetLow, limitLow);
+            offset = offsetLow;
+        }
+
+        // Count up to the upper limit
+        for (; offset <= limitHigh; ++offset)
+            visible.push_back(offset);
+    }
+
+    void castShadow(int depth, int offset)
+    {
+        // Cast shadow at the midpoint of the block
+        assert(depth >= 1);
+        float slope1, slope2;
+        offsetToSlopes(depth, offset, slope1, slope2);
+        assert(slope2 > slope1);
+
+        for (auto it = m_vec.begin(), end = m_vec.end(); it != end; ++it)
         {
             // No overlap, insert before
             if (slope2 < it->first)
@@ -514,19 +589,18 @@ public:
 
     void debug(int x, int y, int dx, int dy, int i, std::vector<float>& lines)
     {
-        float ip = i + 0.25f;
         auto end = m_vec.end();
         for (auto it = m_vec.begin(); it < end; ++it)
         {
             lines.push_back(4);
-            lines.push_back(x + 0.5f);
-            lines.push_back(y + 0.5f);
-            lines.push_back(x + 0.5f + dx * ip + dy * (it->first * ip));
-            lines.push_back(y + 0.5f + dx * (it->first * ip) + dy * ip);
-            lines.push_back(x + 0.5f + dx * ip + dy * (it->second * ip));
-            lines.push_back(y + 0.5f + dx * (it->second * ip) + dy * ip);
-            lines.push_back(x + 0.5f);
-            lines.push_back(y + 0.5f);
+            lines.push_back(x + 0.5f + dx * (i+1) + abs(dy) * (it->first * (i+1)));
+            lines.push_back(y + 0.5f + abs(dx) * (it->first * (i+1)) + dy * (i+1));
+            lines.push_back(x + 0.5f + dx * i + abs(dy) * (it->first * i));
+            lines.push_back(y + 0.5f + abs(dx) * (it->first * i) + dy * i);
+            lines.push_back(x + 0.5f + dx * i + abs(dy) * (it->second * i));
+            lines.push_back(y + 0.5f + abs(dx) * (it->second * i) + dy * i);
+            lines.push_back(x + 0.5f + dx * (i+1) + abs(dy) * (it->second * (i+1)));
+            lines.push_back(y + 0.5f + abs(dx) * (it->second * (i+1)) + dy * (i+1));
         }
     }
 };
@@ -538,6 +612,7 @@ int TileMap::script_castShadows(lua_State* L)
     const int x = luaL_checkinteger(L, 3);
     const int y = luaL_checkinteger(L, 4);
     const int r = luaL_checkinteger(L, 5);
+    const int mode = luaL_optinteger(L, 6, 1);
 
     const int cols = tileMap->m_cols;
     const int rows = tileMap->m_rows;
@@ -552,7 +627,9 @@ int TileMap::script_castShadows(lua_State* L)
     tileMask->setMask(x, y, 255);
     tileMap->m_debug.clear(); // HACK remove
 
-    ShadowVector rightShadows, bottomShadows, leftShadows, topShadows;
+    //ShadowVector rightShadows, bottomShadows, leftShadows, topShadows;
+    ShadowVector rightShadows(mode), bottomShadows(mode), leftShadows(mode), topShadows(mode);
+    std::vector<int> visible;
 
     for (int i = 1; i <= r; ++i)
     {
@@ -565,26 +642,26 @@ int TileMap::script_castShadows(lua_State* L)
         const int xlb = std::max(xl, 0);
         const int xhb = std::min(xh, cols - 1);
 
+        const int xlbi = std::max(-i, -x);
+        const int xhbi = std::min(i, cols - 1 - x);
+        const int ylbi = std::max(-i, -y);
+        const int yhbi = std::min(i, rows - 1 - y);
+
         // TODO clamp to dx*dx + dy*dy <= r*r as well?
 
         if (xh == xhb)
         {
-            const float dx = float(xh - x);
-            for (int yi = ylb; yi <= yhb; ++yi)
+            //rightShadows.getVisible(i, ylb - y, yhb - y, visible);
+            rightShadows.getVisible(i, ylbi, yhbi, visible);
+
+            for (auto& yi : visible)
             {
-                const float dy = float(yi - y);
-                const float slope1 = (dy - 0.5f) / (dx);
-                const float slope2 = (dy + 0.5f) / (dx);
+                tileMask->setMask(xh, y + yi, 255);
 
-                if (rightShadows.isShadowed(slope1, slope2))
+                if (!tileMap->isFlagSet(xh, y + yi, TileIndex::VisionBlocking))
                     continue;
 
-                tileMask->setMask(xh, yi, 255);
-
-                if (!tileMap->isFlagSet(xh, yi, TileIndex::VisionBlocking))
-                    continue;
-
-                rightShadows.castShadow(slope1, slope2);
+                rightShadows.castShadow(i, yi);
             }
 
             rightShadows.debug(x, y, 1, 0, i, tileMap->m_debug); // HACK remove
@@ -593,22 +670,16 @@ int TileMap::script_castShadows(lua_State* L)
         // TODO refactor with above
         if (yh == yhb)
         {
-            const float dy = float(yh - y);
-            for (int xi = xlb; xi <= xhb; ++xi)
+            bottomShadows.getVisible(i, xlbi, xhbi, visible);
+
+            for (auto& xi : visible)
             {
-                const float dx = float(xi - x);
-                const float slope1 = (dx - 0.5f) / (dy);
-                const float slope2 = (dx + 0.5f) / (dy);
+                tileMask->setMask(x + xi, yh, 255);
 
-                if (bottomShadows.isShadowed(slope1, slope2))
+                if (!tileMap->isFlagSet(x + xi, yh, TileIndex::VisionBlocking))
                     continue;
 
-                tileMask->setMask(xi, yh, 255);
-
-                if (!tileMap->isFlagSet(xi, yh, TileIndex::VisionBlocking))
-                    continue;
-
-                bottomShadows.castShadow(slope1, slope2);
+                bottomShadows.castShadow(i, xi);
             }
 
             bottomShadows.debug(x, y, 0, 1, i, tileMap->m_debug); // HACK remove
@@ -616,22 +687,16 @@ int TileMap::script_castShadows(lua_State* L)
 
         if (xl == xlb)
         {
-            const float dx = float(xl - x);
-            for (int yi = yhb; yi >= ylb; --yi)
+            leftShadows.getVisible(i, ylbi, yhbi, visible);
+
+            for (auto& yi : visible)
             {
-                const float dy = float(yi - y);
-                const float slope1 = (dy + 0.5f) / (dx);
-                const float slope2 = (dy - 0.5f) / (dx);
+                tileMask->setMask(xl, y + yi, 255);
 
-                if (leftShadows.isShadowed(slope1, slope2))
+                if (!tileMap->isFlagSet(xl, y + yi, TileIndex::VisionBlocking))
                     continue;
 
-                tileMask->setMask(xl, yi, 255);
-
-                if (!tileMap->isFlagSet(xl, yi, TileIndex::VisionBlocking))
-                    continue;
-
-                leftShadows.castShadow(slope1, slope2);
+                leftShadows.castShadow(i, yi);
             }
 
             leftShadows.debug(x, y, -1, 0, i, tileMap->m_debug); // HACK remove
@@ -639,22 +704,16 @@ int TileMap::script_castShadows(lua_State* L)
 
         if (yl == ylb)
         {
-            const float dy = float(yl - y);
-            for (int xi = xhb; xi >= xlb; --xi)
+            topShadows.getVisible(i, xlbi, xhbi, visible);
+
+            for (auto& xi : visible)
             {
-                const float dx = float(xi - x);
-                const float slope1 = (dx + 0.5f) / (dy);
-                const float slope2 = (dx - 0.5f) / (dy);
+                tileMask->setMask(x + xi, yl, 255);
 
-                if (topShadows.isShadowed(slope1, slope2))
+                if (!tileMap->isFlagSet(x + xi, yl, TileIndex::VisionBlocking))
                     continue;
 
-                tileMask->setMask(xi, yl, 255);
-
-                if (!tileMap->isFlagSet(xi, yl, TileIndex::VisionBlocking))
-                    continue;
-
-                topShadows.castShadow(slope1, slope2);
+                topShadows.castShadow(i, xi);
             }
 
             topShadows.debug(x, y, 0, -1, i, tileMap->m_debug); // HACK remove

@@ -234,15 +234,16 @@ local map = TileMap
     size = {16, 11}
 }
 
+local shadowMode = 1
 local visibility = TileMask{size = {map:getSize()}}
 local seen = TileMask{size = {map:getSize()}}
 local overlay = TileMask{size = {map:getSize()}}
 map:setTileMask(seen)
 
 function updateVisibility(x, y)
-    map:castShadows(visibility, x, y, 5)
-    overlay:fillCircle(x, y, 6)
-    visibility:blendMin(overlay)
+    map:castShadows(visibility, x, y, 7, shadowMode)
+    overlay:fillCircle(x, y, 8)
+    --visibility:blendMin(overlay)
 
     seen:clampMask(0, 60)
     seen:blendMax(visibility)
@@ -300,3 +301,15 @@ registerControl("right", keyDown(player, "move", {1, 0}))
 registerControl("down", keyDown(player, "move", {0, 1}))
 registerControl("up", keyDown(player, "move", {0, -1}))
 registerControl("action", keyDown(player, "idle"))
+
+function setMode(arg)
+    return function(down)
+        if down then
+            shadowMode = arg
+            updateVisibility(player:getPosition())
+        end
+    end
+end
+registerControl("a", setMode(1))
+registerControl("s", setMode(2))
+registerControl("d", setMode(3))
