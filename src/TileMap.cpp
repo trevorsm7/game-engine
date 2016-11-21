@@ -156,7 +156,7 @@ int TileMask::script_fillCircle(lua_State* L)
         for (int xi = xlb; xi <= xhb; ++xi)
         {
             const int x2 = (xi - x) * (xi - x);
-            if (x2 + y2 <= r2)
+            if (x2 + y2 < r2 + radius) // add a little padding
                 tileMask->setMask(xi, yi, inside);
         }
     }
@@ -616,6 +616,27 @@ public:
     }
 };
 
+inline void castShadows(int x, int y, int dx, int dy, int depth, int limitLow, int limitHigh,
+    ShadowVector& shadows, std::vector<int>& visible, TileMask* tileMask, TileMap* tileMap)
+{
+    shadows.getVisible(depth, limitLow, limitHigh, visible);
+
+    for (auto& offset : visible)
+    {
+        const int tx = x + dx * depth + abs(dy) * offset;
+        const int ty = y + dy * depth + abs(dx) * offset;
+
+        tileMask->setMask(tx, ty, 255);
+
+        if (!tileMap->isFlagSet(tx, ty, TileIndex::VisionBlocking))
+            continue;
+
+        shadows.castShadow(depth, offset);
+    }
+
+    shadows.debug(x, y, dx, dy, depth, tileMap->m_debug); // HACK remove
+}
+
 int TileMap::script_castShadows(lua_State* L)
 {
     TileMap* const tileMap = TileMap::checkUserdata(L, 1);
@@ -635,7 +656,7 @@ int TileMap::script_castShadows(lua_State* L)
     luaL_argcheck(L, (y >= 0 && y < rows), 4, "y is out of bounds");
 
     tileMask->fillMask(0);
-    tileMask->setMask(x, y, 255);
+    tileMask->setMask(x, y, 255); // always light the center
     tileMap->m_debug.clear(); // HACK remove
 
     ShadowVector rightShadows(mode), bottomShadows(mode), leftShadows(mode), topShadows(mode);
@@ -649,91 +670,26 @@ int TileMap::script_castShadows(lua_State* L)
 
     for (int i = 1; i <= r; ++i)
     {
-        const int yl = y - i;
-        const int yh = y + i;
-        const int xl = x - i;
-        const int xh = x + i;
-        const int ylb = std::max(yl, 0);
-        const int yhb = std::min(yh, rows - 1);
-        const int xlb = std::max(xl, 0);
-        const int xhb = std::min(xh, cols - 1);
-
-        const int xlbi = std::max(-i, -x);
-        const int xhbi = std::min(i, cols - 1 - x);
-        const int ylbi = std::max(-i, -y);
-        const int yhbi = std::min(i, rows - 1 - y);
-
         // TODO clamp to dx*dx + dy*dy <= r*r as well?
+        //const int di = std::min(i, int(std::ceil(std::sqrtf(r * r - i * i) + 0.5f)));
+        const int di = i;
 
-        if (xh == xhb)
-        {
-            //rightShadows.getVisible(i, ylb - y, yhb - y, visible);
-            rightShadows.getVisible(i, ylbi, yhbi, visible);
+        const int xlb = std::max(-di, -x);
+        const int xhb = std::min(di, cols - 1 - x);
+        const int ylb = std::max(-di, -y);
+        const int yhb = std::min(di, rows - 1 - y);
 
-            for (auto& yi : visible)
-            {
-                tileMask->setMask(xh, y + yi, 255);
+        if (x + i < cols)
+            castShadows(x, y, 1, 0, i, ylb, yhb, rightShadows, visible, tileMask, tileMap);
 
-                if (!tileMap->isFlagSet(xh, y + yi, TileIndex::VisionBlocking))
-                    continue;
+        if (y + i < rows)
+            castShadows(x, y, 0, 1, i, xlb, xhb, bottomShadows, visible, tileMask, tileMap);
 
-                rightShadows.castShadow(i, yi);
-            }
+        if (x - i >= 0)
+            castShadows(x, y, -1, 0, i, ylb, yhb, leftShadows, visible, tileMask, tileMap);
 
-            rightShadows.debug(x, y, 1, 0, i, tileMap->m_debug); // HACK remove
-        }
-
-        // TODO refactor with above
-        if (yh == yhb)
-        {
-            bottomShadows.getVisible(i, xlbi, xhbi, visible);
-
-            for (auto& xi : visible)
-            {
-                tileMask->setMask(x + xi, yh, 255);
-
-                if (!tileMap->isFlagSet(x + xi, yh, TileIndex::VisionBlocking))
-                    continue;
-
-                bottomShadows.castShadow(i, xi);
-            }
-
-            bottomShadows.debug(x, y, 0, 1, i, tileMap->m_debug); // HACK remove
-        }
-
-        if (xl == xlb)
-        {
-            leftShadows.getVisible(i, ylbi, yhbi, visible);
-
-            for (auto& yi : visible)
-            {
-                tileMask->setMask(xl, y + yi, 255);
-
-                if (!tileMap->isFlagSet(xl, y + yi, TileIndex::VisionBlocking))
-                    continue;
-
-                leftShadows.castShadow(i, yi);
-            }
-
-            leftShadows.debug(x, y, -1, 0, i, tileMap->m_debug); // HACK remove
-        }
-
-        if (yl == ylb)
-        {
-            topShadows.getVisible(i, xlbi, xhbi, visible);
-
-            for (auto& xi : visible)
-            {
-                tileMask->setMask(x + xi, yl, 255);
-
-                if (!tileMap->isFlagSet(x + xi, yl, TileIndex::VisionBlocking))
-                    continue;
-
-                topShadows.castShadow(i, xi);
-            }
-
-            topShadows.debug(x, y, 0, -1, i, tileMap->m_debug); // HACK remove
-        }
+        if (y - i >= 0)
+            castShadows(x, y, 0, -1, i, xlb, xhb, topShadows, visible, tileMask, tileMap);
     }
 
 #ifdef SHADOW_TIMING
