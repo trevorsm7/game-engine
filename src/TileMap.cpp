@@ -3,6 +3,7 @@
 #include "ResourceManager.hpp"
 
 #include <cstdlib>
+#include <chrono>
 
 const luaL_Reg TileIndex::METHODS[];
 const luaL_Reg TileMask::METHODS[];
@@ -461,7 +462,11 @@ class ShadowVector
     static constexpr const float k_radius = 0.5f;
 
 public:
-    ShadowVector(int mode = 1): m_mode(mode) {}
+    ShadowVector(int mode = 1): m_mode(mode)
+    {
+        // TODO add parameter for slopes/angle
+        m_vec.emplace_back(-1.f, 1.f); // visibility in 90 degree cone
+    }
 
     void offsetToSlopes(int depth, int offset, float& slopeLow, float& slopeHigh)
     {
@@ -472,6 +477,14 @@ public:
         }
         else if (m_mode == 2)
         {
+            const float radius2 = k_radius * k_radius;
+            const float length2 = depth * depth + offset * offset;
+            const float factor = std::sqrtf(length2 / radius2 - 1.f);
+            slopeLow = (offset * factor - depth) / (depth * factor + offset);
+            slopeHigh = (offset * factor + depth) / (depth * factor - offset);
+        }
+        else if (m_mode == 3)
+        {
             slopeLow = std::min(
                 float(offset - k_edge) / float(depth - k_corner),
                 float(offset - k_edge) / float(depth + k_corner));
@@ -479,128 +492,126 @@ public:
                 float(offset + k_edge) / float(depth - k_corner),
                 float(offset + k_edge) / float(depth + k_corner));
         }
-        else if (m_mode == 3)
-        {
-            const float radius2 = k_radius * k_radius;
-            const float length2 = depth * depth + offset * offset;
-            const float factor = std::sqrtf(length2 / radius2 - 1.f);
-            slopeLow = (offset * factor - depth) / (depth * factor + offset);
-            slopeHigh = (offset * factor + depth) / (depth * factor - offset);
-        }
     }
 
-    void slopesToOffsets(int depth, float slopeLow, float slopeHigh, int& offsetHigh, int& offsetLow)
+    void slopesToOffsets(int depth, float slopeLow, float slopeHigh, int& offsetLow, int& offsetHigh)
     {
         if (m_mode == 1)
         {
-            offsetHigh = std::ceil(slopeLow * depth + k_edge - 1.f); // round-up, -1, for >=
-            offsetLow = std::floor(slopeHigh * depth - k_edge + 1.f); // round-down, +1, for <=
+            offsetLow = std::floor(slopeLow * depth + k_edge);
+            offsetHigh = std::ceil(slopeHigh * depth - k_edge);
         }
         else if (m_mode == 2)
         {
-            offsetHigh = std::ceil(std::max(
-                slopeLow * (depth - k_corner),
-                slopeLow * (depth + k_corner)) + k_edge - 1.f);
-            offsetLow = std::floor(std::min(
-                slopeHigh * (depth - k_corner),
-                slopeHigh * (depth + k_corner)) - k_edge + 1.f);
+            const float stepLow = k_radius * std::sqrtf(1.f + (slopeLow * slopeLow));
+            const float stepHigh = k_radius * std::sqrtf(1.f + (slopeHigh * slopeHigh));
+            offsetLow = std::floor(slopeLow * depth + stepLow);
+            offsetHigh = std::ceil(slopeHigh * depth - stepHigh);
         }
         else if (m_mode == 3)
         {
-            const float stepLow = k_radius * std::sqrtf(1.f + (slopeLow * slopeLow));
-            const float stepHigh = k_radius * std::sqrtf(1.f + (slopeHigh * slopeHigh));
-            offsetHigh = std::ceil(slopeLow * depth + stepLow - 1.f); // round-up, -1, for >=
-            offsetLow = std::floor(slopeHigh * depth - stepHigh + 1.f); // round-down, +1, for <=
+            offsetLow = std::floor(std::min(
+                slopeLow * (depth - k_corner),
+                slopeLow * (depth + k_corner)) + k_edge);
+            offsetHigh = std::ceil(std::max(
+                slopeHigh * (depth - k_corner),
+                slopeHigh * (depth + k_corner)) - k_edge);
         }
     }
 
     void getVisible(int depth, int limitLow, int limitHigh, std::vector<int>& visible)
     {
-        visible.clear(); // TODO does this belong here or outside?
+        visible.clear();
 
-        // Start counting at the lower limit
         int offset = limitLow;
         for (auto& shadow : m_vec)
         {
-            int offsetHigh, offsetLow;
-            slopesToOffsets(depth, shadow.first, shadow.second, offsetHigh, offsetLow);
+            int offsetLow, offsetHigh;
+            slopesToOffsets(depth, shadow.first, shadow.second, offsetLow, offsetHigh);
+            offsetHigh = std::min(offsetHigh, limitHigh);
+            offset = std::max(offset, offsetLow);
 
-            // Count up to the start of the shadow
-            assert(offsetHigh <= limitHigh);
-            //offsetHigh = std::min(offsetHigh, limitHigh);
+            if (offset > limitHigh)
+                break;
+
+            // Count from start to end of visible region
             for (; offset <= offsetHigh; ++offset)
                 visible.push_back(offset);
-
-            // Start counting again at the end of the shadow
-            assert(offsetLow >= limitLow);
-            //offsetLow = std::max(offsetLow, limitLow);
-            offset = offsetLow;
         }
-
-        // Count up to the upper limit
-        for (; offset <= limitHigh; ++offset)
-            visible.push_back(offset);
     }
 
     void castShadow(int depth, int offset)
     {
+        if (m_vec.empty())
+            return;
+
         // Cast shadow at the midpoint of the block
         assert(depth >= 1);
         float slope1, slope2;
         offsetToSlopes(depth, offset, slope1, slope2);
         assert(slope2 > slope1);
 
-        for (auto it = m_vec.begin(), end = m_vec.end(); it != end; ++it)
+        for (auto it = m_vec.begin(), end = m_vec.end(); it < end; ++it)
         {
-            // No overlap, insert before
-            if (slope2 < it->first)
+            // Already shadowed
+            if (slope2 <= it->first)
+                return;
+
+            // Keep looking
+            if (slope1 >= it->second)
+                continue;
+
+            // Completely cover visible region
+            if (slope1 <= it->first && slope2 >= it->second)
             {
-                m_vec.insert(it, {slope1, slope2});
+                it = m_vec.erase(it);
+                end = m_vec.end();
+                continue;
+            }
+
+            // Split visible region
+            if (slope1 > it->first && slope2 < it->second)
+            {
+                float temp = it->second;
+                it->second = slope1;
+                it = m_vec.emplace(it+1, slope2, temp);
+                //end = m_vec.end();
                 return;
             }
 
-            // Overlap with shadowed region
-            if (slope1 <= it->second)
+            // Partial overlap with visible region
+            if (slope1 <= it->first)
             {
-                slope1 = std::min(slope1, it->first);
-                slope2 = std::max(slope2, it->second);
-
-                // Extend shadow if more regions overlap
-                auto it2 = it + 1;
-                for (; it2 != end; ++it2)
-                {
-                    if (slope2 < it2->first)
-                        break;
-                    assert(slope1 <= it2->first);
-                    slope2 = std::max(slope2, it2->second);
-                }
-
-                // Merge overlapped regions
-                it->first = slope1;
-                it->second = slope2;
-                m_vec.erase(it + 1, it2);
+                it->first = slope2;
                 return;
             }
+
+            // Partial overlap with visible region
+            if (slope2 >= it->second)
+            {
+                it->second = slope1;
+                continue;
+            }
+
+            assert(false);
         }
-
-        // No overlap, insert after
-        m_vec.push_back({slope1, slope2});
     }
 
-    void debug(int x, int y, int dx, int dy, int i, std::vector<float>& lines)
+    void debug(int x, int y, int dx, int dy, int ii, std::vector<float>& lines)
     {
+        float i = ii - 0.75f;
         auto end = m_vec.end();
         for (auto it = m_vec.begin(); it < end; ++it)
         {
             lines.push_back(4);
-            lines.push_back(x + 0.5f + dx * (i+1) + abs(dy) * (it->first * (i+1)));
-            lines.push_back(y + 0.5f + abs(dx) * (it->first * (i+1)) + dy * (i+1));
             lines.push_back(x + 0.5f + dx * i + abs(dy) * (it->first * i));
             lines.push_back(y + 0.5f + abs(dx) * (it->first * i) + dy * i);
-            lines.push_back(x + 0.5f + dx * i + abs(dy) * (it->second * i));
-            lines.push_back(y + 0.5f + abs(dx) * (it->second * i) + dy * i);
+            lines.push_back(x + 0.5f + dx * (i+1) + abs(dy) * (it->first * (i+1)));
+            lines.push_back(y + 0.5f + abs(dx) * (it->first * (i+1)) + dy * (i+1));
             lines.push_back(x + 0.5f + dx * (i+1) + abs(dy) * (it->second * (i+1)));
             lines.push_back(y + 0.5f + abs(dx) * (it->second * (i+1)) + dy * (i+1));
+            lines.push_back(x + 0.5f + dx * i + abs(dy) * (it->second * i));
+            lines.push_back(y + 0.5f + abs(dx) * (it->second * i) + dy * i);
         }
     }
 };
@@ -627,9 +638,14 @@ int TileMap::script_castShadows(lua_State* L)
     tileMask->setMask(x, y, 255);
     tileMap->m_debug.clear(); // HACK remove
 
-    //ShadowVector rightShadows, bottomShadows, leftShadows, topShadows;
     ShadowVector rightShadows(mode), bottomShadows(mode), leftShadows(mode), topShadows(mode);
-    std::vector<int> visible;
+    std::vector<int> visible(r);
+
+#define SHADOW_TIMING
+#ifdef SHADOW_TIMING
+    using namespace std::chrono;
+    high_resolution_clock::time_point t1 = high_resolution_clock::now();
+#endif
 
     for (int i = 1; i <= r; ++i)
     {
@@ -719,6 +735,12 @@ int TileMap::script_castShadows(lua_State* L)
             topShadows.debug(x, y, 0, -1, i, tileMap->m_debug); // HACK remove
         }
     }
+
+#ifdef SHADOW_TIMING
+    high_resolution_clock::time_point t2 = high_resolution_clock::now();
+    microseconds time_span = duration_cast<microseconds>(t2 - t1);
+    fprintf(stderr, "shadow casting took %lld usec\n", int64_t(time_span.count()));
+#endif
 
     return 0;
 }
