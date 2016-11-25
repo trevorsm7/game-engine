@@ -110,10 +110,10 @@ void SdlRenderer::drawSprite(const std::string& name)
 
     // Set the destination rect where we will draw the texture
     SDL_Rect target;
-    const float scaleW = m_width / m_camera.getW();
-    const float scaleH = m_height / m_camera.getH();
-    target.w = m_model.getW() * scaleW;
-    target.h = m_model.getH() * scaleH;
+    const float scaleW = m_width / m_camera.getScaleX();
+    const float scaleH = m_height / m_camera.getScaleY();
+    target.w = m_model.getScaleX() * scaleW;
+    target.h = m_model.getScaleY() * scaleH;
     target.x = (m_model.getX() - m_camera.getX()) * scaleW;
     target.y = (m_model.getY() - m_camera.getY()) * scaleH;
 
@@ -144,12 +144,12 @@ void SdlRenderer::drawTiles(TileMap* tilemap)
     source.h = texture->getHeight() / tileindex->getRows();
 
     // Compute the scale from camera to screen
-    const float scaleW = m_width / m_camera.getW();
-    const float scaleH = m_height / m_camera.getH();
+    const float scaleW = m_width / m_camera.getScaleX();
+    const float scaleH = m_height / m_camera.getScaleY();
 
     // Compute the scale from index to tile (i.e. the size in pixels as float)
-    const float floatW = m_model.getW() * scaleW / tilemap->getCols();
-    const float floatH = m_model.getH() * scaleH / tilemap->getRows();
+    const float floatW = m_model.getScaleX() * scaleW;
+    const float floatH = m_model.getScaleY() * scaleH;
 
     // Use the top-left corner of the tilemap as the origin
     const int originX = (m_model.getX() - m_camera.getX()) * scaleW;
@@ -215,9 +215,8 @@ inline void mapColorScale(SDL_Renderer* renderer, float step)
 
 void SdlRenderer::drawLines(const std::vector<float>& points)
 {
-    const float scaleW = m_width / m_camera.getW();
-    const float scaleH = m_height / m_camera.getH();
-
+    const float scaleW = m_width / m_camera.getScaleX();
+    const float scaleH = m_height / m_camera.getScaleY();
 
     for (size_t i = 0; i < points.size(); i++)
     {

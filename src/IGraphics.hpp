@@ -25,6 +25,8 @@ public:
     // TODO: test click/ray for mouse events
     virtual bool testBounds(float x, float y) const = 0;
 
+    virtual void getSize(float& w, float& h) const {w = 1.f; h = 1.f;}
+
     bool isVisible() const {return m_isVisible;}
     void setVisible(bool visible) {m_isVisible = visible;}
     void setColor(float r, float g, float b) {m_color = {r, g, b};}

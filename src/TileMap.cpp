@@ -634,7 +634,7 @@ inline void castShadows(int x, int y, int dx, int dy, int depth, int limitLow, i
         shadows.castShadow(depth, offset);
     }
 
-    shadows.debug(x, y, dx, dy, depth, tileMap->m_debug); // HACK remove
+    //shadows.debug(x, y, dx, dy, depth, tileMap->m_debug); // HACK remove
 }
 
 int TileMap::script_castShadows(lua_State* L)
@@ -662,7 +662,7 @@ int TileMap::script_castShadows(lua_State* L)
     ShadowVector rightShadows(mode), bottomShadows(mode), leftShadows(mode), topShadows(mode);
     std::vector<int> visible(r);
 
-#define SHADOW_TIMING
+//#define SHADOW_TIMING
 #ifdef SHADOW_TIMING
     using namespace std::chrono;
     high_resolution_clock::time_point t1 = high_resolution_clock::now();

@@ -265,7 +265,6 @@ tiles = Actor
     graphics = TiledGraphics{tilemap=map},
     collider = TiledCollider{tilemap=map},
     pathing = pf,
-    transform = {position = {0, 0}, scale = {map:getSize()}},
     layer = -1
 }
 game:addActor(tiles)

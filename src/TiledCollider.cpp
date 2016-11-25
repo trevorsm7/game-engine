@@ -20,17 +20,15 @@ bool TiledCollider::testCollision(float x, float y) const
         return false;
 
     // Reject if outside of tilemap bounds
-    const Transform& transform = m_actor->getTransform();
-    x -= transform.getX();
-    y -= transform.getY();
-    if (x < 0.f || x >= transform.getW() || y < 0.f || y >= transform.getH())
+    Aabb bounds = m_actor->getAabb();
+    if (!bounds.isContaining(x, y))
         return false;
 
     // Map to tile map coordinates
     // NOTE don't need floor() since x, y guranteed to be non-negative
-    const int tileX = int(x * m_tilemap->getCols() / transform.getW());
-    const int tileY = int(y * m_tilemap->getRows() / transform.getH());
-    if (!m_tilemap->isValidIndex(x, y))
+    const int tileX = int((x - bounds.getLeft()) * m_tilemap->getCols() / bounds.getWidth());
+    const int tileY = int((y - bounds.getTop()) * m_tilemap->getRows() / bounds.getHeight());
+    if (!m_tilemap->isValidIndex(tileX, tileY))
         return false;
 
     return m_tilemap->isFlagSet(tileX, tileY, TileIndex::MoveBlocking);
@@ -46,21 +44,23 @@ bool TiledCollider::testCollision(const Aabb& aabb) const
     if (!isCollidable() || !m_tilemap)
         return false;
 
-    // Translate AABB relative to transform; reject if no overlap
-    const Transform& transform = m_actor->getTransform();
-    const float left = aabb.getLeft() - transform.getX();
-    const float top = aabb.getTop() - transform.getY();
-    const float right = aabb.getRight() - transform.getX();
-    const float bottom = aabb.getBottom() - transform.getY();
-    if (right <= 0.f || bottom <= 0.f || left >= transform.getW() || top >= transform.getH())
+    // Reject early if no overlap
+    Aabb bounds = m_actor->getAabb();
+    if (!bounds.isOverlapping(aabb))
         return false;
+
+    // Translate AABB relative to transform
+    const float left = aabb.getLeft() - bounds.getLeft();
+    const float top = aabb.getTop() - bounds.getTop();
+    const float right = aabb.getRight() - bounds.getLeft();
+    const float bottom = aabb.getBottom() - bounds.getTop();
 
     // Map to tile map coordinates
     // NOTE using ceil for right/bottom since these are exclusive ranges
-    const int tileLeft = std::max<int>(0, floor(left * m_tilemap->getCols() / transform.getW()));
-    const int tileRight = std::min<int>(m_tilemap->getCols(), ceil(right * m_tilemap->getCols() / transform.getW()));
-    const int tileTop = std::max<int>(0, floor(top * m_tilemap->getRows() / transform.getH()));
-    const int tileBottom = std::min<int>(m_tilemap->getRows(), ceil(bottom * m_tilemap->getRows() / transform.getH()));
+    const int tileLeft = std::max<int>(0, floor(left * m_tilemap->getCols() / bounds.getWidth()));
+    const int tileRight = std::min<int>(m_tilemap->getCols(), ceil(right * m_tilemap->getCols() / bounds.getWidth()));
+    const int tileTop = std::max<int>(0, floor(top * m_tilemap->getRows() / bounds.getHeight()));
+    const int tileBottom = std::min<int>(m_tilemap->getRows(), ceil(bottom * m_tilemap->getRows() / bounds.getHeight()));
 
     // Iterate over range of tiles that overlap
     for (int y = tileTop; y < tileBottom; ++y)
@@ -89,8 +89,7 @@ bool TiledCollider::testCollision(float deltaX, float deltaY, const ICollider* o
         return false;
 
     // Reject early if there is no overlap with the map bounds
-    const Transform& transform = m_actor->getTransform();
-    Aabb bounds = transform.getAabb();
+    Aabb bounds = m_actor->getAabb();
     bounds.addOffset(deltaX, deltaY);
     if (!other->testCollision(bounds))
         return false;
@@ -110,10 +109,10 @@ bool TiledCollider::testCollision(float deltaX, float deltaY, const ICollider* o
                 continue;
 
             // If collidable, compute AABB for tile
-            const float left = transform.getX() + (x * transform.getW() / cols) + deltaX;
-            const float right = transform.getX() + ((x + 1) * transform.getW() / cols) + deltaX;
-            const float top = transform.getY() + (y * transform.getH() / rows) + deltaY;
-            const float bottom = transform.getY() + ((y + 1) * transform.getH() / rows) + deltaY;
+            const float left = bounds.getLeft() + (x * bounds.getWidth() / cols);
+            const float right = bounds.getLeft() + ((x + 1) * bounds.getWidth() / cols);
+            const float top = bounds.getTop() + (y * bounds.getHeight() / rows);
+            const float bottom = bounds.getTop() + ((y + 1) * bounds.getHeight() / rows);
             const Aabb tileAabb(left, top, right, bottom);
 
             // Test the tile AABB against the collider

@@ -27,5 +27,8 @@ public:
     float getRight() const {return m_bounds.r;}
     float getTop() const {return m_bounds.t;}
 
+    float getWidth() const {return m_bounds.r - m_bounds.l;}
+    float getHeight() const {return m_bounds.b - m_bounds.t;}
+
     void addOffset(float x, float y) {m_bounds.l += x; m_bounds.r += x; m_bounds.b += y; m_bounds.t += y;}
 };

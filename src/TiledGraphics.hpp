@@ -20,6 +20,8 @@ public:
 
     bool testBounds(float x, float y) const override;
 
+    void getSize(float& w, float& h) const override;
+
 private:
     friend class TUserdata<TiledGraphics, IGraphics>;
     void construct(lua_State* L);

@@ -3,11 +3,12 @@ map = TileMap
     index = TileIndex
     {
         sprite = "tiles.tga",
-        size = {2, 2},
+        size = {2, 3},
         data =
         {
             0, 0,
-            1, 1
+            3, 3,
+            2, 0
         }
     },
     size = {20, 15}
@@ -53,7 +54,7 @@ local mapActor = Actor
     graphics = TiledGraphics{tilemap=map},
     collider = TiledCollider{tilemap=map},
     pathing = pf,
-    transform = {position = {0, 0}, scale = {map:getSize()}},
+    transform = {position = {0, 0}},
     layer = -1
 }
 game:addActor(mapActor)

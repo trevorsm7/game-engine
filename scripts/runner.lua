@@ -1,4 +1,4 @@
-game = Canvas({20, 20}, false)
+game = Canvas{size = {20, 20}, fixed = false}
 addCanvas(game)
 
 player = Actor

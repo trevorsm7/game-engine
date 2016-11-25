@@ -164,13 +164,13 @@ void GlfwRenderer::pushModelTransform(Transform& transform)
 {
     m_model = transform;
     glUniform2f(m_modelOffset, transform.getX(), transform.getY());
-    glUniform2f(m_modelScale, transform.getW(), transform.getH());
+    glUniform2f(m_modelScale, transform.getScaleX(), transform.getScaleY());
 }
 
 void GlfwRenderer::pushCameraTransform(Transform& transform)
 {
     glUniform2f(m_cameraOffset, transform.getX(), transform.getY());
-    glUniform2f(m_cameraScale, transform.getW(), transform.getH());
+    glUniform2f(m_cameraScale, transform.getScaleX(), transform.getScaleY());
 }
 
 void GlfwRenderer::setColor(float red, float green, float blue)
@@ -218,8 +218,8 @@ void GlfwRenderer::drawTiles(TileMap* tilemap)
     glUniform2f(m_textureScale, tileW, tileH);
 
     // Compute and set model size of one tile
-    const float modelW = m_model.getW() / tilemap->getCols();
-    const float modelH = m_model.getH() / tilemap->getRows();
+    const float modelW = m_model.getScaleX();
+    const float modelH = m_model.getScaleY();
     glUniform2f(m_modelScale, modelW, modelH);
 
     // TODO push all vertices and tex coords into mapped buffer -> single draw call

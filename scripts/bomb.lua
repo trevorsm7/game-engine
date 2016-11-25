@@ -248,7 +248,7 @@ local function newPlayer(canvas, x, y)
     return player
 end
 
-local game = Canvas({20, 15}, true)
+local game = Canvas{size = {20, 15}, fixed = true}
 addCanvas(game)
 
 local player = newPlayer(game, 1, 1)

@@ -11,28 +11,26 @@ class ObjectRef;
 class Transform
 {
     float m_x, m_y;
-    float m_w, m_h;
+    float m_sx, m_sy;
 
 public:
-    Transform(): m_x(0.f), m_y(0.f), m_w(1.f), m_h(1.f) {}
-    Transform(float x, float y, float w, float h): m_x(x), m_y(y), m_w(w), m_h(h) {}
+    Transform(): m_x(0.f), m_y(0.f), m_sx(1.f), m_sy(1.f) {}
+    Transform(float x, float y, float sx, float sy): m_x(x), m_y(y), m_sx(sx), m_sy(sy) {}
 
     void construct(lua_State* L, int index);
     void serialize(lua_State* L, const char* table, Serializer* serializer, ObjectRef* ref) const;
 
-    Aabb getAabb() const {return Aabb(m_x, m_y, m_x + m_w, m_y + m_h);}
-
     float getX() const {return m_x;}
     float getY() const {return m_y;}
-    float getW() const {return m_w;}
-    float getH() const {return m_h;}
+    float getScaleX() const {return m_sx;}
+    float getScaleY() const {return m_sy;}
 
-    void getCenter(float& x, float& y) const {x = m_x + m_w * 0.5f; y = m_y + m_h * 0.5f;}
+    void getCenter(float& x, float& y) const {x = m_x + m_sx * 0.5f; y = m_y + m_sy * 0.5f;}
 
     void setX(float x) {m_x = x;}
     void setY(float y) {m_y = y;}
-    void setW(float w) {m_w = w;}
-    void setH(float h) {m_h = h;}
+    void setPosition(float x, float y) {m_x = x; m_y = y;}
+    void setScale(float sx, float sy) {m_sx = sx; m_sy = sy;}
 
     void addX(float x) {m_x += x;}
     void addY(float y) {m_y += y;}

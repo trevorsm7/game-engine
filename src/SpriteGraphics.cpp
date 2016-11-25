@@ -23,12 +23,8 @@ bool SpriteGraphics::testBounds(float x, float y) const
     if (!isVisible())
         return false;
 
-    const Transform& transform = m_actor->getTransform();
-    const float left = transform.getX();
-    const float bottom = transform.getY();
-    const float right = left + transform.getW();
-    const float top = bottom + transform.getH();
-    return (x >= left && x < right && y >= bottom && y < top);
+    Aabb bounds = m_actor->getAabb();
+    return bounds.isContaining(x, y);
 }
 
 void SpriteGraphics::construct(lua_State* L)

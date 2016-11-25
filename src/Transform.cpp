@@ -24,9 +24,8 @@ void Transform::construct(lua_State* L, int index)
         luaL_checktype(L, -1, LUA_TTABLE);
         lua_rawgeti(L, -1, 1);
         lua_rawgeti(L, -2, 2);
-        // TODO let graphics/collider define the base size and use this as a scaling factor
-        m_w = luaL_checknumber(L, -2);
-        m_h = luaL_checknumber(L, -1);
+        m_sx = luaL_checknumber(L, -2);
+        m_sy = luaL_checknumber(L, -1);
         lua_pop(L, 2);
     }
     lua_pop(L, 1);
@@ -37,6 +36,6 @@ void Transform::serialize(lua_State* L, const char* table, Serializer* serialize
     float position[2] = {m_x, m_y};
     serializer->setArray(ref, table, "position", position, 2);
 
-    float scale[2] = {m_w, m_h};
+    float scale[2] = {m_sx, m_sy};
     serializer->setArray(ref, table, "scale", scale, 2);
 }

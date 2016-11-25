@@ -264,8 +264,7 @@ screenMap = TileMap
 local screen = Actor
 {
     graphics = TiledGraphics{tilemap = screenMap, color = {0.7, 0.5, 0.5}},
-    collider = TiledCollider{tilemap = screenMap},
-    transform = {position = {0, 0}, scale = screenSize}
+    collider = TiledCollider{tilemap = screenMap}
 }
 game:addActor(screen)
 
@@ -281,7 +280,7 @@ local leftWall = Actor
 {
     graphics = TiledGraphics{tilemap = leftWallTiles, color = {0.5, 0.5, 0.5}},
     collider = AabbCollider{}, -- no need for tiled collider
-    transform = {position = {-1, -4}, scale = {1, screenSize[2] + 5}}
+    transform = {position = {-1, -4}}
 }
 game:addActor(leftWall)
 
@@ -300,7 +299,7 @@ local rightWall = Actor
 {
     graphics = TiledGraphics{tilemap = rightWallTiles, color = {0.5, 0.5, 0.5}},
     collider = AabbCollider{},
-    transform = {position = {screenSize[1], -4}, scale = {5, screenSize[2] + 5}}
+    transform = {position = {screenSize[1], -4}}
 }
 game:addActor(rightWall)
 
@@ -315,7 +314,7 @@ local bottomWall = Actor
 {
     graphics = TiledGraphics{tilemap = bottomWallTiles, color = {0.5, 0.5, 0.5}},
     collider = AabbCollider{},
-    transform = {position = {0, screenSize[2]}, scale = {screenSize[1], 1}}
+    transform = {position = {0, screenSize[2]}}
 }
 game:addActor(bottomWall)
 
@@ -332,7 +331,7 @@ local fontTiles = TileMap
 scoreText = Actor
 {
     graphics = TiledGraphics{tilemap = fontTiles},
-    transform = {position = {screenSize[1] + 1, 6}, scale = {3, 4}},
+    transform = {position = {screenSize[1] + 1, 6}, scale = {3/7, 1}},
     members =
     {
         tilemap = fontTiles,
@@ -423,8 +422,6 @@ preview = Actor
             graphics:setColor(tetromino.color)
             graphics:setTileMap(tetromino[1])
 
-            local w, h = tetromino[1]:getSize()
-            self:setScale(tetromino[1]:getSize())
             self:setPosition(screenSize[1]+1, 1)
         end
     }
@@ -451,7 +448,6 @@ current = Actor
             self:getCollider():setTileMap(tetromino)
 
             local w, h = tetromino:getSize()
-            self:setScale(tetromino:getSize())
             self:setPosition(math.floor((screenSize[1] - w) / 2), -h)
 
             nextTetro = getNext()
@@ -478,14 +474,12 @@ current = Actor
             local tetromino = tetrominoes[self.num][ori]
             self:getGraphics():setTileMap(tetromino)
             self:getCollider():setTileMap(tetromino)
-            --self:setScale(tetromino:getSize()) -- NOTE assuming all orientations share the same size
 
             -- If new orientation collides, reset to old orientation
             if self:testCollision(0, 0) then
                 tetromino = tetrominoes[self.num][self.ori]
                 self:getGraphics():setTileMap(tetromino)
                 self:getCollider():setTileMap(tetromino)
-                --self:setScale(tetromino:getSize())
                 return
             end
 

@@ -3,6 +3,7 @@
 #include "IUserdata.hpp"
 #include "Physics.hpp"
 #include "Transform.hpp"
+#include "Aabb.hpp"
 
 #include <memory>
 #include <cassert>
@@ -44,6 +45,8 @@ public:
     const IGraphics* getGraphics() const {return m_graphics;}
     const ICollider* getCollider() const {return m_collider;}
     const IPathing* getPathing() const {return m_pathing;}
+
+    Aabb getAabb() const;
 
     void setLayer(int layer) {m_layer = layer;}
     int getLayer() const {return m_layer;}
@@ -143,6 +146,7 @@ inline void Actor::remove(lua_State* L, T*& component)
 {
     if (component != nullptr)
     {
+        assert(component->m_actor == this);
         component->m_actor = nullptr;
         releaseChild(L, component);
         component = nullptr;

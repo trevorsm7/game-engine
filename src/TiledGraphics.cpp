@@ -23,19 +23,31 @@ bool TiledGraphics::testBounds(float x, float y) const
     if (!isVisible() || !m_tilemap)
         return false;
 
-    const Transform& transform = m_actor->getTransform();
-    x -= transform.getX();
-    y -= transform.getY();
-    const float width = transform.getW();
-    const float height = transform.getH();
-    if (x < 0 || x >= width || y < 0 || y >= height)
+    Aabb bounds = m_actor->getAabb();
+    if (!bounds.isContaining(x, y))
         return false;
 
+    const float width = bounds.getWidth();
+    const float height = bounds.getHeight();
+
     // TODO check for invisible/masked tiles
-    int tileX = x * m_tilemap->getCols() / width;
-    int tileY = y * m_tilemap->getRows() / height;
+    int tileX = (x - bounds.getLeft()) * m_tilemap->getCols() / width;
+    int tileY = (y - bounds.getTop()) * m_tilemap->getRows() / height;
     int index = m_tilemap->getIndex(tileX, tileY);
     return (index != 0);
+}
+
+void TiledGraphics::getSize(float& w, float& h) const
+{
+    if (m_tilemap)
+    {
+        w = m_tilemap->getCols();
+        h = m_tilemap->getRows();
+    }
+    else
+    {
+        IGraphics::getSize(w, h);
+    }
 }
 
 void TiledGraphics::construct(lua_State* L)
@@ -50,9 +62,7 @@ void TiledGraphics::clone(lua_State* L, TiledGraphics* source)
 {
     if (source->m_tilemap)
     {
-        // Don't need to clone TileMap; just copy
-        //source->m_tilemap->pushClone(L);
-        source->m_tilemap->pushUserdata(L);
+        source->m_tilemap->pushUserdata(L); // shallow copy
         setChild(L, m_tilemap, -1);
         lua_pop(L, 1);
     }

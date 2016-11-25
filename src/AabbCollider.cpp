@@ -12,7 +12,7 @@ bool AabbCollider::testCollision(float x, float y) const
     if (!isCollidable())
         return false;
 
-    const Aabb self = m_actor->getTransform().getAabb();
+    const Aabb self = m_actor->getAabb();
     return self.isContaining(x, y);
 }
 
@@ -23,7 +23,7 @@ bool AabbCollider::testCollision(const Aabb& aabb) const
     if (!isCollidable())
         return false;
 
-    const Aabb self = m_actor->getTransform().getAabb();
+    const Aabb self = m_actor->getAabb();
     return self.isOverlapping(aabb);
 }
 
@@ -34,7 +34,7 @@ bool AabbCollider::testCollision(float deltaX, float deltaY, const ICollider* ot
     if (!isCollidableWith(other))
         return false;
 
-    Aabb bounds = m_actor->getTransform().getAabb();
+    Aabb bounds = m_actor->getAabb();
     bounds.addOffset(deltaX, deltaY);
     return other->testCollision(bounds);
 }
@@ -47,7 +47,7 @@ bool AabbCollider::getCollisionTime(const Aabb& aabb, float velX, float velY, fl
     if (!isCollidable())
         return false;
 
-    const Aabb self = m_actor->getTransform().getAabb();
+    const Aabb self = m_actor->getAabb();
 
     Aabb::Edge edge;
     bool result = self.getCollisionTime(aabb, velX, velY, start, end, edge);
@@ -85,7 +85,7 @@ bool AabbCollider::getCollisionTime(float velX, float velY, const ICollider* oth
     if (!isCollidableWith(other))
         return false;
 
-    const Aabb bounds = m_actor->getTransform().getAabb();
+    const Aabb bounds = m_actor->getAabb();
     bool result = other->getCollisionTime(bounds, velX, velY, start, end, normX, normY);
     return result;
 }

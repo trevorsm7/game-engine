@@ -21,6 +21,21 @@ ResourceManager* Actor::getResourceManager() const
     return nullptr;
 }
 
+Aabb Actor::getAabb() const
+{
+    float w = 1.f, h = 1.f;
+    if (m_graphics)
+        m_graphics->getSize(w, h);
+
+    w *= m_transform.getScaleX();
+    h *= m_transform.getScaleY();
+
+    float x = m_transform.getX();
+    float y = m_transform.getY();
+
+    return Aabb(x, y, x + w, y + h);
+}
+
 void Actor::update(lua_State* L, float delta)
 {
     lua_pushnumber(L, delta);
@@ -238,8 +253,7 @@ int Actor::actor_setPosition(lua_State* L)
     float x = static_cast<float>(luaL_checknumber(L, 2));
     float y = static_cast<float>(luaL_checknumber(L, 3));
 
-    actor->m_transform.setX(x);
-    actor->m_transform.setY(y);
+    actor->m_transform.setPosition(x, y);
 
     return 0;
 }
@@ -248,11 +262,10 @@ int Actor::actor_setScale(lua_State* L)
 {
     // Validate function arguments
     Actor* actor = Actor::checkUserdata(L, 1);
-    float w = static_cast<float>(luaL_checknumber(L, 2));
-    float h = static_cast<float>(luaL_checknumber(L, 3));
+    float sx = static_cast<float>(luaL_checknumber(L, 2));
+    float sy = static_cast<float>(luaL_checknumber(L, 3));
 
-    actor->m_transform.setW(w);
-    actor->m_transform.setH(h);
+    actor->m_transform.setScale(sx, sy);
 
     return 0;
 }

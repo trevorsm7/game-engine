@@ -22,8 +22,7 @@ void BasicCamera::construct(lua_State* L, int index)
     }
     lua_pop(L, 1);
 
-    m_transform.setW(m_width);
-    m_transform.setH(m_height);
+    m_transform.setScale(m_width, m_height);
 
     lua_pushliteral(L, "center");
     if (lua_rawget(L, relIndex) != LUA_TNIL)
@@ -63,8 +62,7 @@ void BasicCamera::resize(int width, int height)
 {
     if (m_fixed)
     {
-        m_transform.setW(m_width);
-        m_transform.setH(m_height);
+        m_transform.setScale(m_width, m_height);
     }
     else
     {
@@ -73,18 +71,16 @@ void BasicCamera::resize(int width, int height)
 
         if (m_height * w / h > m_width)
         {
-            m_transform.setW(m_width);
-            m_transform.setH(m_width * h / w);
+            m_transform.setScale(m_width, m_width * h / w);
         }
         else
         {
-            m_transform.setW(m_height * w / h);
-            m_transform.setH(m_height);
+            m_transform.setScale(m_height * w / h, m_height);
         }
     }
 
-    m_transform.setX(m_center.x - m_transform.getW() * 0.5f);
-    m_transform.setY(m_center.y - m_transform.getH() * 0.5f);
+    m_transform.setX(m_center.x - m_transform.getScaleX() * 0.5f);
+    m_transform.setY(m_center.y - m_transform.getScaleY() * 0.5f);
 }
 
 void BasicCamera::preRender(IRenderer* renderer)
@@ -102,14 +98,14 @@ void BasicCamera::setCenter(float x, float y)
     m_center.x = x;
     m_center.y = y;
 
-    m_transform.setX(x - m_transform.getW() * 0.5f);
-    m_transform.setY(y - m_transform.getH() * 0.5f);
+    m_transform.setX(x - m_transform.getScaleX() * 0.5f);
+    m_transform.setY(y - m_transform.getScaleY() * 0.5f);
 }
 
 void BasicCamera::setOrigin(float x, float y)
 {
-    m_center.x = x + m_transform.getW() * 0.5f;
-    m_center.y = y + m_transform.getH() * 0.5f;
+    m_center.x = x + m_transform.getScaleX() * 0.5f;
+    m_center.y = y + m_transform.getScaleY() * 0.5f;
 
     m_transform.setX(x);
     m_transform.setY(y);
@@ -119,6 +115,6 @@ void BasicCamera::mouseToWorld(const MouseEvent& event, float& x, float& y) cons
 {
     const float fractionX = float(event.x) / float(event.w);
     const float fractionY = float(event.y) / float(event.h);
-    x = fractionX * m_transform.getW() + m_transform.getX();
-    y = fractionY * m_transform.getH() + m_transform.getY();
+    x = fractionX * m_transform.getScaleX() + m_transform.getX();
+    y = fractionY * m_transform.getScaleY() + m_transform.getY();
 }

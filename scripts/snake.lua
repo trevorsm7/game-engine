@@ -188,7 +188,7 @@ local function resetGame(game)
 end
 
 -- create and populate our game canvas
-local game = Canvas({20, 15}, true)
+local game = Canvas{size = {20, 15}, fixed = true}
 addCanvas(game)
 resetGame(game)
 
