@@ -121,7 +121,7 @@ void SdlRenderer::drawSprite(const std::string& name)
     SDL_RenderCopy(m_renderer, texture->getPtr(), nullptr, &target);
 }
 
-void SdlRenderer::drawTiles(TileMap* tilemap)
+void SdlRenderer::drawTiles(const TileMap* tilemap)
 {
     assert(tilemap != nullptr);
     const TileIndex* tileindex = tilemap->getTileIndex();

@@ -16,17 +16,6 @@ void SpriteGraphics::render(IRenderer* renderer)
     renderer->drawSprite(m_filename);
 }
 
-bool SpriteGraphics::testBounds(float x, float y) const
-{
-    assert(m_actor != nullptr);
-
-    if (!isVisible())
-        return false;
-
-    Aabb bounds = m_actor->getAabb();
-    return bounds.isContaining(x, y);
-}
-
 void SpriteGraphics::construct(lua_State* L)
 {
     lua_pushliteral(L, "sprite");

@@ -8,15 +8,13 @@ class SpriteGraphics : public TUserdata<SpriteGraphics, IGraphics>
 {
     std::string m_filename;
 
-    SpriteGraphics() {}
+    SpriteGraphics() = default;
 
 public:
     ~SpriteGraphics() override {}
 
     void update(float delta) override {}
     void render(IRenderer* renderer) override;
-
-    bool testBounds(float x, float y) const override;
 
 private:
     friend class TUserdata<SpriteGraphics, IGraphics>;

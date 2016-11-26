@@ -196,7 +196,7 @@ void GlfwRenderer::drawSprite(const std::string& name)
     glBindVertexArray(0);
 }
 
-void GlfwRenderer::drawTiles(TileMap* tilemap)
+void GlfwRenderer::drawTiles(const TileMap* tilemap)
 {
     assert(tilemap != nullptr);
     const TileIndex* tileindex = tilemap->getTileIndex();

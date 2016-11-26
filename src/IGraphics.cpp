@@ -1,7 +1,21 @@
 #include "IGraphics.hpp"
 #include "Serializer.hpp"
+#include "Actor.hpp"
+
+#include <cassert>
 
 const luaL_Reg IGraphics::METHODS[];
+
+bool IGraphics::testBounds(float x, float y) const
+{
+    assert(m_actor != nullptr);
+
+    if (!isVisible())
+        return false;
+
+    Aabb bounds = m_actor->getAabb();
+    return bounds.isContaining(x, y);
+}
 
 void IGraphics::construct(lua_State* L)
 {

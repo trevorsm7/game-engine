@@ -64,7 +64,7 @@ public:
 
     void setColor(float red, float green, float blue) override;
     void drawSprite(const std::string& name) override;
-    void drawTiles(TileMap* tilemap) override;
+    void drawTiles(const TileMap* tilemap) override;
     void drawLines(const std::vector<float>& points) override;
 
     void popModelTransform() override {}

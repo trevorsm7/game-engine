@@ -2,8 +2,6 @@
 
 #include "IGraphics.hpp"
 
-#include <string>
-
 class TileMap;
 
 class TiledGraphics : public TUserdata<TiledGraphics, IGraphics>
