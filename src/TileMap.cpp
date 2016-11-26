@@ -9,47 +9,16 @@ const luaL_Reg TileIndex::METHODS[];
 const luaL_Reg TileMask::METHODS[];
 const luaL_Reg TileMap::METHODS[];
 
-template <class T>
-static void constructVector(lua_State* L, int& cols, int& rows, std::vector<T>& vec)
-{
-    lua_pushliteral(L, "size");
-    luaL_argcheck(L, (lua_rawget(L, 2) == LUA_TTABLE), 2, "size required");
-    lua_rawgeti(L, -1, 1);
-    lua_rawgeti(L, -2, 2);
-    cols = luaL_checkinteger(L, -2);
-    rows = luaL_checkinteger(L, -1);
-    lua_pop(L, 3);
-
-    const int size = cols * rows;
-    vec.resize(size);
-
-    lua_pushliteral(L, "data");
-    if (lua_rawget(L, 2) != LUA_TNIL)
-    {
-        luaL_checktype(L, -1, LUA_TTABLE);
-        luaL_argcheck(L, (lua_rawlen(L, -1) == size), 2, "data must match size");
-        for (int i = 0; i < size; ++i)
-        {
-            lua_rawgeti(L, -1, i + 1);
-            vec[i] = luaL_checkinteger(L, -1); // NOTE need to template if we have non-integer data
-            lua_pop(L, 1);
-        }
-    }
-    lua_pop(L, 1);
-}
-
 // =============================================================================
 // TileIndex
 // =============================================================================
 
 void TileIndex::construct(lua_State* L)
 {
-    lua_pushliteral(L, "sprite");
-    luaL_argcheck(L, (lua_rawget(L, 2) == LUA_TSTRING), 2, "{sprite = filename} is required");
-    m_image = lua_tostring(L, -1);
-    lua_pop(L, 1);
-
-    constructVector(L, m_cols, m_rows, m_flags);
+    getStringReq(L, 2, "sprite", m_image);
+    getListReq(L, 2, "size", m_cols, m_rows);
+    m_flags.resize(m_cols * m_rows);
+    getVectorOpt(L, 2, "data", m_flags);
 }
 
 void TileIndex::clone(lua_State* L, TileIndex* source)
@@ -63,9 +32,8 @@ void TileIndex::clone(lua_State* L, TileIndex* source)
 void TileIndex::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
 {
     serializer->setString(ref, "", "sprite", m_image);
-    int size[] = {m_cols, m_rows};
-    serializer->setArray(ref, "", "size", size, 2);
-    serializer->setArray(ref, "", "data", m_flags);
+    serializer->setList(ref, "", "size", m_cols, m_rows);
+    serializer->setVector(ref, "", "data", m_flags);
 }
 
 int TileIndex::script_getSize(lua_State* L)
@@ -84,7 +52,9 @@ int TileIndex::script_getSize(lua_State* L)
 
 void TileMask::construct(lua_State* L)
 {
-    constructVector(L, m_cols, m_rows, m_mask);
+    getListReq(L, 2, "size", m_cols, m_rows);
+    m_mask.resize(m_cols * m_rows);
+    getVectorOpt(L, 2, "data", m_mask);
 }
 
 void TileMask::clone(lua_State* L, TileMask* source)
@@ -96,9 +66,8 @@ void TileMask::clone(lua_State* L, TileMask* source)
 
 void TileMask::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
 {
-    int size[] = {m_cols, m_rows};
-    serializer->setArray(ref, "", "size", size, 2);
-    serializer->setArray(ref, "", "data", m_mask);
+    serializer->setList(ref, "", "size", m_cols, m_rows);
+    serializer->setVector(ref, "", "data", m_mask);
 }
 
 int TileMask::script_getMask(lua_State* L)
@@ -215,34 +184,18 @@ int TileMask::script_blendMasks(lua_State* L)
 
 void TileMap::construct(lua_State* L)
 {
-    lua_pushliteral(L, "index");
-    if (lua_rawget(L, 2) != LUA_TNIL)
-        setChild(L, m_index, -1);
-    lua_pop(L, 1);
+    getChildOpt(L, 2, "index", m_index);
+    getChildOpt(L, 2, "mask", m_mask);
 
-    lua_pushliteral(L, "mask");
-    if (lua_rawget(L, 2) != LUA_TNIL)
-        setChild(L, m_mask, -1);
-    lua_pop(L, 1);
-
-    constructVector(L, m_cols, m_rows, m_map);
+    getListReq(L, 2, "size", m_cols, m_rows);
+    m_map.resize(m_cols * m_rows);
+    getVectorOpt(L, 2, "data", m_map);
 }
 
 void TileMap::clone(lua_State* L, TileMap* source)
 {
-    if (source->m_index)
-    {
-        source->m_index->pushUserdata(L); // shallow copy
-        setChild(L, m_index, -1);
-        lua_pop(L, 1);
-    }
-
-    if (source->m_mask)
-    {
-        source->m_mask->pushUserdata(L); // shallow copy
-        setChild(L, m_mask, -1);
-        lua_pop(L, 1);
-    }
+    copyChild(L, m_index, source->m_index);
+    copyChild(L, m_mask, source->m_mask);
 
     m_map = source->m_map;
     m_cols = source->m_cols;
@@ -254,22 +207,21 @@ void TileMap::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
     serializer->serializeMember(ref, "", "index", "setTileIndex", L, m_index);
     serializer->serializeMember(ref, "", "mask", "setTileMask", L, m_mask);
 
-    int size[] = {m_cols, m_rows};
-    serializer->setArray(ref, "", "size", size, 2);
-    serializer->setArray(ref, "", "data", m_map);
+    serializer->setList(ref, "", "size", m_cols, m_rows);
+    serializer->setVector(ref, "", "data", m_map);
 }
 
 int TileMap::script_setTileIndex(lua_State* L)
 {
     TileMap* tilemap = TileMap::checkUserdata(L, 1);
-    tilemap->setChild(L, tilemap->m_index, 2);
+    tilemap->setChild(L, 2, tilemap->m_index);
     return 0;
 }
 
 int TileMap::script_setTileMask(lua_State* L)
 {
     TileMap* tilemap = TileMap::checkUserdata(L, 1);
-    tilemap->setChild(L, tilemap->m_mask, 2);
+    tilemap->setChild(L, 2, tilemap->m_mask);
     return 0;
 }
 
@@ -361,6 +313,7 @@ int TileMap::script_setTiles(lua_State* L)
 
     const int cols = tilemap->m_cols;
     const int rows = tilemap->m_rows;
+    assert(tilemap->m_map.size() == cols * rows);
 
     luaL_argcheck(L, (x >= 0 && x < cols), 2, "x is out of bounds");
     luaL_argcheck(L, (y >= 0 && y < rows), 3, "y is out of bounds");

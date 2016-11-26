@@ -5,29 +5,9 @@ const luaL_Reg ICollider::METHODS[];
 
 void ICollider::construct(lua_State* L)
 {
-    lua_pushliteral(L, "group");
-    if (lua_rawget(L, 2) != LUA_TNIL)
-    {
-        luaL_checktype(L, -1, LUA_TNUMBER);
-        setGroup(lua_tointeger(L, -1));
-    }
-    lua_pop(L, 1);
-
-    lua_pushliteral(L, "mask");
-    if (lua_rawget(L, 2) != LUA_TNIL)
-    {
-        luaL_checktype(L, -1, LUA_TNUMBER);
-        setMask(lua_tointeger(L, -1));
-    }
-    lua_pop(L, 1);
-
-    lua_pushliteral(L, "collidable");
-    if (lua_rawget(L, 2) != LUA_TNIL)
-    {
-        luaL_checktype(L, -1, LUA_TBOOLEAN);
-        setCollidable(lua_toboolean(L, -1));
-    }
-    lua_pop(L, 1);
+    getValueOpt(L, 2, "group", m_colliderGroup);
+    getValueOpt(L, 2, "mask", m_colliderMask);
+    getValueOpt(L, 2, "collidable", m_collidable);
 }
 
 void ICollider::clone(lua_State* L, ICollider* source)

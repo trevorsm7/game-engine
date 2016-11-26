@@ -1,6 +1,7 @@
 #include "Physics.hpp"
 #include "Transform.hpp"
 #include "Serializer.hpp"
+#include "IUserdata.hpp"
 
 #include "lua.hpp"
 #include <cmath>
@@ -10,53 +11,11 @@ void Physics::construct(lua_State* L, int index)
 {
     const int relIndex = index < 0 ? index - 1 : index;
 
-    lua_pushliteral(L, "mass");
-    if (lua_rawget(L, relIndex) != LUA_TNIL)
-    {
-        luaL_checktype(L, -1, LUA_TNUMBER);
-        m_mass = lua_tonumber(L, -1);
-    }
-    lua_pop(L, 1);
-
-    lua_pushliteral(L, "cor");
-    if (lua_rawget(L, relIndex) != LUA_TNIL)
-    {
-        luaL_checktype(L, -1, LUA_TNUMBER);
-        m_cor = lua_tonumber(L, -1);
-    }
-    lua_pop(L, 1);
-
-    lua_pushliteral(L, "cof");
-    if (lua_rawget(L, relIndex) != LUA_TNIL)
-    {
-        luaL_checktype(L, -1, LUA_TNUMBER);
-        m_cof = lua_tonumber(L, -1);
-    }
-    lua_pop(L, 1);
-
-    lua_pushliteral(L, "velocity");
-    if (lua_rawget(L, relIndex) != LUA_TNIL)
-    {
-        luaL_checktype(L, -1, LUA_TTABLE);
-        lua_rawgeti(L, -1, 1);
-        lua_rawgeti(L, -2, 2);
-        m_vel.x = luaL_checknumber(L, -2);
-        m_vel.y = luaL_checknumber(L, -1);
-        lua_pop(L, 2);
-    }
-    lua_pop(L, 1);
-
-    lua_pushliteral(L, "acceleration");
-    if (lua_rawget(L, relIndex) != LUA_TNIL)
-    {
-        luaL_checktype(L, -1, LUA_TTABLE);
-        lua_rawgeti(L, -1, 1);
-        lua_rawgeti(L, -2, 2);
-        m_acc.x = luaL_checknumber(L, -2);
-        m_acc.y = luaL_checknumber(L, -1);
-        lua_pop(L, 2);
-    }
-    lua_pop(L, 1);
+    IUserdata::getValueOpt(L, relIndex, "mass", m_mass);
+    IUserdata::getValueOpt(L, relIndex, "cor", m_cor);
+    IUserdata::getValueOpt(L, relIndex, "cof", m_cof);
+    IUserdata::getListOpt(L, relIndex, "velocity", m_vel.x, m_vel.y);
+    IUserdata::getListOpt(L, relIndex, "acceleration", m_acc.x, m_acc.y);
 }
 
 void Physics::serialize(lua_State* L, const char* table, Serializer* serializer, ObjectRef* ref) const
@@ -64,12 +23,8 @@ void Physics::serialize(lua_State* L, const char* table, Serializer* serializer,
     serializer->setNumber(ref, table, "mass", m_mass);
     serializer->setNumber(ref, table, "cor", m_cor);
     serializer->setNumber(ref, table, "cof", m_cof);
-
-    float vel[2] = {m_vel.x, m_vel.y};
-    serializer->setArray(ref, table, "velocity", vel, 2);
-
-    float acc[2] = {m_acc.x, m_acc.y};
-    serializer->setArray(ref, table, "acceleration", acc, 2);
+    serializer->setList(ref, table, "velocity", m_vel.x, m_vel.y);
+    serializer->setList(ref, table, "acceleration", m_acc.x, m_acc.y);
 }
 
 void Physics::preUpdate(float delta)

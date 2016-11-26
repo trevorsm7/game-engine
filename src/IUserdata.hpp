@@ -2,6 +2,8 @@
 
 #include <new>
 #include <cassert>
+#include <string>
+#include <vector>
 #include "lua.hpp"
 // TODO limit to lua_State* in this file so we can remove header
 //struct lua_State;
@@ -40,12 +42,136 @@ public:
         return reinterpret_cast<IUserdata*>(ptr);
     }
 
+    static void getStringReq(lua_State* L, int index, const char* key, std::string& var)
+    {
+        lua_pushstring(L, key);
+        if (lua_rawget(L, index) != LUA_TSTRING)
+            luaL_error(L, "%s required (string)", key);
+        var = lua_tostring(L, -1);
+        lua_pop(L, 1);
+    }
+
+    static void getStringOpt(lua_State* L, int index, const char* key, std::string& var)
+    {
+        lua_pushstring(L, key);
+        if (lua_rawget(L, index) != LUA_TNIL)
+        {
+            if (lua_type(L, -1) != LUA_TSTRING)
+                luaL_error(L, "%s must be string", key);
+            var = lua_tostring(L, -1);
+        }
+        lua_pop(L, 1);
+    }
+
+    template <class T>
+    static void getValueReq(lua_State* L, int index, const char* key, T& var)
+    {
+        lua_pushstring(L, key);
+        lua_rawget(L, index);
+        popT(L, var, -1); // TODO check element type
+        lua_pop(L, 1);
+    }
+
+    template <class T>
+    static void getValueOpt(lua_State* L, int index, const char* key, T& var)
+    {
+        lua_pushstring(L, key);
+        if (lua_rawget(L, index) != LUA_TNIL)
+            popT(L, var, -1);
+        lua_pop(L, 1);
+    }
+
+    template <int N=1>
+    static void getListHelper(lua_State* L) {}
+
+    template <int N=1, class T, class ...As>
+    static void getListHelper(lua_State* L, T& arg, As& ...args)
+    {
+        lua_rawgeti(L, -1, N);
+        popT(L, arg, -1); // TODO check element type
+        lua_pop(L, 1);
+        getListHelper<N+1>(L, args...);
+    }
+
+    template <class ...As>
+    static void getListReq(lua_State* L, int index, const char* key, As& ...args)
+    {
+        lua_pushstring(L, key);
+        if (lua_rawget(L, index) != LUA_TTABLE)
+            luaL_error(L, "%s required (table)", key);
+
+        getListHelper(L, args...);
+
+        lua_pop(L, 1);
+    }
+
+    template <class ...As>
+    static void getListOpt(lua_State* L, int index, const char* key, As& ...args)
+    {
+        lua_pushstring(L, key);
+        if (lua_rawget(L, index) != LUA_TNIL)
+        {
+            if (lua_type(L, -1) != LUA_TTABLE)
+                luaL_error(L, "%s must be table", key);
+
+            getListHelper(L, args...);
+        }
+
+        lua_pop(L, 1);
+    }
+
+    template <class T>
+    static void getVector(lua_State* L, std::vector<T>& vec)
+    {
+        for (int i = 0; i < vec.size(); ++i)
+        {
+            lua_rawgeti(L, -1, i + 1);
+            popT(L, vec[i], -1); // TODO check element type
+            lua_pop(L, 1);
+        }
+    }
+
+    template <class T>
+    static void getVectorReq(lua_State* L, int index, const char* key, std::vector<T>& vec)
+    {
+        lua_pushstring(L, key);
+        if (lua_rawget(L, index) != LUA_TTABLE)
+            luaL_error(L, "%s required (table)", key);
+
+        const int size = vec.size();
+        if (lua_rawlen(L, -1) != size)
+            luaL_error(L, "%s should be size %d", key, size);
+
+        getVector(L, vec);
+
+        lua_pop(L, 1);
+    }
+
+    template <class T>
+    static void getVectorOpt(lua_State* L, int index, const char* key, std::vector<T>& vec)
+    {
+        lua_pushstring(L, key);
+        if (lua_rawget(L, index) != LUA_TNIL)
+        {
+            if (lua_type(L, -1) != LUA_TTABLE)
+                luaL_error(L, "%s must be table", key);
+
+            const int size = vec.size();
+            if (lua_rawlen(L, -1) != size)
+                luaL_error(L, "%s should be size %d", key, size);
+
+            getVector(L, vec);
+        }
+
+        lua_pop(L, 1);
+    }
+
 protected:
     void acquireChild(lua_State* L, void* ptr, int index);
     void releaseChild(lua_State* L, void* ptr);
 
     template <class T>
-    void setChild(lua_State* L, T*& child, int index)
+    void setChild(lua_State* L, int index, T*& child)
     {
         T* ptr = T::checkUserdata(L, index);
 
@@ -62,10 +188,50 @@ protected:
         child = ptr;
     }
 
+    template <class T>
+    void getChildOpt(lua_State* L, int index, const char* key, T*& child)
+    {
+        lua_pushstring(L, key);
+        if (lua_rawget(L, index) != LUA_TNIL)
+            setChild(L, -1, child);
+        lua_pop(L, 1);
+    }
+
+    template <class T>
+    void getChildReq(lua_State* L, int index, const char* key, T*& child)
+    {
+        lua_pushstring(L, key);
+        lua_rawget(L, index);
+        setChild(L, -1, child);
+        lua_pop(L, 1);
+    }
+
+    template <class T>
+    void copyChild(lua_State* L, T*& dest, T* source)
+    {
+        if (source)
+        {
+            source->pushUserdata(L);
+            setChild(L, -1, dest);
+            lua_pop(L, 1);
+        }
+    }
+
+    template <class T>
+    void cloneChild(lua_State* L, T*& dest, T* source)
+    {
+        if (source)
+        {
+            source->pushClone(L);
+            setChild(L, -1, dest);
+            lua_pop(L, 1);
+        }
+    }
+
     bool pcall(lua_State* L, const char* method, int in, int out);
 
-    template <class T> void pushT(lua_State* L, T arg);
-    template <class T> void popT(lua_State* L, T& arg, int i);
+    template <class T> static void pushT(lua_State* L, T arg);
+    template <class T> static void popT(lua_State* L, T& arg, int i);
 
     template <int N=0, class R>
     R pcallT(lua_State* L, const char* method, R ret)
@@ -108,13 +274,29 @@ private:
     static int script_newindex(lua_State* L);
 };
 
-template <> inline void IUserdata::pushT(lua_State* L, int arg) {lua_pushinteger(L, arg);}
+template <> inline void IUserdata::pushT(lua_State* L, int8_t arg) {lua_pushinteger(L, arg);}
+template <> inline void IUserdata::pushT(lua_State* L, uint8_t arg) {lua_pushinteger(L, arg);}
+template <> inline void IUserdata::pushT(lua_State* L, int16_t arg) {lua_pushinteger(L, arg);}
+template <> inline void IUserdata::pushT(lua_State* L, uint16_t arg) {lua_pushinteger(L, arg);}
+template <> inline void IUserdata::pushT(lua_State* L, int32_t arg) {lua_pushinteger(L, arg);}
+template <> inline void IUserdata::pushT(lua_State* L, uint32_t arg) {lua_pushinteger(L, arg);}
+template <> inline void IUserdata::pushT(lua_State* L, int64_t arg) {lua_pushinteger(L, arg);}
+template <> inline void IUserdata::pushT(lua_State* L, uint64_t arg) {lua_pushinteger(L, arg);}
 template <> inline void IUserdata::pushT(lua_State* L, float arg) {lua_pushnumber(L, arg);}
+template <> inline void IUserdata::pushT(lua_State* L, double arg) {lua_pushnumber(L, arg);}
 template <> inline void IUserdata::pushT(lua_State* L, bool arg) {lua_pushboolean(L, arg);}
 template <> inline void IUserdata::pushT(lua_State* L, const char* arg) {lua_pushstring(L, arg);}
 
-template <> inline void IUserdata::popT(lua_State* L, int& arg, int i) {arg = lua_tointeger(L, i);}
+template <> inline void IUserdata::popT(lua_State* L, int8_t& arg, int i) {arg = lua_tointeger(L, i);}
+template <> inline void IUserdata::popT(lua_State* L, uint8_t& arg, int i) {arg = lua_tointeger(L, i);}
+template <> inline void IUserdata::popT(lua_State* L, int16_t& arg, int i) {arg = lua_tointeger(L, i);}
+template <> inline void IUserdata::popT(lua_State* L, uint16_t& arg, int i) {arg = lua_tointeger(L, i);}
+template <> inline void IUserdata::popT(lua_State* L, int32_t& arg, int i) {arg = lua_tointeger(L, i);}
+template <> inline void IUserdata::popT(lua_State* L, uint32_t& arg, int i) {arg = lua_tointeger(L, i);}
+template <> inline void IUserdata::popT(lua_State* L, int64_t& arg, int i) {arg = lua_tointeger(L, i);}
+template <> inline void IUserdata::popT(lua_State* L, uint64_t& arg, int i) {arg = lua_tointeger(L, i);}
 template <> inline void IUserdata::popT(lua_State* L, float& arg, int i) {arg = lua_tonumber(L, i);}
+template <> inline void IUserdata::popT(lua_State* L, double& arg, int i) {arg = lua_tonumber(L, i);}
 template <> inline void IUserdata::popT(lua_State* L, bool& arg, int i) {arg = lua_toboolean(L, i);}
 template <> inline void IUserdata::popT(lua_State* L, const char*& arg, int i) {arg = lua_tostring(L, i);}
 

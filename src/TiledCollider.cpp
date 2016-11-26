@@ -138,22 +138,12 @@ bool TiledCollider::getCollisionTime(float velX, float velY, const ICollider* ot
 
 void TiledCollider::construct(lua_State* L)
 {
-    lua_pushliteral(L, "tilemap");
-    if (lua_rawget(L, 2) != LUA_TNIL)
-        setChild(L, m_tilemap, -1);
-    lua_pop(L, 1);
+    getChildOpt(L, 2, "tilemap", m_tilemap);
 }
 
 void TiledCollider::clone(lua_State* L, TiledCollider* source)
 {
-    if (source->m_tilemap)
-    {
-        // Don't need to clone TileMap; just copy
-        //source->m_tilemap->pushClone(L);
-        source->m_tilemap->pushUserdata(L);
-        setChild(L, m_tilemap, -1);
-        lua_pop(L, 1);
-    }
+    copyChild(L, m_tilemap, source->m_tilemap);
 }
 
 void TiledCollider::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
@@ -170,6 +160,6 @@ int TiledCollider::script_getTileMap(lua_State* L)
 int TiledCollider::script_setTileMap(lua_State* L)
 {
     TiledCollider* collider = TiledCollider::checkUserdata(L, 1);
-    collider->setChild(L, collider->m_tilemap, 2);
+    collider->setChild(L, 2, collider->m_tilemap);
     return 0;
 }

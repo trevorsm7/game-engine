@@ -19,27 +19,8 @@ bool IGraphics::testBounds(float x, float y) const
 
 void IGraphics::construct(lua_State* L)
 {
-    lua_pushliteral(L, "visible");
-    if (lua_rawget(L, 2) != LUA_TNIL)
-    {
-        luaL_checktype(L, -1, LUA_TBOOLEAN);
-        setVisible(lua_toboolean(L, -1));
-    }
-    lua_pop(L, 1);
-
-    lua_pushliteral(L, "color");
-    if (lua_rawget(L, 2) != LUA_TNIL)
-    {
-        // TODO refactor w/ script_setColor
-        for (int i = 1; i <= 3; ++i)
-            luaL_argcheck(L, (lua_rawgeti(L, -i, i) == LUA_TNUMBER), 1, "color = {r, g, b} must be numbers");
-        float r = lua_tonumber(L, -3);
-        float g = lua_tonumber(L, -2);
-        float b = lua_tonumber(L, -1);
-        setColor(r, g, b);
-        lua_pop(L, 3);
-    }
-    lua_pop(L, 1);
+    getValueOpt(L, 2, "visible", m_isVisible);
+    getListOpt(L, 2, "color", m_color.r, m_color.g, m_color.b);
 }
 
 void IGraphics::clone(lua_State* L, IGraphics* source)
@@ -50,7 +31,7 @@ void IGraphics::clone(lua_State* L, IGraphics* source)
 
 void IGraphics::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
 {
-    serializer->setArray(ref, "", "color", &(m_color.r), 3);
+    serializer->setList(ref, "", "color", m_color.r, m_color.g, m_color.b);
     serializer->setBoolean(ref, "", "visible", isVisible());
 }
 

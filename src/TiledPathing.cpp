@@ -154,20 +154,12 @@ bool TiledPathing::findPath(int x1, int y1, int x2, int y2, int& xOut, int& yOut
 
 void TiledPathing::construct(lua_State* L)
 {
-    lua_pushliteral(L, "tilemap");
-    if (lua_rawget(L, 2) != LUA_TNIL)
-        setChild(L, m_tilemap, -1);
-    lua_pop(L, 1);
+    getChildOpt(L, 2, "tilemap", m_tilemap);
 }
 
 void TiledPathing::clone(lua_State* L, TiledPathing* source)
 {
-    if (source->m_tilemap)
-    {
-        source->m_tilemap->pushUserdata(L); // NOTE don't need to clone
-        setChild(L, m_tilemap, -1);
-        lua_pop(L, 1);
-    }
+    copyChild(L, m_tilemap, source->m_tilemap);
 }
 
 void TiledPathing::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
@@ -184,6 +176,6 @@ int TiledPathing::script_getTileMap(lua_State* L)
 int TiledPathing::script_setTileMap(lua_State* L)
 {
     TiledPathing* graphics = TiledPathing::checkUserdata(L, 1);
-    graphics->setChild(L, graphics->m_tilemap, 2);
+    graphics->setChild(L, 2, graphics->m_tilemap);
     return 0;
 }

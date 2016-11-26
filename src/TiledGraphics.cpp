@@ -52,20 +52,12 @@ void TiledGraphics::getSize(float& w, float& h) const
 
 void TiledGraphics::construct(lua_State* L)
 {
-    lua_pushliteral(L, "tilemap");
-    if (lua_rawget(L, 2) != LUA_TNIL)
-        setChild(L, m_tilemap, -1);
-    lua_pop(L, 1);
+    getChildOpt(L, 2, "tilemap", m_tilemap);
 }
 
 void TiledGraphics::clone(lua_State* L, TiledGraphics* source)
 {
-    if (source->m_tilemap)
-    {
-        source->m_tilemap->pushUserdata(L); // shallow copy
-        setChild(L, m_tilemap, -1);
-        lua_pop(L, 1);
-    }
+    copyChild(L, m_tilemap, source->m_tilemap);
 }
 
 void TiledGraphics::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
@@ -82,6 +74,6 @@ int TiledGraphics::script_getTileMap(lua_State* L)
 int TiledGraphics::script_setTileMap(lua_State* L)
 {
     TiledGraphics* graphics = TiledGraphics::checkUserdata(L, 1);
-    graphics->setChild(L, graphics->m_tilemap, 2);
+    graphics->setChild(L, 2, graphics->m_tilemap);
     return 0;
 }

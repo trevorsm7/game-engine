@@ -239,9 +239,35 @@ public:
     }
 
     template <class T>
-    void setArray(ObjectRef* ref, const std::string& table, const std::string& key, const std::vector<T>& value)
+    void setVector(ObjectRef* ref, const std::string& table, const std::string& key, const std::vector<T>& value)
     {
         setArray(ref, table, key, value.data(), value.size());
+    }
+
+private:
+    template <int N=0>
+    static void setListHelper(std::string& str) {}
+
+    template <int N=0, class T, class ...As>
+    static void setListHelper(std::string& str, T& arg, As& ...args)
+    {
+        if (N > 0)
+            str += ", ";
+        str += std::to_string(arg);
+        setListHelper<N+1>(str, args...);
+    }
+
+public:
+    template <class ...As>
+    void setList(ObjectRef* ref, const std::string& table, const std::string& key, As& ...args)
+    {
+        auto str = std::string("{");
+        setListHelper(str, args...);
+        str += "}";
+
+        KeyRef* keyRef = serializeKey(key, "");
+        LiteralRef* valueRef = serializeLiteral(str);
+        ref->setInlineRef(table, keyRef, valueRef);
     }
 
     void populateGlobals(const void* G, const std::string& prefix, lua_State* L, int index);

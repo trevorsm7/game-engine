@@ -18,10 +18,12 @@ void SpriteGraphics::render(IRenderer* renderer)
 
 void SpriteGraphics::construct(lua_State* L)
 {
-    lua_pushliteral(L, "sprite");
-    luaL_argcheck(L, (lua_rawget(L, 2) == LUA_TSTRING), 2, "{sprite = filename} is required");
-    m_filename = lua_tostring(L, -1);
-    lua_pop(L, 1);
+    getStringReq(L, 2, "sprite", m_filename);
+}
+
+void SpriteGraphics::clone(lua_State* L, SpriteGraphics* source)
+{
+    m_filename = source->m_filename;
 }
 
 void SpriteGraphics::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)

@@ -384,21 +384,8 @@ void Canvas::construct(lua_State* L)
     m_camera = ICameraPtr(new BasicCamera());
     m_camera->construct(L, 2);
 
-    lua_pushliteral(L, "paused");
-    if (lua_rawget(L, 2) != LUA_TNIL)
-    {
-        luaL_checktype(L, -1, LUA_TBOOLEAN);
-        m_paused = lua_toboolean(L, -1);
-    }
-    lua_pop(L, 1);
-
-    lua_pushliteral(L, "visible");
-    if (lua_rawget(L, 2) != LUA_TNIL)
-    {
-        luaL_checktype(L, -1, LUA_TBOOLEAN);
-        m_visible = lua_toboolean(L, -1);
-    }
-    lua_pop(L, 1);
+    getValueOpt(L, 2, "paused", m_paused);
+    getValueOpt(L, 2, "visible", m_visible);
 }
 
 void Canvas::clone(lua_State* L, Canvas* source)
@@ -413,6 +400,7 @@ void Canvas::clone(lua_State* L, Canvas* source)
 
         actor->pushClone(L);
         Actor* ptr = Actor::testUserdata(L, -1);
+        assert(ptr != nullptr);
         acquireChild(L, ptr, -1);
         lua_pop(L, 1);
         ptr->m_canvas = this;
