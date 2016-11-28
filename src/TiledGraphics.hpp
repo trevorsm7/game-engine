@@ -16,7 +16,7 @@ public:
     void update(float delta) override {}
     void render(IRenderer* renderer) override;
 
-    bool testBounds(float x, float y) const override;
+    bool testBounds(float x, float y, float& xl, float& yl) const override;
 
     void getSize(float& w, float& h) const override;
 

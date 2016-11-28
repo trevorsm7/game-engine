@@ -53,10 +53,10 @@ public:
 
     void update(lua_State* L, float delta);
     void render(IRenderer* renderer);
-    bool mouseEvent(lua_State* L, bool down);
+    bool mouseEvent(lua_State* L, bool down, float xl, float yl);
     void collideEvent(lua_State* L, Actor* with);
 
-    bool testMouse(float x, float y) const;
+    bool testMouse(float x, float y, float& xl, float& yl) const;
     bool testCollision(float x, float y) const;
 
 private:

@@ -91,6 +91,8 @@ bool Canvas::mouseEvent(lua_State *L, MouseEvent& event)
     if (pcallT(L, "onClickPre", false, event.down))
         return true;
 
+    float xl, yl;
+
     // NOTE: iterate in reverse order of rendering
     auto end = m_actors.rend();
     for (auto it = m_actors.rbegin(); it != end; ++it)
@@ -101,12 +103,12 @@ bool Canvas::mouseEvent(lua_State *L, MouseEvent& event)
 
         // Query if click is inside Actor; could be combined with mouseEvent??
         // TODO: Actor should convert ray/point from world->object space
-        if (!(*it)->testMouse(x, y))
+        if (!(*it)->testMouse(x, y, xl, yl))
             continue;
 
         // TODO: try next actor down, or absorb the click?
         //return (*it)->mouseEvent(L, event.down); // absorb the click
-        if ((*it)->mouseEvent(L, event.down))
+        if ((*it)->mouseEvent(L, event.down, xl, yl))
             return true; // only absorb click if Actor chose to handle it
     }
 

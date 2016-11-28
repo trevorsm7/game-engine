@@ -65,9 +65,9 @@ void Actor::render(IRenderer* renderer)
     renderer->popModelTransform();
 }
 
-bool Actor::mouseEvent(lua_State* L, bool down)//MouseEvent& event)
+bool Actor::mouseEvent(lua_State* L, bool down, float xl, float yl)//MouseEvent& event)
 {
-    return pcallT(L, "onClick", false, down);
+    return pcallT(L, "onClick", false, down, xl, yl);
 }
 
 void Actor::collideEvent(lua_State* L, Actor* with)
@@ -78,12 +78,12 @@ void Actor::collideEvent(lua_State* L, Actor* with)
     pcall(L, "onCollide", 1, 0);
 }
 
-bool Actor::testMouse(float x, float y) const
+bool Actor::testMouse(float x, float y, float& xl, float& yl) const
 {
     if (!m_graphics)
         return false;
 
-    return m_graphics->testBounds(x, y);
+    return m_graphics->testBounds(x, y, xl, yl);
 }
 
 bool Actor::testCollision(float x, float y) const

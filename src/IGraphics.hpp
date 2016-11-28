@@ -23,7 +23,7 @@ public:
     virtual void render(IRenderer* renderer) = 0;
 
     // TODO: test click/ray for mouse events
-    virtual bool testBounds(float x, float y) const;
+    virtual bool testBounds(float x, float y, float& xl, float& yl) const;
 
     virtual void getSize(float& w, float& h) const {w = 1.f; h = 1.f;}
 

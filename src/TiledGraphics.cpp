@@ -16,7 +16,7 @@ void TiledGraphics::render(IRenderer* renderer)
     renderer->drawLines(m_tilemap->m_debug); // TODO remove
 }
 
-bool TiledGraphics::testBounds(float x, float y) const
+bool TiledGraphics::testBounds(float x, float y, float& xl, float& yl) const
 {
     assert(m_actor != nullptr);
 
@@ -30,11 +30,11 @@ bool TiledGraphics::testBounds(float x, float y) const
     const float width = bounds.getWidth();
     const float height = bounds.getHeight();
 
-    // TODO check for invisible/masked tiles
-    int tileX = (x - bounds.getLeft()) * m_tilemap->getCols() / width;
-    int tileY = (y - bounds.getTop()) * m_tilemap->getRows() / height;
-    int index = m_tilemap->getIndex(tileX, tileY);
-    return (index != 0);
+    xl = (x - bounds.getLeft()) * m_tilemap->getCols() / width;
+    yl = (y - bounds.getTop()) * m_tilemap->getRows() / height;
+    //int index = m_tilemap->getIndex(int(xl), int(yl));
+    //return (index != 0);
+    return true; // Actor can decide whether or not to cull
 }
 
 void TiledGraphics::getSize(float& w, float& h) const

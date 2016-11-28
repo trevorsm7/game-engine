@@ -6,7 +6,7 @@
 
 const luaL_Reg IGraphics::METHODS[];
 
-bool IGraphics::testBounds(float x, float y) const
+bool IGraphics::testBounds(float x, float y, float& xl, float& yl) const
 {
     assert(m_actor != nullptr);
 
@@ -14,7 +14,12 @@ bool IGraphics::testBounds(float x, float y) const
         return false;
 
     Aabb bounds = m_actor->getAabb();
-    return bounds.isContaining(x, y);
+    if (!bounds.isContaining(x, y))
+        return false;
+
+    xl = (x - bounds.getLeft()) / bounds.getWidth();
+    yl = (y - bounds.getTop()) / bounds.getHeight();
+    return true;
 }
 
 void IGraphics::construct(lua_State* L)
