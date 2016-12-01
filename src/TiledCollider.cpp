@@ -13,7 +13,7 @@ bool TiledCollider::testCollision(float x, float y) const
 {
     assert(m_actor != nullptr);
 
-    if (!m_tilemap->getTileIndex())
+    if (!m_tilemap->getTileSet())
         return false;
 
     if (!isCollidable() || !m_tilemap)
@@ -31,14 +31,14 @@ bool TiledCollider::testCollision(float x, float y) const
     if (!m_tilemap->isValidIndex(tileX, tileY))
         return false;
 
-    return m_tilemap->isFlagSet(tileX, tileY, TileIndex::MoveBlocking);
+    return m_tilemap->isFlagSet(tileX, tileY, TileSet::MoveBlocking);
 }
 
 bool TiledCollider::testCollision(const Aabb& aabb) const
 {
     assert(m_actor != nullptr);
 
-    if (!m_tilemap->getTileIndex())
+    if (!m_tilemap->getTileSet())
         return false;
 
     if (!isCollidable() || !m_tilemap)
@@ -67,7 +67,7 @@ bool TiledCollider::testCollision(const Aabb& aabb) const
     {
         for (int x = tileLeft; x < tileRight; ++x)
         {
-            if (m_tilemap->isFlagSet(x, y, TileIndex::MoveBlocking))
+            if (m_tilemap->isFlagSet(x, y, TileSet::MoveBlocking))
                 return true;
         }
     }
@@ -82,7 +82,7 @@ bool TiledCollider::testCollision(float deltaX, float deltaY, const ICollider* o
     assert(m_actor != nullptr);
     assert(other != nullptr);
 
-    if (!m_tilemap->getTileIndex())
+    if (!m_tilemap->getTileSet())
         return false;
 
     if (!isCollidableWith(other) || !m_tilemap)
@@ -105,7 +105,7 @@ bool TiledCollider::testCollision(float deltaX, float deltaY, const ICollider* o
     {
         for (int x = 0; x < cols; ++x)
         {
-            if (!m_tilemap->isFlagSet(x, y, TileIndex::MoveBlocking))
+            if (!m_tilemap->isFlagSet(x, y, TileSet::MoveBlocking))
                 continue;
 
             // If collidable, compute AABB for tile

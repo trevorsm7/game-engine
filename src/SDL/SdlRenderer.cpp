@@ -124,12 +124,12 @@ void SdlRenderer::drawSprite(const std::string& name)
 void SdlRenderer::drawTiles(const TileMap* tilemap)
 {
     assert(tilemap != nullptr);
-    const TileIndex* tileindex = tilemap->getTileIndex();
-    if (!tileindex)
+    const TileSet* tileset = tilemap->getTileSet();
+    if (!tileset)
         return;
 
     // Get texture resource
-    SdlTexturePtr texture = SdlTexture::loadTexture(m_resources, m_renderer, tileindex->getImageFile());
+    SdlTexturePtr texture = SdlTexture::loadTexture(m_resources, m_renderer, tileset->getFilename());
     if (!texture)
         return; // TODO: we should at least have a placeholder instead of null; assert here?
 
@@ -140,8 +140,8 @@ void SdlRenderer::drawTiles(const TileMap* tilemap)
 
     // Set the source rect from which we will draw the texture
     SDL_Rect source;
-    source.w = texture->getWidth() / tileindex->getCols();
-    source.h = texture->getHeight() / tileindex->getRows();
+    source.w = texture->getWidth() / tileset->getCols();
+    source.h = texture->getHeight() / tileset->getRows();
 
     // Compute the scale from camera to screen
     const float scaleW = m_width / m_camera.getScaleX();
@@ -168,12 +168,12 @@ void SdlRenderer::drawTiles(const TileMap* tilemap)
         {
             // Skip if tile index invalid (blank tile)
             const int tile = tilemap->getIndex(i++);
-            if (!tileindex->isValidIndex(tile))
+            if (!tileset->isValidIndex(tile))
                 continue;
 
             // Index tiles from top-left
-            source.x = tileindex->getIndexCol(tile) * source.w;
-            source.y = tileindex->getIndexRow(tile) * source.h;
+            source.x = tileset->getIndexCol(tile) * source.w;
+            source.y = tileset->getIndexRow(tile) * source.h;
 
             // Draw tilemap from top-left
             target.x = originX + int(x * floatW);

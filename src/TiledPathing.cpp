@@ -51,7 +51,7 @@ bool TiledPathing::findPath(int x1, int y1, int x2, int y2, int& xOut, int& yOut
     if (!m_tilemap)
         return false;
 
-    if (!m_tilemap->getTileIndex())
+    if (!m_tilemap->getTileSet())
         return false;
 
     const int width = m_tilemap->getCols();
@@ -64,8 +64,8 @@ bool TiledPathing::findPath(int x1, int y1, int x2, int y2, int& xOut, int& yOut
 
     const int src = x1 + y1 * width;
     const int dst = x2 + y2 * width;
-    if (m_tilemap->isFlagSet(src, TileIndex::MoveBlocking) ||
-        m_tilemap->isFlagSet(dst, TileIndex::MoveBlocking))
+    if (m_tilemap->isFlagSet(src, TileSet::MoveBlocking) ||
+        m_tilemap->isFlagSet(dst, TileSet::MoveBlocking))
         return false;
 
     if (src == dst)
@@ -85,7 +85,7 @@ bool TiledPathing::findPath(int x1, int y1, int x2, int y2, int& xOut, int& yOut
     for (int i = 0; i < size; ++i)
     {
         //graph[i].weight = std::numeric_limits<int>::max();
-        graph[i].valid = !m_tilemap->isFlagSet(i, TileIndex::MoveBlocking);
+        graph[i].valid = !m_tilemap->isFlagSet(i, TileSet::MoveBlocking);
     }
 
     // Start at destination

@@ -139,7 +139,7 @@ bool Scene::load(const char *filename)
     // Initialize objects and methods
     Canvas::initMetatable(m_L);
     Actor::initMetatable(m_L);
-    TileIndex::initMetatable(m_L);
+    TileSet::initMetatable(m_L);
     TileMask::initMetatable(m_L);
     TileMap::initMetatable(m_L);
     SpriteGraphics::initMetatable(m_L);

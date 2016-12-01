@@ -5,44 +5,44 @@
 #include <cstdlib>
 #include <chrono>
 
-const luaL_Reg TileIndex::METHODS[];
+const luaL_Reg TileSet::METHODS[];
 const luaL_Reg TileMask::METHODS[];
 const luaL_Reg TileMap::METHODS[];
 
 // =============================================================================
-// TileIndex
+// TileSet
 // =============================================================================
 
-void TileIndex::construct(lua_State* L)
+void TileSet::construct(lua_State* L)
 {
-    getStringReq(L, 2, "sprite", m_image);
+    getStringReq(L, 2, "filename", m_filename);
     getListReq(L, 2, "size", m_cols, m_rows);
     m_flags.resize(m_cols * m_rows);
     getVectorOpt(L, 2, "data", m_flags);
 }
 
-void TileIndex::clone(lua_State* L, TileIndex* source)
+void TileSet::clone(lua_State* L, TileSet* source)
 {
-    m_image = source->m_image;
+    m_filename = source->m_filename;
     m_flags = source->m_flags;
     m_cols = source->m_cols;
     m_rows = source->m_rows;
 }
 
-void TileIndex::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
+void TileSet::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
 {
-    serializer->setString(ref, "", "sprite", m_image);
+    serializer->setString(ref, "", "filename", m_filename);
     serializer->setList(ref, "", "size", m_cols, m_rows);
     serializer->setVector(ref, "", "data", m_flags);
 }
 
-int TileIndex::script_getSize(lua_State* L)
+int TileSet::script_getSize(lua_State* L)
 {
     // Validate function arguments
-    TileIndex* index = TileIndex::checkUserdata(L, 1);
+    TileSet* tileset = TileSet::checkUserdata(L, 1);
 
-    lua_pushinteger(L, index->m_cols);
-    lua_pushinteger(L, index->m_rows);
+    lua_pushinteger(L, tileset->m_cols);
+    lua_pushinteger(L, tileset->m_rows);
     return 2;
 }
 
@@ -184,7 +184,7 @@ int TileMask::script_blendMasks(lua_State* L)
 
 void TileMap::construct(lua_State* L)
 {
-    getChildOpt(L, 2, "index", m_index);
+    getChildOpt(L, 2, "tileset", m_tileset);
     getChildOpt(L, 2, "mask", m_mask);
 
     getListReq(L, 2, "size", m_cols, m_rows);
@@ -194,7 +194,7 @@ void TileMap::construct(lua_State* L)
 
 void TileMap::clone(lua_State* L, TileMap* source)
 {
-    copyChild(L, m_index, source->m_index);
+    copyChild(L, m_tileset, source->m_tileset);
     copyChild(L, m_mask, source->m_mask);
 
     m_map = source->m_map;
@@ -204,17 +204,17 @@ void TileMap::clone(lua_State* L, TileMap* source)
 
 void TileMap::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
 {
-    serializer->serializeMember(ref, "", "index", "setTileIndex", L, m_index);
+    serializer->serializeMember(ref, "", "tileset", "setTileSet", L, m_tileset);
     serializer->serializeMember(ref, "", "mask", "setTileMask", L, m_mask);
 
     serializer->setList(ref, "", "size", m_cols, m_rows);
     serializer->setVector(ref, "", "data", m_map);
 }
 
-int TileMap::script_setTileIndex(lua_State* L)
+int TileMap::script_setTileSet(lua_State* L)
 {
     TileMap* tilemap = TileMap::checkUserdata(L, 1);
-    tilemap->setChild(L, 2, tilemap->m_index);
+    tilemap->setChild(L, 2, tilemap->m_tileset);
     return 0;
 }
 
@@ -581,7 +581,7 @@ inline void castShadows(int x, int y, int dx, int dy, int depth, int limitLow, i
 
         tileMask->setMask(tx, ty, 255);
 
-        if (!tileMap->isFlagSet(tx, ty, TileIndex::VisionBlocking))
+        if (!tileMap->isFlagSet(tx, ty, TileSet::VisionBlocking))
             continue;
 
         shadows.castShadow(depth, offset);
@@ -602,7 +602,7 @@ int TileMap::script_castShadows(lua_State* L)
     const int cols = tileMap->m_cols;
     const int rows = tileMap->m_rows;
 
-    luaL_argcheck(L, tileMap->m_index != nullptr, 1, "must have TileIndex");
+    luaL_argcheck(L, tileMap->m_tileset != nullptr, 1, "must have TileSet");
     luaL_argcheck(L, cols == tileMask->getCols(), 2, "width doesn't match");
     luaL_argcheck(L, rows == tileMask->getRows(), 2, "height doesn't match");
     luaL_argcheck(L, (x >= 0 && x < cols), 3, "x is out of bounds");

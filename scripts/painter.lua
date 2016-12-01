@@ -1,12 +1,12 @@
-tiles16 = TileIndex
+tiles16 = TileSet
 {
-    sprite = "tiles16.tga",
+    filename = "tiles16.tga",
     size = {10, 8}
 }
 
-tiles32 = TileIndex
+tiles32 = TileSet
 {
-    sprite = "tiles32.tga",
+    filename = "tiles32.tga",
     size = {8, 3}
 }
 
@@ -18,7 +18,7 @@ for i, v in ipairs(sets) do
     local cols, rows = v:getSize()
     local map = TileMap
     {
-        index = v,
+        tileset = v,
         size = {cols, rows}
     }
     local tile = 1
@@ -138,7 +138,7 @@ canvases = {painter, palettePicker, tilePicker}
 
 function refresh()
     tilePickerActor:setPalette(curPalette)
-    painterActor:getGraphics():getTileMap():setTileIndex(sets[curPalette])
+    painterActor:getGraphics():getTileMap():setTileSet(sets[curPalette])
     for i, v in ipairs(canvases) do
         v:setVisible(false)
     end

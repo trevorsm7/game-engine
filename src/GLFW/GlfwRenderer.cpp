@@ -199,12 +199,12 @@ void GlfwRenderer::drawSprite(const std::string& name)
 void GlfwRenderer::drawTiles(const TileMap* tilemap)
 {
     assert(tilemap != nullptr);
-    const TileIndex* tileindex = tilemap->getTileIndex();
-    if (!tileindex)
+    const TileSet* tileset = tilemap->getTileSet();
+    if (!tileset)
         return;
 
     // Get texture resource
-    GlfwTexturePtr texture = GlfwTexture::loadTexture(m_resources, tileindex->getImageFile());
+    GlfwTexturePtr texture = GlfwTexture::loadTexture(m_resources, tileset->getFilename());
     if (!texture)
         return; // TODO: we should at least have a placeholder instead of null; assert here?
 
@@ -213,8 +213,8 @@ void GlfwRenderer::drawTiles(const TileMap* tilemap)
     glBindVertexArray(m_spriteVAO);
 
     // Compute and set texture size of one tile
-    const float tileW = 1.f / tileindex->getCols();
-    const float tileH = 1.f / tileindex->getRows();
+    const float tileW = 1.f / tileset->getCols();
+    const float tileH = 1.f / tileset->getRows();
     glUniform2f(m_textureScale, tileW, tileH);
 
     // Compute and set model size of one tile
@@ -231,12 +231,12 @@ void GlfwRenderer::drawTiles(const TileMap* tilemap)
         {
             // Skip if tile index invalid (blank tile)
             const int tile = tilemap->getIndex(i++);
-            if (!tileindex->isValidIndex(tile))
+            if (!tileset->isValidIndex(tile))
                 continue;
 
             // Index tiles from top-left
-            const float tileX = tileindex->getIndexCol(tile) * tileW;
-            const float tileY = tileindex->getIndexRow(tile) * tileH;
+            const float tileX = tileset->getIndexCol(tile) * tileW;
+            const float tileY = tileset->getIndexRow(tile) * tileH;
             glUniform2f(m_textureOffset, tileX, tileY);
 
             // Draw tilemap from top-left

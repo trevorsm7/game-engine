@@ -1,6 +1,6 @@
-local singleTile = TileIndex
+local singleTile = TileSet
 {
-    sprite = "square.tga",
+    filename = "square.tga",
     size = {1, 1},
     data = {1}
 }
@@ -12,7 +12,7 @@ tetrominoes =
         color = {1, 0, 0},
         TileMap
         {
-            index = singleTile,
+            tileset = singleTile,
             size = {4, 4},
             data =
             {
@@ -24,7 +24,7 @@ tetrominoes =
         },
         TileMap
         {
-            index = singleTile,
+            tileset = singleTile,
             size = {4, 4},
             data =
             {
@@ -39,7 +39,7 @@ tetrominoes =
         color = {1, 1, 0},
         TileMap
         {
-            index = singleTile,
+            tileset = singleTile,
             size = {3, 3},
             data =
             {
@@ -50,7 +50,7 @@ tetrominoes =
         },
         TileMap
         {
-            index = singleTile,
+            tileset = singleTile,
             size = {3, 3},
             data =
             {
@@ -61,7 +61,7 @@ tetrominoes =
         },
         TileMap
         {
-            index = singleTile,
+            tileset = singleTile,
             size = {3, 3},
             data =
             {
@@ -72,7 +72,7 @@ tetrominoes =
         },
         TileMap
         {
-            index = singleTile,
+            tileset = singleTile,
             size = {3, 3},
             data =
             {
@@ -86,7 +86,7 @@ tetrominoes =
         color = {1, 0, 1},
         TileMap
         {
-            index = singleTile,
+            tileset = singleTile,
             size = {3, 3},
             data =
             {
@@ -97,7 +97,7 @@ tetrominoes =
         },
         TileMap
         {
-            index = singleTile,
+            tileset = singleTile,
             size = {3, 3},
             data =
             {
@@ -108,7 +108,7 @@ tetrominoes =
         },
         TileMap
         {
-            index = singleTile,
+            tileset = singleTile,
             size = {3, 3},
             data =
             {
@@ -119,7 +119,7 @@ tetrominoes =
         },
         TileMap
         {
-            index = singleTile,
+            tileset = singleTile,
             size = {3, 3},
             data =
             {
@@ -133,7 +133,7 @@ tetrominoes =
         color = {0, 0, 1},
         TileMap
         {
-            index = singleTile,
+            tileset = singleTile,
             size = {2, 2},
             data =
             {
@@ -146,7 +146,7 @@ tetrominoes =
         color = {0, 1, 1},
         TileMap
         {
-            index = singleTile,
+            tileset = singleTile,
             size = {3, 3},
             data =
             {
@@ -157,7 +157,7 @@ tetrominoes =
         },
         TileMap
         {
-            index = singleTile,
+            tileset = singleTile,
             size = {3, 3},
             data =
             {
@@ -171,7 +171,7 @@ tetrominoes =
         color = {0.5, 1, 0},
         TileMap
         {
-            index = singleTile,
+            tileset = singleTile,
             size = {3, 3},
             data =
             {
@@ -182,7 +182,7 @@ tetrominoes =
         },
         TileMap
         {
-            index = singleTile,
+            tileset = singleTile,
             size = {3, 3},
             data =
             {
@@ -193,7 +193,7 @@ tetrominoes =
         },
         TileMap
         {
-            index = singleTile,
+            tileset = singleTile,
             size = {3, 3},
             data =
             {
@@ -204,7 +204,7 @@ tetrominoes =
         },
         TileMap
         {
-            index = singleTile,
+            tileset = singleTile,
             size = {3, 3},
             data =
             {
@@ -218,7 +218,7 @@ tetrominoes =
         color = {1, 0.5, 0},
         TileMap
         {
-            index = singleTile,
+            tileset = singleTile,
             size = {3, 3},
             data =
             {
@@ -229,7 +229,7 @@ tetrominoes =
         },
         TileMap
         {
-            index = singleTile,
+            tileset = singleTile,
             size = {3, 3},
             data =
             {
@@ -256,7 +256,7 @@ addCanvas(game)
 -- Create the TileMap that will represent all the fallen blocks
 screenMap = TileMap
 {
-    index = singleTile,
+    tileset = singleTile,
     size = screenSize
 }
 
@@ -271,7 +271,7 @@ game:addActor(screen)
 -- Add colliders around the edge of the playing field
 local leftWallTiles = TileMap
 {
-    index = singleTile,
+    tileset = singleTile,
     size = {1, screenSize[2] + 5}
 }
 leftWallTiles:setTiles(0, 0, 1, screenSize[2] + 5, 1)
@@ -286,7 +286,7 @@ game:addActor(leftWall)
 
 local rightWallTiles = TileMap
 {
-    index = singleTile,
+    tileset = singleTile,
     size = {5, screenSize[2] + 5}
 }
 rightWallTiles:setTiles(0, 0, 1, screenSize[2] + 5, 1)
@@ -305,7 +305,7 @@ game:addActor(rightWall)
 
 local bottomWallTiles = TileMap
 {
-    index = singleTile,
+    tileset = singleTile,
     size = {screenSize[1], 1}
 }
 bottomWallTiles:setTiles(0, 0, screenSize[1], 1, 1)
@@ -320,9 +320,9 @@ game:addActor(bottomWall)
 
 local fontTiles = TileMap
 {
-    index = TileIndex
+    tileset = TileSet
     {
-        sprite = "gnsh-green.tga",
+        filename = "gnsh-green.tga",
         size = {20, 5},
     },
     size = {7, 4}

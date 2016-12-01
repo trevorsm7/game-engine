@@ -7,18 +7,18 @@
 #include <algorithm>
 #include <cstdint>
 
-class TileIndex : public TUserdata<TileIndex>
+class TileSet : public TUserdata<TileSet>
 {
-    std::string m_image;
+    std::string m_filename;
     std::vector<uint8_t> m_flags;
     int m_cols, m_rows;
 
-    TileIndex(): m_cols(0), m_rows(0) {}
+    TileSet(): m_cols(0), m_rows(0) {}
 
 public:
-    ~TileIndex() {}
+    ~TileSet() {}
 
-    const std::string& getImageFile() const {return m_image;}
+    const std::string& getFilename() const {return m_filename;}
     int getCols() const {return m_cols;}
     int getRows() const {return m_rows;}
 
@@ -32,15 +32,15 @@ public:
     int getIndexRow(int i) const {return (i-1) / m_cols;}
 
 private:
-    friend class TUserdata<TileIndex>;
+    friend class TUserdata<TileSet>;
     void construct(lua_State* L);
-    void clone(lua_State* L, TileIndex* source);
+    void clone(lua_State* L, TileSet* source);
     //void destroy(lua_State* L) {}
     void serialize(lua_State* L, Serializer* serializer, ObjectRef* ref);
 
     static int script_getSize(lua_State* L);
 
-    static constexpr const char* const CLASS_NAME = "TileIndex";
+    static constexpr const char* const CLASS_NAME = "TileSet";
     static constexpr const luaL_Reg METHODS[] =
     {
         {"getSize", script_getSize},
@@ -102,18 +102,18 @@ private:
 
 class TileMap : public TUserdata<TileMap>
 {
-    TileIndex* m_index;
+    TileSet* m_tileset;
     TileMask* m_mask;
     std::vector<int> m_map;
     int m_cols, m_rows;
 
-    TileMap(): m_index(nullptr), m_mask(nullptr) {}
+    TileMap(): m_tileset(nullptr), m_mask(nullptr) {}
 
 public:
     std::vector<float> m_debug; // HACK remove
     ~TileMap() {}
 
-    const TileIndex* getTileIndex() const {return m_index;}
+    const TileSet* getTileSet() const {return m_tileset;}
     const TileMask* getTileMask() const {return m_mask;}
     int getCols() const {return m_cols;}
     int getRows() const {return m_rows;}
@@ -124,8 +124,8 @@ public:
     bool isValidIndex(int i) const {return i >= 0 && i < m_map.size();}
     bool isValidIndex(int x, int y) const {return x >= 0 && y >= 0 && x < m_cols && y < m_rows;}
 
-    bool isFlagSet(int i, uint8_t flag) const {assert(m_index); return m_index->isFlagSet(getIndex(i), flag);}
-    bool isFlagSet(int x, int y, uint8_t flag) const {assert(m_index); return m_index->isFlagSet(getIndex(x, y), flag);}
+    bool isFlagSet(int i, uint8_t flag) const {assert(m_tileset); return m_tileset->isFlagSet(getIndex(i), flag);}
+    bool isFlagSet(int x, int y, uint8_t flag) const {assert(m_tileset); return m_tileset->isFlagSet(getIndex(x, y), flag);}
     int toIndex(int x, int y) const {return y * m_cols + x;}
 
 private:
@@ -135,7 +135,7 @@ private:
     //void destroy(lua_State* L) {}
     void serialize(lua_State* L, Serializer* serializer, ObjectRef* ref);
 
-    static int script_setTileIndex(lua_State* L);
+    static int script_setTileSet(lua_State* L);
     static int script_setTileMask(lua_State* L);
     static int script_getSize(lua_State* L);
     static int script_setSize(lua_State* L);
@@ -147,7 +147,7 @@ private:
     static constexpr const char* const CLASS_NAME = "TileMap";
     static constexpr const luaL_Reg METHODS[] =
     {
-        {"setTileIndex", script_setTileIndex},
+        {"setTileSet", script_setTileSet},
         {"setTileMask", script_setTileMask},
         {"getSize", script_getSize},
         {"setSize", script_setSize},

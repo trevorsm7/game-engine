@@ -220,9 +220,9 @@ addCanvas(game)
 
 local map = TileMap
 {
-    index = TileIndex
+    tileset = TileSet
     {
-        sprite = "tiles.tga",
+        filename = "tiles.tga",
         size = {2, 3},
         data =
         {
