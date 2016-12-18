@@ -1,7 +1,9 @@
+canvasSize = {20, 15}
+
 tiles16 = TileSet
 {
     filename = "tiles16.tga",
-    size = {10, 8}
+    size = {10, 9}
 }
 
 tiles32 = TileSet
@@ -10,7 +12,31 @@ tiles32 = TileSet
     size = {8, 3}
 }
 
-sets = {tiles16, tiles32}
+custom1 = TileSet
+{
+    filename = "custom1.tga",
+    size = {12, 9}
+}
+
+custom2 = TileSet
+{
+    filename = "custom2.tga",
+    size = {12, 8}
+}
+
+custom3 = TileSet
+{
+    filename = "custom3.tga",
+    size = {12, 9}
+}
+
+alternate = TileSet
+{
+    filename = "alternate.tga",
+    size = {12, 10}
+}
+
+sets = {tiles16, tiles32, custom1, custom2, custom3, alternate}
 
 maps = {}
 
@@ -101,20 +127,14 @@ tilePickerActor:setPalette(curPalette)
 
 painter = Canvas
 {
-    size = {30, 20},
+    size = canvasSize,
     fixed = true
 }
 addCanvas(painter)
 
 painterActor = Actor
 {
-    graphics = TiledGraphics
-    {
-        tilemap = TileMap
-        {
-            size = {30, 20}
-        }
-    },
+    graphics = TiledGraphics{tilemap = TileMap{size = canvasSize}},
     members =
     {
         onClick = function(self, down, x, y)
