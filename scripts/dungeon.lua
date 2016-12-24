@@ -1,24 +1,28 @@
-game = Canvas {
+local game = Canvas {
     size = {40, 30},
     fixed = true
 }
 addCanvas(game)
 
-mapsize = {40, 30}
-rawdata = {}
-prettydata = {}
+local mapsize = {40, 30}
+local rawdata = {}
+local prettydata = {}
 
-minsize = {4, 3}
-maxsize = {12, 10}
-
-function generate()
-    -- clear map to all walls
-    for i = 1, mapsize[1] * mapsize[2] do
-        rawdata[i] = 1
+function fillRoom(x, y, w, h)
+    for yi = y, y+h-1 do
+        yo = yi * mapsize[1]
+        for xi = x, x+w-1 do
+            rawdata[xi+yo+1] = 0
+        end
     end
+end
 
+local function methodA()
     local root = {x=0, y=0, w=mapsize[1], h=mapsize[2]}
     root.area = (root.w-2) * (root.h-2) -- not really used for root anyway
+
+    local minsize = {4, 3}
+    local maxsize = {12, 10}
 
     --for i = 1, 2 do
     while root.area > 0 do
@@ -67,14 +71,6 @@ function generate()
                 node.side[j].area = 0
             end
             area = area + node.side[j].area
-            --[[if node.side[j].area > 0 then
-                game:debugLine(
-                    node.side[j].x, node.side[j].y,
-                    node.side[j].x+node.side[j].w, node.side[j].y,
-                    node.side[j].x+node.side[j].w, node.side[j].y+node.side[j].h,
-                    node.side[j].x, node.side[j].y+node.side[j].h,
-                    node.side[j].x, node.side[j].y)
-            end--]]
         end
 
         -- easier to subtract on the way up
@@ -84,15 +80,55 @@ function generate()
             node = node.parent
         end
 
-        -- Fill room (can do later?)
-        for yi = y, y+h-1 do
-            yo = yi * mapsize[1]
-            for xi = x, x+w-1 do
-                rawdata[xi+yo+1] = 0
-            end
+        fillRoom(x, y, w, h)
+    end
+end
+
+local function methodB()
+    local root = {pos = {0, 0}, size={mapsize[1], mapsize[2]}}
+
+    local minsize = {6, 4}
+    local cutsize = {minsize[1] + 2, minsize[2] + 2}
+
+    local stack = {root}
+
+    while #stack > 0 do
+        local node = stack[#stack]
+        stack[#stack] = nil
+
+        local isValid1 = (node.size[1] > cutsize[1] * 2)
+        local isValid2 = (node.size[2] > cutsize[2] * 2)
+        local dim = nil
+        if isValid1 and isValid2 then
+            dim = math.random(1, 2)
+        elseif isValid1 then
+            dim = 1
+        elseif isValid2 then
+            dim = 2
+        end
+
+        if dim then
+            local pos = node.pos[dim] + math.random(cutsize[dim], node.size[dim] - cutsize[dim])
+            local size = pos - node.pos[dim]
+            node.children = {}
+            node.children[1] = {pos = {node.pos[1], node.pos[2]}, size = {node.size[1], node.size[2]}}
+            node.children[1].size[dim] = size
+            node.children[2] = {pos = {node.pos[1], node.pos[2]}, size = {node.size[1], node.size[2]}}
+            node.children[2].pos[dim] = pos
+            node.children[2].size[dim] = node.size[dim] - size
+            stack[#stack+1] = node.children[2]
+            stack[#stack+1] = node.children[1]
+        else
+            local w = math.random(minsize[1], node.size[1] - 2)
+            local x = node.pos[1] + math.random(2, node.size[1] - w) - 1
+            local h = math.random(minsize[2], node.size[2] - 2)
+            local y = node.pos[2] + math.random(2, node.size[2] - h) - 1
+            fillRoom(x, y, w, h)
         end
     end
+end
 
+local function beautify()
     -- 8 5 9
     -- 4 1 2
     -- 7 3 6
@@ -442,9 +478,7 @@ function generate()
     end
 end
 
-generate()
-
-tileset = TileSet {
+local tileset = TileSet {
     filename = "custom3.tga",
     size = {12, 9},
     data =
@@ -461,42 +495,68 @@ tileset = TileSet {
     }
 }
 
-tilemap = TileMap {
-    tileset = tileset,
-    size = mapsize,
-    data = prettydata
-}
-
-dungeon = Actor {
-    graphics = TiledGraphics{tilemap = tilemap},
-    collider = TiledCollider{tilemap = tilemap}
+local dungeon = Actor {
+    graphics = TiledGraphics{},
+    collider = TiledCollider{}
 }
 game:addActor(dungeon)
 
-pawnA = Actor
+local pawnA = Actor
 {
     graphics = SpriteGraphics{sprite = "hero.tga"},
     transform = {position = {2, 13}}
 }
 game:addActor(pawnA)
 
-local shadowMode = 1
-local visibility = TileMask{size = {tilemap:getSize()}}
-local seen = TileMask{size = {tilemap:getSize()}}
-local overlay = TileMask{size = {tilemap:getSize()}}
---tilemap:setTileMask(seen)
+local shadowMode = 0
+local visibility = TileMask{size = mapsize}
+local seen = TileMask{size = mapsize}
+local overlay = TileMask{size = mapsize}
 
-function updateVisibility(x, y)
-    tilemap:castShadows(visibility, x, y, 8, shadowMode)
-    overlay:fillCircle(x, y, 8)
-    visibility:blendMin(overlay)
-    seen:clampMask(0, 127)
+local function updateVisibility(x, y)
+    local tilemap = dungeon:getGraphics():getTileMap()
+    if shadowMode == 0 then
+        visibility:fillMask(255)
+    else
+        tilemap:castShadows(visibility, x, y, 8, shadowMode)
+        overlay:fillCircle(x, y, 8)
+        visibility:blendMin(overlay)
+        seen:clampMask(0, 127)
+    end
     seen:blendMax(visibility)
+    tilemap:setTileMask(seen)
 end
 
-updateVisibility(pawnA:getPosition())
+local generateMode = 1
+local generators = {methodA, methodB}
 
-function moveFunc(actor, dx, dy)
+local function generate()
+    -- clear map to all walls
+    for i = 1, mapsize[1] * mapsize[2] do
+        rawdata[i] = 1
+    end
+
+    -- generate map
+    generators[generateMode]()
+    beautify()
+
+    -- create TileMap
+    local tilemap = TileMap {
+        tileset = tileset,
+        size = mapsize,
+        data = prettydata
+    }
+    dungeon:getGraphics():setTileMap(tilemap)
+    dungeon:getCollider():setTileMap(tilemap)
+
+    -- reset visibility
+    seen:fillMask(0)
+    updateVisibility(pawnA:getPosition())
+end
+
+generate()
+
+local function moveFunc(actor, dx, dy)
     return function(down)
         if down then
             local x, y = actor:getPosition()
@@ -516,25 +576,27 @@ registerControl("action",
     function (down)
         if down then
             generate()
-            tilemap = TileMap {
-                tileset = tileset,
-                size = mapsize,
-                data = prettydata
-            }
-            dungeon:setGraphics(TiledGraphics{tilemap = tilemap})
-            dungeon:setCollider(TiledCollider{tilemap = tilemap})
         end
     end)
 
-function setMode(arg)
-    return function(down)
+registerControl("a",
+    function (down)
         if down then
-            shadowMode = arg
+            generateMode = generateMode + 1
+            if generateMode > #generators then
+                generateMode = 1
+            end
+            generate()
+        end
+    end)
+
+registerControl("s",
+    function (down)
+        if down then
+            shadowMode = shadowMode + 1
+            if shadowMode > 3 then
+                shadowMode = 0
+            end
             updateVisibility(pawnA:getPosition())
         end
-    end
-end
-
-registerControl("a", setMode(1))
-registerControl("s", setMode(2))
-registerControl("d", setMode(3))
+    end)
