@@ -1,12 +1,12 @@
-local game = Canvas {
-    size = {40, 30},
-    fixed = true
-}
-addCanvas(game)
-
 local mapsize = {40, 30}
 local rawdata = {}
 local prettydata = {}
+
+local game = Canvas {
+    size = mapsize,
+    fixed = true
+}
+addCanvas(game)
 
 function fillRoom(x, y, w, h)
     for yi = y, y+h-1 do
@@ -18,10 +18,10 @@ function fillRoom(x, y, w, h)
 end
 
 local function methodA()
-    local root = {x=0, y=0, w=mapsize[1], h=mapsize[2]}
-    root.area = (root.w-2) * (root.h-2) -- not really used for root anyway
+    local root = {x=1, y=1, w=mapsize[1]-2, h=mapsize[2]-2}
+    root.area = (root.w) * (root.h) -- not really used for root anyway
 
-    local minsize = {4, 3}
+    local minsize = {6, 4}
     local maxsize = {12, 10}
 
     --for i = 1, 2 do
@@ -42,31 +42,28 @@ local function methodA()
             end
         end
 
-        -- Keep 1 unit border around room
-        local w = math.random(math.min(minsize[1], node.w-2), math.min(maxsize[1], node.w-2))
-        local h = math.random(math.min(minsize[2], node.h-2), math.min(maxsize[2], node.h-2))
-        local x = node.x + math.random(1, node.w - w - 1)
-        local y = node.y + math.random(1, node.h - h - 1)
-        -- TODO handle area < 0
+        assert(node.w >= minsize[1] and node.h >= minsize[2])
+        local w = math.random(minsize[1], math.min(maxsize[1], node.w))
+        local h = math.random(minsize[2], math.min(maxsize[2], node.h))
+        local x = node.x + math.random(0, node.w - w)
+        local y = node.y + math.random(0, node.h - h)
+
+        local pad = 3
 
         node.room = {x=x, y=y, w=w, y=y}
+        fillRoom(x, y, w, h)
+
         node.side = {}
-        --[[node.side[1] = {x=node.x, y=node.y, w=x-node.x, h=y+h-node.y}
-        node.side[2] = {x=x, y=node.y, w=node.x+node.w-x, h=y-node.y}
-        node.side[3] = {x=x+w, y=y, w=node.x+node.w-(x+w), h=node.y+node.h-y}
-        node.side[4] = {x=node.x, y=y+h, w=x+w-node.x, h=node.y+node.h-(y+h)}--]]
-        -- add 1 unit padding around room
-        node.side[1] = {x=node.x, y=node.y, w=x-node.x-1, h=y+h-node.y+1}
-        node.side[2] = {x=x-1, y=node.y, w=node.x+node.w-x+1, h=y-node.y-1}
-        node.side[3] = {x=x+w+1, y=y-1, w=node.x+node.w-(x+w)-1, h=node.y+node.h-y+1}
-        node.side[4] = {x=node.x, y=y+h+1, w=x+w-node.x+1, h=node.y+node.h-(y+h)-1}
+        node.side[1] = {x=node.x, y=node.y, w=x-node.x-pad, h=y+h-node.y}
+        node.side[2] = {x=x, y=node.y, w=node.x+node.w-x, h=y-node.y-pad}
+        node.side[3] = {x=x+w+pad, y=y, w=(node.x+node.w)-(x+w+pad), h=node.y+node.h-y}
+        node.side[4] = {x=node.x, y=y+h+pad, w=(x+w)-node.x, h=(node.y+node.h)-(y+h+pad)}
 
         local area = 0
         for j = 1, 4 do
             node.side[j].parent = node
-            -- subtract 1 unit border
-            if node.side[j].w >= minsize[1]+2 and node.side[j].h >= minsize[2]+2 then
-                node.side[j].area = (node.side[j].w-2) * (node.side[j].h-2)
+            if node.side[j].w >= minsize[1] and node.side[j].h >= minsize[2] then
+                node.side[j].area = node.side[j].w * node.side[j].h
             else
                 node.side[j].area = 0
             end
@@ -79,16 +76,17 @@ local function methodA()
             node.area = node.area - area
             node = node.parent
         end
-
-        fillRoom(x, y, w, h)
     end
 end
 
 local function methodB()
-    local root = {pos = {0, 0}, size={mapsize[1], mapsize[2]}}
+    -- leave 1 unit border around edge of map
+    local root = {pos = {1, 1}, size={mapsize[1]-2, mapsize[2]-2}}
 
+    local pad = 2
+    local pad2 = pad * 2
     local minsize = {6, 4}
-    local cutsize = {minsize[1] + 2, minsize[2] + 2}
+    local cutsize = {minsize[1] + pad, minsize[2] + pad}
 
     local stack = {root}
 
@@ -112,17 +110,17 @@ local function methodB()
             local size = pos - node.pos[dim]
             node.children = {}
             node.children[1] = {pos = {node.pos[1], node.pos[2]}, size = {node.size[1], node.size[2]}}
-            node.children[1].size[dim] = size
+            node.children[1].size[dim] = size - pad
             node.children[2] = {pos = {node.pos[1], node.pos[2]}, size = {node.size[1], node.size[2]}}
-            node.children[2].pos[dim] = pos
-            node.children[2].size[dim] = node.size[dim] - size
+            node.children[2].pos[dim] = pos + pad
+            node.children[2].size[dim] = node.size[dim] - (size + pad)
             stack[#stack+1] = node.children[2]
             stack[#stack+1] = node.children[1]
         else
-            local w = math.random(minsize[1], node.size[1] - 2)
-            local x = node.pos[1] + math.random(2, node.size[1] - w) - 1
-            local h = math.random(minsize[2], node.size[2] - 2)
-            local y = node.pos[2] + math.random(2, node.size[2] - h) - 1
+            local w = math.random(minsize[1], node.size[1])
+            local x = node.pos[1] + math.random(0, node.size[1] - w)
+            local h = math.random(minsize[2], node.size[2])
+            local y = node.pos[2] + math.random(0, node.size[2] - h)
             fillRoom(x, y, w, h)
         end
     end
