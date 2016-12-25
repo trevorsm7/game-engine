@@ -112,8 +112,8 @@ void SdlRenderer::drawSprite(const std::string& name)
     SDL_Rect target;
     const float scaleW = m_width / m_camera.getScaleX();
     const float scaleH = m_height / m_camera.getScaleY();
-    target.w = m_model.getScaleX() * scaleW;
-    target.h = m_model.getScaleY() * scaleH;
+    target.w = ceil(m_model.getScaleX() * scaleW);
+    target.h = ceil(m_model.getScaleY() * scaleH);
     target.x = (m_model.getX() - m_camera.getX()) * scaleW;
     target.y = (m_model.getY() - m_camera.getY()) * scaleH;
 
@@ -152,19 +152,21 @@ void SdlRenderer::drawTiles(const TileMap* tilemap)
     const float floatH = m_model.getScaleY() * scaleH;
 
     // Use the top-left corner of the tilemap as the origin
-    const int originX = (m_model.getX() - m_camera.getX()) * scaleW;
-    const int originY = (m_model.getY() - m_camera.getY()) * scaleH;
+    const float originX = (m_model.getX() - m_camera.getX()) * scaleW;
+    const float originY = (m_model.getY() - m_camera.getY()) * scaleH;
 
     // Set the destination rect where we will draw the texture
     SDL_Rect target;
-    target.w = floatW;
-    target.h = floatH;
+    target.w = ceil(floatW);
+    target.h = ceil(floatH);
 
     // Iterate over tile (x, y) indices
     int i = 0;
-    for (int y = 0; y < tilemap->getRows(); ++y)
+    float yf = originY;
+    for (int y = 0; y < tilemap->getRows(); ++y, yf += floatH)
     {
-        for (int x = 0; x < tilemap->getCols(); ++x)
+        float xf = originX;
+        for (int x = 0; x < tilemap->getCols(); ++x, xf += floatW)
         {
             // Skip if tile index invalid (blank tile)
             const int tile = tilemap->getIndex(i++);
@@ -176,8 +178,8 @@ void SdlRenderer::drawTiles(const TileMap* tilemap)
             source.y = tileset->getIndexRow(tile) * source.h;
 
             // Draw tilemap from top-left
-            target.x = originX + int(x * floatW);
-            target.y = originY + int(y * floatH);
+            target.x = int(xf);
+            target.y = int(yf);
 
             if (tileMask)
             {
