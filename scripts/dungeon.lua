@@ -8,11 +8,11 @@ local game = Canvas {
 }
 addCanvas(game)
 
-function fillRoom(x, y, w, h)
+function fillRect(x, y, w, h, val)
     for yi = y, y+h-1 do
         yo = yi * mapsize[1]
         for xi = x, x+w-1 do
-            rawdata[xi+yo+1] = 0
+            rawdata[xi+yo+1] = val
         end
     end
 end
@@ -51,7 +51,7 @@ local function methodA()
         local pad = 3
 
         node.room = {x=x, y=y, w=w, y=y}
-        fillRoom(x, y, w, h)
+        fillRect(x, y, w, h, 0)
 
         node.side = {}
         node.side[1] = {x=node.x, y=node.y, w=x-node.x-pad, h=y+h-node.y}
@@ -121,9 +121,28 @@ local function methodB()
             local x = node.pos[1] + math.random(0, node.size[1] - w)
             local h = math.random(minsize[2], node.size[2])
             local y = node.pos[2] + math.random(0, node.size[2] - h)
-            fillRoom(x, y, w, h)
+            fillRect(x, y, w, h, 0)
         end
     end
+end
+
+local function methodC()
+    local room = {12, 12}
+    local hall = {12, 4}
+    local x = mapsize[1] // 2 - room[1] // 2
+    local y = mapsize[2] // 2 - room[2] // 2
+    fillRect(x, y, room[1], room[2], 0)
+    local w, h = table.unpack(room)
+    for yi = 1, 3, 2 do
+        for xi = 1, 3, 2 do
+            fillRect(x+xi, y+yi, 1, 1, 1)
+            fillRect(x+w-1-xi, y+yi, 1, 1, 1)
+            fillRect(x+w-1-xi, y+h-1-yi, 1, 1, 1)
+            fillRect(x+xi, y+h-1-yi, 1, 1, 1)
+        end
+    end
+    fillRect(x + room[1], y + (room[2] - hall[2]) // 2, hall[1], hall[2], 0)
+    fillRect(x - hall[1], y + (room[2] - hall[2]) // 2, hall[1], hall[2], 0)
 end
 
 local function beautify()
@@ -526,7 +545,7 @@ local function updateVisibility(x, y)
 end
 
 local generateMode = 1
-local generators = {methodA, methodB}
+local generators = {methodA, methodB, methodC}
 
 local function generate()
     -- clear map to all walls
