@@ -315,20 +315,25 @@ SDL_Texture* SdlTexture::createTexture(SDL_Renderer* renderer, int width, int he
     return texture;
 }
 
+#ifdef WIN32
 #pragma pack(push,1)
+#endif
 struct TGAColorMapSpec
 {
     uint16_t offsetBytes;
     uint16_t entryCount;
     uint8_t entrySize;
 }
-#pragma pack(pop)
-#ifndef WIN32
-__attribute__((__packed__))
-#endif
+#ifdef WIN32
 ;
+#pragma pack(pop)
+#else
+__attribute__((__packed__));
+#endif
 
+#ifdef WIN32
 #pragma pack(push,1)
+#endif
 struct TGAImageSpec
 {
     uint16_t xOrigin; // 0?
@@ -338,13 +343,16 @@ struct TGAImageSpec
     uint8_t pixelDepth; // 8, 16, 24, etc
     uint8_t descriptor; // [..vhaaaa] vertical/horizontal flip, alpha bits
 }
-#pragma pack(pop)
-#ifndef WIN32
-__attribute__((__packed__))
-#endif
+#ifdef WIN32
 ;
+#pragma pack(pop)
+#else
+__attribute__((__packed__));
+#endif
 
+#ifdef WIN32
 #pragma pack(push,1)
+#endif
 struct TGAHeader
 {
     uint8_t idLength; // 0
@@ -353,27 +361,34 @@ struct TGAHeader
     TGAColorMapSpec colorMapSpec; // 0, 0, 0
     TGAImageSpec imageSpec;
 }
-#pragma pack(pop)
-#ifndef WIN32
-__attribute__((__packed__))
-#endif
+#ifdef WIN32
 ;
+#pragma pack(pop)
+#else
+__attribute__((__packed__));
+#endif
 
+#ifdef WIN32
 #pragma pack(push,1)
+#endif
 struct TGAData24 {uint8_t b, g, r;}
-#pragma pack(pop)
-#ifndef WIN32
-__attribute__((__packed__))
-#endif
+#ifdef WIN32
 ;
+#pragma pack(pop)
+#else
+__attribute__((__packed__));
+#endif
 
+#ifdef WIN32
 #pragma pack(push,1)
-struct TGAData16 {uint16_t b:5, g:5, r:5, a:1;}
-#pragma pack(pop)
-#ifndef WIN32
-__attribute__((__packed__))
 #endif
+struct TGAData16 {uint16_t b:5, g:5, r:5, a:1;}
+#ifdef WIN32
 ;
+#pragma pack(pop)
+#else
+__attribute__((__packed__));
+#endif
 
 typedef uint8_t TGAData8;
 
