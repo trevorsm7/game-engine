@@ -82,7 +82,7 @@ public:
     }
 
     template <int N=1>
-    static void getListHelper(lua_State* L) {}
+    static void getListHelper(lua_State* /*L*/) {}
 
     template <int N=1, class T, class ...As>
     static void getListHelper(lua_State* L, T& arg, As& ...args)
@@ -156,9 +156,9 @@ public:
             if (lua_type(L, -1) != LUA_TTABLE)
                 luaL_error(L, "%s must be table", key);
 
-            const int size = vec.size();
+            const size_t size = vec.size();
             if (lua_rawlen(L, -1) != size)
-                luaL_error(L, "%s should be size %d", key, size);
+                luaL_error(L, "%s should be size %d", key, int(size));
 
             getVector(L, vec);
         }
@@ -287,17 +287,17 @@ template <> inline void IUserdata::pushT(lua_State* L, double arg) {lua_pushnumb
 template <> inline void IUserdata::pushT(lua_State* L, bool arg) {lua_pushboolean(L, arg);}
 template <> inline void IUserdata::pushT(lua_State* L, const char* arg) {lua_pushstring(L, arg);}
 
-template <> inline void IUserdata::popT(lua_State* L, int8_t& arg, int i) {arg = lua_tointeger(L, i);}
-template <> inline void IUserdata::popT(lua_State* L, uint8_t& arg, int i) {arg = lua_tointeger(L, i);}
-template <> inline void IUserdata::popT(lua_State* L, int16_t& arg, int i) {arg = lua_tointeger(L, i);}
-template <> inline void IUserdata::popT(lua_State* L, uint16_t& arg, int i) {arg = lua_tointeger(L, i);}
-template <> inline void IUserdata::popT(lua_State* L, int32_t& arg, int i) {arg = lua_tointeger(L, i);}
-template <> inline void IUserdata::popT(lua_State* L, uint32_t& arg, int i) {arg = lua_tointeger(L, i);}
-template <> inline void IUserdata::popT(lua_State* L, int64_t& arg, int i) {arg = lua_tointeger(L, i);}
-template <> inline void IUserdata::popT(lua_State* L, uint64_t& arg, int i) {arg = lua_tointeger(L, i);}
-template <> inline void IUserdata::popT(lua_State* L, float& arg, int i) {arg = lua_tonumber(L, i);}
-template <> inline void IUserdata::popT(lua_State* L, double& arg, int i) {arg = lua_tonumber(L, i);}
-template <> inline void IUserdata::popT(lua_State* L, bool& arg, int i) {arg = lua_toboolean(L, i);}
+template <> inline void IUserdata::popT(lua_State* L, int8_t& arg, int i) {arg = int8_t(lua_tointeger(L, i));}
+template <> inline void IUserdata::popT(lua_State* L, uint8_t& arg, int i) {arg = uint8_t(lua_tointeger(L, i));}
+template <> inline void IUserdata::popT(lua_State* L, int16_t& arg, int i) {arg = int16_t(lua_tointeger(L, i));}
+template <> inline void IUserdata::popT(lua_State* L, uint16_t& arg, int i) {arg = uint16_t(lua_tointeger(L, i));}
+template <> inline void IUserdata::popT(lua_State* L, int32_t& arg, int i) {arg = int32_t(lua_tointeger(L, i));}
+template <> inline void IUserdata::popT(lua_State* L, uint32_t& arg, int i) {arg = uint32_t(lua_tointeger(L, i));}
+template <> inline void IUserdata::popT(lua_State* L, int64_t& arg, int i) {arg = int64_t(lua_tointeger(L, i));}
+template <> inline void IUserdata::popT(lua_State* L, uint64_t& arg, int i) {arg = uint64_t(lua_tointeger(L, i));}
+template <> inline void IUserdata::popT(lua_State* L, float& arg, int i) {arg = float(lua_tonumber(L, i));}
+template <> inline void IUserdata::popT(lua_State* L, double& arg, int i) {arg = double(lua_tonumber(L, i));}
+template <> inline void IUserdata::popT(lua_State* L, bool& arg, int i) {arg = (lua_toboolean(L, i) == 1);}
 template <> inline void IUserdata::popT(lua_State* L, const char*& arg, int i) {arg = lua_tostring(L, i);}
 
 template <class T, class B=IUserdata>
@@ -346,40 +346,44 @@ protected:
         lua_pop(L, 1);
     }
 
-    void construct(lua_State* L) {} // child inherits no-op
+    void construct(lua_State* /*L*/) {} // child inherits no-op
     static void constructHelper(lua_State* L, T* ptr, int index)
     {
         B::constructHelper(L, ptr, index);
         int top = lua_gettop(L);
         ptr->construct(L); // if T::construct is protected, requires friend class
         assert(top == lua_gettop(L));
+		(void)top; // unused in release
     }
 
-    void clone(lua_State* L, T* source) {} // child inherits no-op
+    void clone(lua_State* /*L*/, T* /*source*/) {} // child inherits no-op
     static void cloneHelper(lua_State* L, T* ptr, T* source, int index)
     {
         B::cloneHelper(L, ptr, source, index);
         int top = lua_gettop(L);
         ptr->clone(L, source);
         assert(top == lua_gettop(L));
+		(void)top; // unused in release
     }
 
-    void destroy(lua_State* L) {} // child inherits no-op
+    void destroy(lua_State* /*L*/) {} // child inherits no-op
     static void destroyHelper(lua_State* L, T* ptr)
     {
         int top = lua_gettop(L);
         ptr->destroy(L); // if T::destroy is protected, requires friend class
         assert(top == lua_gettop(L));
+		(void)top; // unused in release
         B::destroyHelper(L, ptr);
     }
 
-    void serialize(lua_State* L, Serializer* serializer, ObjectRef* ref) {} // child inherits no-op
+    void serialize(lua_State* /*L*/, Serializer* /*serializer*/, ObjectRef* /*ref*/) {} // child inherits no-op
     static void serializeHelper(lua_State* L, T* ptr, Serializer* serializer, ObjectRef* ref)
     {
         B::serializeHelper(L, ptr, serializer, ref);
         int top = lua_gettop(L);
         ptr->serialize(L, serializer, ref); // if T::serialize is protected, requires friend class
         assert(top == lua_gettop(L));
+		(void)top; // unused in release
     }
 
     static void* upcastHelper(T* ptr, void* className)//const char* className)
@@ -490,8 +494,9 @@ void TUserdata<T, B>::initMetatable(lua_State* L)
 
     // === B::createMetatable(L, CLASS_NAME); ===
     // Push new metatable on the stack
-    int rval = luaL_newmetatable(L, T::CLASS_NAME);
+	int rval = luaL_newmetatable(L, T::CLASS_NAME);
     assert(rval == 1); // assert if table already initialized
+	(void)rval; // unused in release
 
     // Prevent metatable from being accessed directly
     lua_pushliteral(L, "__metatable");

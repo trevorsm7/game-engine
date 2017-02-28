@@ -13,7 +13,7 @@ class TiledGraphics : public TUserdata<TiledGraphics, IGraphics>
 public:
     ~TiledGraphics() override {}
 
-    void update(float delta) override {}
+    void update(float /*delta*/) override {}
     void render(IRenderer* renderer) override;
 
     bool testBounds(float x, float y, float& xl, float& yl) const override;

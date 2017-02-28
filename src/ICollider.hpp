@@ -40,7 +40,7 @@ public:
 
     void setGroup(uint32_t group) {m_colliderGroup = group;}
     void setMask(uint32_t mask) {m_colliderMask = mask;}
-    bool isMasked(const ICollider* other) const {assert(other); return m_colliderGroup & other->m_colliderMask;}
+    bool isMasked(const ICollider* other) const {assert(other); return (m_colliderGroup & other->m_colliderMask) > 0;}
 
 private:
     friend class TUserdata<ICollider>;

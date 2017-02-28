@@ -39,7 +39,7 @@ bool ResourceManager::loadRawData(const std::string& name, std::vector<char>& da
 
     // Get the length of the file
     file.seekg(0, file.end);
-    int length = file.tellg();
+    size_t length = file.tellg();
     file.seekg(0, file.beg);
 
     // Read the image data

@@ -3,7 +3,14 @@
 #include <cstdio>
 #include <cassert>
 #include <string>
+
+#ifndef WIN32
 #include <unistd.h>
+#else
+#include <Windows.h>
+#include "Shlwapi.h"
+#pragma comment(lib, "shlwapi.lib")
+#endif
 
 typedef void (*RunFunc)(const char*);
 struct Platform {const char* const key; RunFunc func;};
@@ -50,7 +57,11 @@ bool findFile(const char* name, std::string& fullpath)
     for (const char* path : paths)
     {
         auto temp = std::string(path) + name;
+#ifndef WIN32
         if (access(temp.c_str(), R_OK) == 0)
+#else
+		if (PathFileExistsA(temp.c_str()) == TRUE)
+#endif
         {
             fullpath = temp;
             return true;

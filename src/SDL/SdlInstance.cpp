@@ -3,7 +3,7 @@
 #include "SdlAudio.hpp"
 
 #include <cstdio>
-#include <OpenGL/gl3.h>
+#include "SDL_opengl.h"
 
 SdlInstance::~SdlInstance()
 {
@@ -19,7 +19,7 @@ void SdlInstance::run(const char* script)
 
     //int32_t lastTime, currentTime, elapsedTime;
     uint64_t lastTime, currentTime, elapsedTime;
-    double period = 1 / float(SDL_GetPerformanceFrequency());
+    float period = 1.f / float(SDL_GetPerformanceFrequency());
 
     // The first poll blocks for a relatively long time; get it out of the way before starting game loop
     //lastTime = SDL_GetPerformanceCounter();
@@ -63,7 +63,7 @@ bool SdlInstance::init(const char* script)
 
     m_scene = ScenePtr(new Scene(m_resources));
     m_scene->setQuitCallback([&] {m_bQuit = true;});
-    m_scene->setRegisterControlCallback([&](const char* action)->bool
+    m_scene->setRegisterControlCallback([&](const char* /*action*/)->bool
     {
         // TODO: replace with a mechanism for default bindings and loading/saving custom bindings
         //fprintf(stderr, "TODO: implement register control callback\n");
@@ -195,7 +195,7 @@ void SdlInstance::pollEvents()
     }
 }
 
-void SdlInstance::update(double elapsedTime)
+void SdlInstance::update(float elapsedTime)
 {
     if (isQuit())
         return;

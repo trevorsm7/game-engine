@@ -10,14 +10,14 @@ void ICollider::construct(lua_State* L)
     getValueOpt(L, 2, "collidable", m_collidable);
 }
 
-void ICollider::clone(lua_State* L, ICollider* source)
+void ICollider::clone(lua_State* /*L*/, ICollider* source)
 {
     m_colliderGroup = source->m_colliderGroup;
     m_colliderMask = source->m_colliderMask;
     m_collidable = source->m_collidable;
 }
 
-void ICollider::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
+void ICollider::serialize(lua_State* /*L*/, Serializer* serializer, ObjectRef* ref)
 {
     serializer->setNumber(ref, "", "group", m_colliderGroup);
     serializer->setNumber(ref, "", "mask", m_colliderMask); // TODO option to print in hex?
@@ -30,7 +30,7 @@ int ICollider::script_setCollidable(lua_State* L)
     ICollider* self = ICollider::checkInterface(L, 1);
     luaL_checktype(L, 2, LUA_TBOOLEAN);
 
-    self->setCollidable(lua_toboolean(L, 2));
+    self->setCollidable(lua_toboolean(L, 2) == 1);
 
     return 0;
 }

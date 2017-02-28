@@ -18,7 +18,7 @@ void Physics::construct(lua_State* L, int index)
     IUserdata::getListOpt(L, relIndex, "acceleration", m_acc.x, m_acc.y);
 }
 
-void Physics::serialize(lua_State* L, const char* table, Serializer* serializer, ObjectRef* ref) const
+void Physics::serialize(lua_State* /*L*/, const char* table, Serializer* serializer, ObjectRef* ref) const
 {
     serializer->setNumber(ref, table, "mass", m_mass);
     serializer->setNumber(ref, table, "cor", m_cor);

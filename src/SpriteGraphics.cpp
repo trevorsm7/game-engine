@@ -21,12 +21,12 @@ void SpriteGraphics::construct(lua_State* L)
     getStringReq(L, 2, "sprite", m_filename);
 }
 
-void SpriteGraphics::clone(lua_State* L, SpriteGraphics* source)
+void SpriteGraphics::clone(lua_State* /*L*/, SpriteGraphics* source)
 {
     m_filename = source->m_filename;
 }
 
-void SpriteGraphics::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
+void SpriteGraphics::serialize(lua_State* /*L*/, Serializer* serializer, ObjectRef* ref)
 {
     serializer->setString(ref, "", "sprite", m_filename);
 }

@@ -184,7 +184,7 @@ void IUserdata::constructHelper(lua_State* L, IUserdata* ptr, int index)
     lua_pop(L, 1);
 }
 
-void IUserdata::cloneHelper(lua_State* L, IUserdata* ptr, IUserdata* source, int index)
+void IUserdata::cloneHelper(lua_State* L, IUserdata* ptr, IUserdata* /*source*/, int index)
 {
     add_weak_ref(L, ptr);
 
@@ -204,7 +204,7 @@ void IUserdata::destroyHelper(lua_State* L, IUserdata* ptr)
     lua_rawset(L, LUA_REGISTRYINDEX);
 }
 
-void IUserdata::serializeHelper(lua_State* L, IUserdata* ptr, Serializer* serializer, ObjectRef* ref)
+void IUserdata::serializeHelper(lua_State* L, IUserdata* /*ptr*/, Serializer* serializer, ObjectRef* ref)
 {
     // Serialize members subtable
     if (lua_getuservalue(L, 1) == LUA_TTABLE)

@@ -1,7 +1,7 @@
 #include "SdlAudio.hpp"
 
-#include <SDL2/SDL.h>
-#include <SDL2_mixer/SDL_mixer.h>
+#include "SDL.h"
+#include "SDL_mixer.h"
 
 SdlSample::~SdlSample()
 {
@@ -22,7 +22,7 @@ SdlSamplePtr SdlSample::loadSample(ResourceManager& manager, const std::string& 
     std::vector<char> data;
     if (manager.loadRawData(filename, data))
     {
-        SDL_RWops* rwops = SDL_RWFromMem(data.data(), data.size());
+        SDL_RWops* rwops = SDL_RWFromMem(data.data(), int(data.size()));
         chunk = Mix_LoadWAV_RW(rwops, 1);
         if (!chunk)
         {

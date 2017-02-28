@@ -21,7 +21,7 @@ void TileSet::construct(lua_State* L)
     getVectorOpt(L, 2, "data", m_flags);
 }
 
-void TileSet::clone(lua_State* L, TileSet* source)
+void TileSet::clone(lua_State* /*L*/, TileSet* source)
 {
     m_filename = source->m_filename;
     m_flags = source->m_flags;
@@ -29,7 +29,7 @@ void TileSet::clone(lua_State* L, TileSet* source)
     m_rows = source->m_rows;
 }
 
-void TileSet::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
+void TileSet::serialize(lua_State* /*L*/, Serializer* serializer, ObjectRef* ref)
 {
     serializer->setString(ref, "", "filename", m_filename);
     serializer->setList(ref, "", "size", m_cols, m_rows);
@@ -57,14 +57,14 @@ void TileMask::construct(lua_State* L)
     getVectorOpt(L, 2, "data", m_mask);
 }
 
-void TileMask::clone(lua_State* L, TileMask* source)
+void TileMask::clone(lua_State* /*L*/, TileMask* source)
 {
     m_mask = source->m_mask;
     m_cols = source->m_cols;
     m_rows = source->m_rows;
 }
 
-void TileMask::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
+void TileMask::serialize(lua_State* /*L*/, Serializer* serializer, ObjectRef* ref)
 {
     serializer->setList(ref, "", "size", m_cols, m_rows);
     serializer->setVector(ref, "", "data", m_mask);
@@ -73,8 +73,8 @@ void TileMask::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
 int TileMask::script_getMask(lua_State* L)
 {
     TileMask* tileMask = TileMask::checkUserdata(L, 1);
-    const int x = luaL_checkinteger(L, 2);
-    const int y = luaL_checkinteger(L, 3);
+    const int x = int(luaL_checkinteger(L, 2));
+    const int y = int(luaL_checkinteger(L, 3));
 
     luaL_argcheck(L, (x >= 0 && x < tileMask->m_cols), 2, "x is out of bounds");
     luaL_argcheck(L, (y >= 0 && y < tileMask->m_rows), 3, "y is out of bounds");
@@ -86,7 +86,7 @@ int TileMask::script_getMask(lua_State* L)
 int TileMask::script_fillMask(lua_State* L)
 {
     TileMask* tileMask = TileMask::checkUserdata(L, 1);
-    const int val = luaL_optinteger(L, 2, 0);
+    const uint8_t val = uint8_t(luaL_optinteger(L, 2, 0));
 
     tileMask->fillMask(val);
 
@@ -96,11 +96,11 @@ int TileMask::script_fillMask(lua_State* L)
 int TileMask::script_fillCircle(lua_State* L)
 {
     TileMask* tileMask = TileMask::checkUserdata(L, 1);
-    const int x = luaL_checkinteger(L, 2);
-    const int y = luaL_checkinteger(L, 3);
-    const int radius = luaL_checkinteger(L, 4);
-    const int inside = luaL_optinteger(L, 5, 255);
-    const int outside = luaL_optinteger(L, 6, 0);
+    const int x = int(luaL_checkinteger(L, 2));
+    const int y = int(luaL_checkinteger(L, 3));
+    const int radius = int(luaL_checkinteger(L, 4));
+    const uint8_t inside = uint8_t(luaL_optinteger(L, 5, 255));
+    const uint8_t outside = uint8_t(luaL_optinteger(L, 6, 0));
 
     const int rows = tileMask->m_rows;
     const int cols = tileMask->m_cols;
@@ -136,14 +136,14 @@ int TileMask::script_fillCircle(lua_State* L)
 int TileMask::script_clampMask(lua_State* L)
 {
     TileMask* tileMask = TileMask::checkUserdata(L, 1);
-    const int low = luaL_checkinteger(L, 2);
-    const int high = luaL_checkinteger(L, 3);
+    const uint8_t low = uint8_t(luaL_checkinteger(L, 2));
+    const uint8_t high = uint8_t(luaL_checkinteger(L, 3));
 
     for (int y = 0; y < tileMask->m_rows; ++y)
     {
         for (int x = 0; x < tileMask->m_cols; ++x)
         {
-            int mask = tileMask->getMask(x, y);
+			uint8_t mask = tileMask->getMask(x, y);
             //mask = std::clamp(mask, low, high); // C++17
             mask = std::min(std::max(mask, low), high);
             tileMask->setMask(x, y, mask);
@@ -153,8 +153,8 @@ int TileMask::script_clampMask(lua_State* L)
     return 0;
 }
 
-template <const uint8_t& (*T)(const uint8_t&, const uint8_t&)>
-int TileMask::script_blendMasks(lua_State* L)
+/*template <const uint8_t& (*T)(const uint8_t&, const uint8_t&)>
+inline int TileMask::script_blendMasks(lua_State* L)
 {
     TileMask* tileMaskA = TileMask::checkUserdata(L, 1);
     TileMask* tileMaskB = TileMask::checkUserdata(L, 2);
@@ -176,7 +176,7 @@ int TileMask::script_blendMasks(lua_State* L)
     }
 
     return 0;
-}
+}*/
 
 // =============================================================================
 // TileMap
@@ -239,8 +239,8 @@ int TileMap::script_setSize(lua_State* L)
 {
     // Validate function arguments
     TileMap* const tilemap = TileMap::checkUserdata(L, 1);
-    const int w = luaL_checkinteger(L, 2);
-    const int h = luaL_checkinteger(L, 3);
+    const int w = int(luaL_checkinteger(L, 2));
+    const int h = int(luaL_checkinteger(L, 3));
 
     const int cols = tilemap->m_cols;
     const int rows = tilemap->m_rows;
@@ -305,11 +305,11 @@ int TileMap::script_setTiles(lua_State* L)
 {
     // Validate function arguments
     TileMap* const tilemap = TileMap::checkUserdata(L, 1);
-    const int x = luaL_checkinteger(L, 2);
-    const int y = luaL_checkinteger(L, 3);
-    const int w = luaL_checkinteger(L, 4);
-    const int h = luaL_checkinteger(L, 5);
-    const int val = luaL_checkinteger(L, 6);
+    const int x = int(luaL_checkinteger(L, 2));
+    const int y = int(luaL_checkinteger(L, 3));
+    const int w = int(luaL_checkinteger(L, 4));
+    const int h = int(luaL_checkinteger(L, 5));
+    const int val = int(luaL_checkinteger(L, 6));
 
     const int cols = tilemap->m_cols;
     const int rows = tilemap->m_rows;
@@ -343,8 +343,8 @@ int TileMap::script_getTile(lua_State* L)
 {
     // Validate function arguments
     TileMap* tilemap = TileMap::checkUserdata(L, 1);
-    const int x = luaL_checkinteger(L, 2);
-    const int y = luaL_checkinteger(L, 3);
+    const int x = int(luaL_checkinteger(L, 2));
+    const int y = int(luaL_checkinteger(L, 3));
 
     const int cols = tilemap->m_cols;
     const int rows = tilemap->m_rows;
@@ -360,12 +360,12 @@ int TileMap::script_moveTiles(lua_State* L)
 {
     // Validate function arguments
     TileMap* const tilemap = TileMap::checkUserdata(L, 1);
-    const int x = luaL_checkinteger(L, 2);
-    const int y = luaL_checkinteger(L, 3);
-    const int w = luaL_checkinteger(L, 4);
-    const int h = luaL_checkinteger(L, 5);
-    const int dx = luaL_checkinteger(L, 6);
-    const int dy = luaL_checkinteger(L, 7);
+    const int x = int(luaL_checkinteger(L, 2));
+    const int y = int(luaL_checkinteger(L, 3));
+    const int w = int(luaL_checkinteger(L, 4));
+    const int h = int(luaL_checkinteger(L, 5));
+    const int dx = int(luaL_checkinteger(L, 6));
+    const int dy = int(luaL_checkinteger(L, 7));
 
     const int cols = tilemap->m_cols;
     const int rows = tilemap->m_rows;
@@ -431,7 +431,7 @@ public:
         else if (m_mode == 2)
         {
             const float radius2 = k_radius * k_radius;
-            const float length2 = depth * depth + offset * offset;
+            const float length2 = float(depth * depth + offset * offset);
             const float factor = std::sqrtf(length2 / radius2 - 1.f);
             slopeLow = (offset * factor - depth) / (depth * factor + offset);
             slopeHigh = (offset * factor + depth) / (depth * factor - offset);
@@ -451,24 +451,24 @@ public:
     {
         if (m_mode == 1)
         {
-            offsetLow = std::floor(slopeLow * depth + k_edge);
-            offsetHigh = std::ceil(slopeHigh * depth - k_edge);
+            offsetLow = int(std::floor(slopeLow * depth + k_edge));
+            offsetHigh = int(std::ceil(slopeHigh * depth - k_edge));
         }
         else if (m_mode == 2)
         {
             const float stepLow = k_radius * std::sqrtf(1.f + (slopeLow * slopeLow));
             const float stepHigh = k_radius * std::sqrtf(1.f + (slopeHigh * slopeHigh));
-            offsetLow = std::floor(slopeLow * depth + stepLow);
-            offsetHigh = std::ceil(slopeHigh * depth - stepHigh);
+            offsetLow = int(std::floor(slopeLow * depth + stepLow));
+            offsetHigh = int(std::ceil(slopeHigh * depth - stepHigh));
         }
         else if (m_mode == 3)
         {
-            offsetLow = std::floor(std::min(
+            offsetLow = int(std::floor(std::min(
                 slopeLow * (depth - k_corner),
-                slopeLow * (depth + k_corner)) + k_edge);
-            offsetHigh = std::ceil(std::max(
+                slopeLow * (depth + k_corner)) + k_edge));
+            offsetHigh = int(std::ceil(std::max(
                 slopeHigh * (depth - k_corner),
-                slopeHigh * (depth + k_corner)) - k_edge);
+                slopeHigh * (depth + k_corner)) - k_edge));
         }
     }
 
@@ -594,10 +594,10 @@ int TileMap::script_castShadows(lua_State* L)
 {
     TileMap* const tileMap = TileMap::checkUserdata(L, 1);
     TileMask* const tileMask = TileMask::checkUserdata(L, 2);
-    const int x = luaL_checkinteger(L, 3);
-    const int y = luaL_checkinteger(L, 4);
-    const int r = luaL_checkinteger(L, 5);
-    const int mode = luaL_optinteger(L, 6, 1);
+    const int x = int(luaL_checkinteger(L, 3));
+    const int y = int(luaL_checkinteger(L, 4));
+    const int r = int(luaL_checkinteger(L, 5));
+    const int mode = int(luaL_optinteger(L, 6, 1));
 
     const int cols = tileMap->m_cols;
     const int rows = tileMap->m_rows;

@@ -10,7 +10,7 @@ class AabbCollider : public TUserdata<AabbCollider, ICollider>
 public:
     ~AabbCollider() override {}
 
-    void update(float delta) override {}
+    void update(float /*delta*/) override {}
 
     bool testCollision(float x, float y) const override;
     bool testCollision(const Aabb& aabb) const override;

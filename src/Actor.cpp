@@ -135,7 +135,7 @@ void Actor::construct(lua_State* L)
 
     lua_pushliteral(L, "layer");
     if (lua_rawget(L, 2) != LUA_TNIL)
-        setLayer(luaL_checkinteger(L, -1));
+        setLayer(int(luaL_checkinteger(L, -1)));
     lua_pop(L, 1);
 }
 

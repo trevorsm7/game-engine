@@ -13,7 +13,7 @@ class SpriteGraphics : public TUserdata<SpriteGraphics, IGraphics>
 public:
     ~SpriteGraphics() override {}
 
-    void update(float delta) override {}
+    void update(float /*delta*/) override {}
     void render(IRenderer* renderer) override;
 
 private:

@@ -118,7 +118,7 @@ bool Canvas::mouseEvent(lua_State *L, MouseEvent& event)
     return false;
 }
 
-void Canvas::resize(lua_State* L, int width, int height)
+void Canvas::resize(lua_State* /*L*/, int width, int height)
 {
     m_camera->resize(width, height);
 }
@@ -196,7 +196,7 @@ void Canvas::updatePhysics(lua_State *L, float delta)
         bool found = false;
         Actor* actor1 = nullptr;
         Actor* actor2 = nullptr;
-        float timeStart = delta, timeEnd, normX, normY;
+        float timeStart = delta, timeEnd, normX = 0.f, normY = 0.f;
 
         // Iterate over all Actors
         auto end = m_actors.end();
@@ -344,7 +344,7 @@ bool Canvas::getEarliestCollision(const Actor* actor1, ActorIterator it, ActorIt
         {
             // NOTE (tempStart < start || (tempStart == start && relPosY <= 0.f)) orders simultaneous collisions by order in the direction of movement
             // NOTE (tempStart >= 0.f || tempEnd > fabs(tempStart)) is a solution for only considering inward movemnt as collision
-            float /*relPosX,*/ relPosY;
+            float /*relPosX,*/ relPosY = 0.f;
             if (found)
             {
                 // IDEA: return start time(s) in reverse sorted list; compare next in list until no longer equal (would need to store entire list on hit)
@@ -427,7 +427,7 @@ void Canvas::clone(lua_State* L, Canvas* source)
     m_visible = source->m_visible;
 }
 
-void Canvas::destroy(lua_State* L)
+void Canvas::destroy(lua_State* /*L*/)
 {
     // Mark each Actor in primary list for removal
     for (auto& actor : m_actors)
@@ -633,7 +633,7 @@ int Canvas::canvas_setPaused(lua_State *L)
     Canvas *canvas = Canvas::checkUserdata(L, 1);
     luaL_argcheck(L, lua_isboolean(L, 2), 2, "must be boolean (true to pause)\n");
 
-    canvas->m_paused = lua_toboolean(L, 2);
+    canvas->m_paused = (lua_toboolean(L, 2) == 1);
 
     return 0;
 }
@@ -644,7 +644,7 @@ int Canvas::canvas_setVisible(lua_State *L)
     Canvas *canvas = Canvas::checkUserdata(L, 1);
     luaL_argcheck(L, lua_isboolean(L, 2), 2, "must be boolean (true for visible)\n");
 
-    canvas->m_visible = lua_toboolean(L, 2);
+    canvas->m_visible = (lua_toboolean(L, 2) == 1);
 
     return 0;
 }

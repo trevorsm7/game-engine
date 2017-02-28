@@ -93,7 +93,7 @@ bool Scene::load(const char *filename)
         {LUA_MATHLIBNAME, luaopen_math},
         {LUA_UTF8LIBNAME, luaopen_utf8},
         //{LUA_DBLIBNAME, luaopen_debug},
-        {LUA_BITLIBNAME, luaopen_bit32},
+        //{LUA_BITLIBNAME, luaopen_bit32}, // DEPRECATED!
         {NULL, NULL}
     };
     const luaL_Reg *lib;
@@ -130,7 +130,7 @@ bool Scene::load(const char *filename)
     copyglobal(m_L, "type", -1, -2);
 
     copyglobal(m_L, "math", -1, -2);
-    copyglobal(m_L, "bit32", -1, -2);
+    //copyglobal(m_L, "bit32", -1, -2); // DEPRECATED!
     copyglobal(m_L, "string", -1, -2);
     copyglobal(m_L, "table", -1, -2);
     copyglobal(m_L, "utf8", -1, -2);
@@ -294,7 +294,7 @@ void Scene::clearWatchdog()
         fprintf(stderr, "watchdog woke %d times over %d ms\n", m_watchdogCount, int(elapsed.count()));*/
 }
 
-void Scene::hook_watchdog(lua_State* L, lua_Debug* ar)
+void Scene::hook_watchdog(lua_State* L, lua_Debug* /*ar*/)
 {
     using namespace std::chrono;
     Scene* scene = checkScene(L);
@@ -613,7 +613,7 @@ int Scene::scene_setPortraitHint(lua_State* L)
     Scene* scene = Scene::checkScene(L);
     luaL_checktype(L, 1, LUA_TBOOLEAN);
 
-    scene->m_isPortraitHint = lua_toboolean(L, 1);
+    scene->m_isPortraitHint = (lua_toboolean(L, 1) == 1);
 
     return 0;
 }

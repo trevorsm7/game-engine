@@ -11,7 +11,7 @@ void Transform::construct(lua_State* L, int index)
     IUserdata::getListOpt(L, relIndex, "scale", m_sx, m_sy);
 }
 
-void Transform::serialize(lua_State* L, const char* table, Serializer* serializer, ObjectRef* ref) const
+void Transform::serialize(lua_State* /*L*/, const char* table, Serializer* serializer, ObjectRef* ref) const
 {
     serializer->setList(ref, table, "position", m_x, m_y);
     serializer->setList(ref, table, "scale", m_sx, m_sy);

@@ -1,7 +1,7 @@
 #include "SdlRenderer.hpp"
 #include "TileMap.hpp"
 
-#include <SDL2/SDL.h>
+#include "SDL.h"
 
 SdlRenderer::~SdlRenderer()
 {
@@ -93,9 +93,10 @@ void SdlRenderer::postRender()
 void SdlRenderer::setColor(float red, float green, float blue)
 {
     // Convert/cast to 8-bit int
-    m_color.r = red * 255.f;
-    m_color.g = green * 255.f;
-    m_color.b = blue * 255.f;
+	//std::clamp(red, 0.f, 255.f); // C++17
+    m_color.r = uint8_t(std::min(std::max(red * 255.f, 0.f), 255.f));
+	m_color.g = uint8_t(std::min(std::max(green * 255.f, 0.f), 255.f));
+	m_color.b = uint8_t(std::min(std::max(blue * 255.f, 0.f), 255.f));
 }
 
 void SdlRenderer::drawSprite(const std::string& name)
@@ -112,10 +113,10 @@ void SdlRenderer::drawSprite(const std::string& name)
     SDL_Rect target;
     const float scaleW = m_width / m_camera.getScaleX();
     const float scaleH = m_height / m_camera.getScaleY();
-    target.w = ceil(m_model.getScaleX() * scaleW);
-    target.h = ceil(m_model.getScaleY() * scaleH);
-    target.x = (m_model.getX() - m_camera.getX()) * scaleW;
-    target.y = (m_model.getY() - m_camera.getY()) * scaleH;
+    target.w = int(ceil(m_model.getScaleX() * scaleW));
+    target.h = int(ceil(m_model.getScaleY() * scaleH));
+    target.x = int(floor((m_model.getX() - m_camera.getX()) * scaleW));
+    target.y = int(floor((m_model.getY() - m_camera.getY()) * scaleH));
 
     // Draw the texture
     SDL_RenderCopy(m_renderer, texture->getPtr(), nullptr, &target);
@@ -157,8 +158,8 @@ void SdlRenderer::drawTiles(const TileMap* tilemap)
 
     // Set the destination rect where we will draw the texture
     SDL_Rect target;
-    target.w = ceil(floatW);
-    target.h = ceil(floatH);
+    target.w = int(ceil(floatW));
+    target.h = int(ceil(floatH));
 
     // Iterate over tile (x, y) indices
     int i = 0;
@@ -187,9 +188,9 @@ void SdlRenderer::drawTiles(const TileMap* tilemap)
                 if (mask == 0)
                     continue;
 
-                uint8_t r = uint16_t(m_color.r) * uint16_t(mask + 1) / 256;
-                uint8_t g = uint16_t(m_color.g) * uint16_t(mask + 1) / 256;
-                uint8_t b = uint16_t(m_color.b) * uint16_t(mask + 1) / 256;
+                uint8_t r = uint8_t(uint16_t(m_color.r) * uint16_t(mask + 1) / 256);
+                uint8_t g = uint8_t(uint16_t(m_color.g) * uint16_t(mask + 1) / 256);
+                uint8_t b = uint8_t(uint16_t(m_color.b) * uint16_t(mask + 1) / 256);
                 SDL_SetTextureColorMod(texture->getPtr(), r, g, b);
             }
 
@@ -222,21 +223,21 @@ void SdlRenderer::drawLines(const std::vector<float>& points)
 
     for (size_t i = 0; i < points.size(); i++)
     {
-        int segments = points[i];
+        int segments = int(points[i]);
 
         assert(segments >= 2);
         assert(i + segments * 2 < points.size());
 
-        int lastX = (points[++i] - m_camera.getX()) * scaleW;
-        int lastY = (points[++i] - m_camera.getY()) * scaleH;
+        int lastX = int(floor((points[++i] - m_camera.getX()) * scaleW));
+        int lastY = int(floor((points[++i] - m_camera.getY()) * scaleH));
 
         float stepSize = 5.f / (segments-1);
         float step = 0.f;
 
         while (segments-- >= 2)
         {
-            int thisX = (points[++i] - m_camera.getX()) * scaleW;
-            int thisY = (points[++i] - m_camera.getY()) * scaleH;
+            int thisX = int(floor((points[++i] - m_camera.getX()) * scaleW));
+            int thisY = int(floor((points[++i] - m_camera.getY()) * scaleH));
             mapColorScale(m_renderer, step); step += stepSize;
             SDL_RenderDrawLine(m_renderer, lastX, lastY, thisX, thisY);
             lastX = thisX;
@@ -314,14 +315,20 @@ SDL_Texture* SdlTexture::createTexture(SDL_Renderer* renderer, int width, int he
     return texture;
 }
 
+#pragma pack(push,1)
 struct TGAColorMapSpec
 {
     uint16_t offsetBytes;
     uint16_t entryCount;
     uint8_t entrySize;
 }
-__attribute__((__packed__));
+#pragma pack(pop)
+#ifndef WIN32
+__attribute__((__packed__))
+#endif
+;
 
+#pragma pack(push,1)
 struct TGAImageSpec
 {
     uint16_t xOrigin; // 0?
@@ -331,8 +338,13 @@ struct TGAImageSpec
     uint8_t pixelDepth; // 8, 16, 24, etc
     uint8_t descriptor; // [..vhaaaa] vertical/horizontal flip, alpha bits
 }
-__attribute__((__packed__));
+#pragma pack(pop)
+#ifndef WIN32
+__attribute__((__packed__))
+#endif
+;
 
+#pragma pack(push,1)
 struct TGAHeader
 {
     uint8_t idLength; // 0
@@ -341,10 +353,28 @@ struct TGAHeader
     TGAColorMapSpec colorMapSpec; // 0, 0, 0
     TGAImageSpec imageSpec;
 }
-__attribute__((__packed__));
+#pragma pack(pop)
+#ifndef WIN32
+__attribute__((__packed__))
+#endif
+;
 
-struct TGAData24 {uint8_t b, g, r;} __attribute__((__packed__));
-struct TGAData16 {uint16_t b:5, g:5, r:5, a:1;} __attribute__((__packed__));
+#pragma pack(push,1)
+struct TGAData24 {uint8_t b, g, r;}
+#pragma pack(pop)
+#ifndef WIN32
+__attribute__((__packed__))
+#endif
+;
+
+#pragma pack(push,1)
+struct TGAData16 {uint16_t b:5, g:5, r:5, a:1;}
+#pragma pack(pop)
+#ifndef WIN32
+__attribute__((__packed__))
+#endif
+;
+
 typedef uint8_t TGAData8;
 
 /*struct TGAFile
@@ -434,7 +464,7 @@ SdlTexturePtr SdlTexture::getPlaceholder(SDL_Renderer* renderer)
 
     // Generate a checkered pattern for missing textures
     const int width = 4, height = 4, size = width * height;
-    struct {uint8_t b, g, r;} __attribute__((__packed__)) checkered[size];
+	TGAData24 checkered[size];
     for (int i = 0; i < size; ++i)
     {
         // Alternate coloring evens or odds each row

@@ -6,7 +6,7 @@
 #include "Scene.hpp"
 
 #include <memory>
-#include <SDL2/SDL.h>
+#include "SDL.h"
 
 class SdlInstance
 {
@@ -30,7 +30,7 @@ private:
 
     bool init(const char* script);
     void pollEvents();
-    void update(double elapsedTime);
+    void update(float elapsedTime);
     void render();
 
     bool isQuit() const {return m_bQuit;}

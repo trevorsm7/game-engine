@@ -57,10 +57,10 @@ bool TiledCollider::testCollision(const Aabb& aabb) const
 
     // Map to tile map coordinates
     // NOTE using ceil for right/bottom since these are exclusive ranges
-    const int tileLeft = std::max<int>(0, floor(left * m_tilemap->getCols() / bounds.getWidth()));
-    const int tileRight = std::min<int>(m_tilemap->getCols(), ceil(right * m_tilemap->getCols() / bounds.getWidth()));
-    const int tileTop = std::max<int>(0, floor(top * m_tilemap->getRows() / bounds.getHeight()));
-    const int tileBottom = std::min<int>(m_tilemap->getRows(), ceil(bottom * m_tilemap->getRows() / bounds.getHeight()));
+    const int tileLeft = std::max(0, int(floor(left * m_tilemap->getCols() / bounds.getWidth())));
+    const int tileRight = std::min(m_tilemap->getCols(), int(ceil(right * m_tilemap->getCols() / bounds.getWidth())));
+    const int tileTop = std::max(0, int(floor(top * m_tilemap->getRows() / bounds.getHeight())));
+    const int tileBottom = std::min(m_tilemap->getRows(), int(ceil(bottom * m_tilemap->getRows() / bounds.getHeight())));
 
     // Iterate over range of tiles that overlap
     for (int y = tileTop; y < tileBottom; ++y)
@@ -124,13 +124,13 @@ bool TiledCollider::testCollision(float deltaX, float deltaY, const ICollider* o
     return false;
 }
 
-bool TiledCollider::getCollisionTime(const Aabb& aabb, float velX, float velY, float& start, float& end, float& normX, float& normY) const
+bool TiledCollider::getCollisionTime(const Aabb& /*aabb*/, float /*velX*/, float /*velY*/, float& /*start*/, float& /*end*/, float& /*normX*/, float& /*normY*/) const
 {
     // TODO need to implement
     return false;
 }
 
-bool TiledCollider::getCollisionTime(float velX, float velY, const ICollider* other, float& start, float& end, float& normX, float& normY) const
+bool TiledCollider::getCollisionTime(float /*velX*/, float /*velY*/, const ICollider* /*other*/, float& /*start*/, float& /*end*/, float& /*normX*/, float& /*normY*/) const
 {
     // TODO need to implement
     return false;

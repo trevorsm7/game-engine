@@ -41,8 +41,8 @@ void TiledGraphics::getSize(float& w, float& h) const
 {
     if (m_tilemap)
     {
-        w = m_tilemap->getCols();
-        h = m_tilemap->getRows();
+        w = float(m_tilemap->getCols());
+        h = float(m_tilemap->getRows());
     }
     else
     {

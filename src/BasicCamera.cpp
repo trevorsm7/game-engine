@@ -17,7 +17,7 @@ void BasicCamera::construct(lua_State* L, int index)
     IUserdata::getValueOpt(L, relIndex, "fixed", m_fixed);
 }
 
-void BasicCamera::serialize(lua_State* L, const char* table, Serializer* serializer, ObjectRef* ref) const
+void BasicCamera::serialize(lua_State* /*L*/, const char* table, Serializer* serializer, ObjectRef* ref) const
 {
     serializer->setList(ref, table, "size", m_width, m_height);
     serializer->setList(ref, table, "center", m_center.x, m_center.y);

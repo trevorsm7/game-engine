@@ -84,8 +84,31 @@ private:
     static int script_fillCircle(lua_State* L);
     static int script_clampMask(lua_State* L);
 
+	// On MSVC, the function pointers don't get instantiated unless we define this first
     template <const uint8_t& (*T)(const uint8_t&, const uint8_t&)>
-    static int script_blendMasks(lua_State* L);
+    static int script_blendMasks(lua_State* L)
+	{
+		TileMask* tileMaskA = TileMask::checkUserdata(L, 1);
+		TileMask* tileMaskB = TileMask::checkUserdata(L, 2);
+
+		const int cols = tileMaskA->m_cols;
+		const int rows = tileMaskA->m_rows;
+
+		luaL_argcheck(L, cols == tileMaskB->m_cols, 2, "width doesn't match");
+		luaL_argcheck(L, rows == tileMaskB->m_rows, 2, "height doesn't match");
+
+		for (int y = 0; y < rows; ++y)
+		{
+			for (int x = 0; x < cols; ++x)
+			{
+				uint8_t maskA = tileMaskA->getMask(x, y);
+				uint8_t maskB = tileMaskB->getMask(x, y);
+				tileMaskA->setMask(x, y, T(maskA, maskB));
+			}
+		}
+
+		return 0;
+	}
 
     static constexpr const char* const CLASS_NAME = "TileMask";
     static constexpr const luaL_Reg METHODS[] =
@@ -94,8 +117,8 @@ private:
         {"fillMask", script_fillMask},
         {"fillCircle", script_fillCircle},
         {"clampMask", script_clampMask},
-        {"blendMax", script_blendMasks<std::max>},
-        {"blendMin", script_blendMasks<std::min>},
+        {"blendMax", lua_CFunction(script_blendMasks<std::max>)},
+        {"blendMin", lua_CFunction(script_blendMasks<std::min>)},
         {nullptr, nullptr}
     };
 };

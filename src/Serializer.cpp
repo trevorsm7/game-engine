@@ -329,7 +329,7 @@ ObjectRef* Serializer::serializeObject(int depth, bool inlinable, lua_State* L, 
     return ref;
 }
 
-static int stringWriter(lua_State *L, const void* ptr, size_t size, void* user)
+static int stringWriter(lua_State* /*L*/, const void* ptr, size_t size, void* user)
 {
     auto data = reinterpret_cast<std::string*>(user);
     auto chunk = reinterpret_cast<const char*>(ptr);
@@ -401,9 +401,9 @@ FunctionRef* Serializer::serializeFunction(int depth, lua_State* L, int index)
         ILuaRef* upvalue = serializeValue(ref->m_depth + 1, false, L, -1);
         assert(upvalue != nullptr);
 
-        const int depth = upvalue->getDepth();
-        if (ref->m_depth >= depth)
-            ref->m_depth = depth - 1;
+        const int up_depth = upvalue->getDepth();
+        if (ref->m_depth >= up_depth)
+            ref->m_depth = up_depth - 1;
 
         ref->m_upvalues.emplace_back(upvalue);
 
@@ -483,7 +483,7 @@ void Serializer::print()
         printf("_ENV = %s\n", m_env->getAsValue().c_str());
 }
 
-void FunctionRef::print(int indent, bool isInline) const
+void FunctionRef::print(int /*indent*/, bool isInline) const
 {
     if (isInline)
     {

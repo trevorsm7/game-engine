@@ -8,7 +8,7 @@
 
 const luaL_Reg TiledPathing::METHODS[];
 
-void TiledPathing::update(float delta)
+void TiledPathing::update(float /*delta*/)
 {
     m_points.clear();
 }

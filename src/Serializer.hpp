@@ -42,7 +42,7 @@ private:
         m_key(key), m_setter(setter) {}
 
 public:
-    bool setGlobalName(const ILuaRef* key) override {return false;};
+    bool setGlobalName(const ILuaRef* /*key*/) override {return false;};
 
     std::string getAsKey() const override {assert(!m_key.empty()); return m_key;}
     std::string getAsSetter() const override;
@@ -51,7 +51,7 @@ public:
     int getDepth() const override {return std::numeric_limits<int>::max();}
     bool isSetterOnly() const override {return m_key.empty();}
 
-    void print(int indent, bool isInline) const override {assert(false);}
+    void print(int /*indent*/, bool /*isInline*/) const override {assert(false);}
 };
 
 class LiteralRef : public ILuaRef
@@ -64,7 +64,7 @@ private:
 public:
     LiteralRef(const std::string& literal): m_literal(literal) {}
 
-    bool setGlobalName(const ILuaRef* key) override {return false;};
+    bool setGlobalName(const ILuaRef* /*key*/) override {return false;};
 
     std::string getAsKey() const override;
     std::string getAsSetter() const override;
@@ -73,7 +73,7 @@ public:
     int getDepth() const override {return std::numeric_limits<int>::max();}
     bool isSetterOnly() const override {return false;}
 
-    void print(int indent, bool isInline) const override {printf("%s", m_literal.c_str());}
+    void print(int /*indent*/, bool /*isInline*/) const override {printf("%s", m_literal.c_str());}
 };
 
 class FunctionRef : public ILuaRef
@@ -222,10 +222,10 @@ public:
     }
 
     template <class T>
-    void setArray(ObjectRef* ref, const std::string& table, const std::string& key, const T* value, int length)
+    void setArray(ObjectRef* ref, const std::string& table, const std::string& key, const T* value, size_t length)
     {
         auto str = std::string("{");
-        for (int i = 0; i < length; ++i)
+        for (size_t i = 0; i < length; ++i)
         {
             if (i > 0)
                 str += ", ";
@@ -246,7 +246,7 @@ public:
 
 private:
     template <int N=0>
-    static void setListHelper(std::string& str) {}
+    static void setListHelper(std::string& /*str*/) {}
 
     template <int N=0, class T, class ...As>
     static void setListHelper(std::string& str, T& arg, As& ...args)

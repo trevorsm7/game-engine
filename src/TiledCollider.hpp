@@ -13,7 +13,7 @@ class TiledCollider : public TUserdata<TiledCollider, ICollider>
 public:
     ~TiledCollider() override {}
 
-    void update(float delta) override {}
+    void update(float /*delta*/) override {}
 
     bool testCollision(float x, float y) const override;
     bool testCollision(const Aabb& aabb) const override;
