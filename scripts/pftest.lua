@@ -28,8 +28,11 @@ map:setTiles(5, 10, 10, 1, 3)
 
 local game = Canvas
 {
-    size = {20, 15},
-    fixed = true
+    camera = Camera2D
+    {
+        size = {20, 15},
+        fixed = true
+    }
 }
 addCanvas(game)
 

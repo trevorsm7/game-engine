@@ -1,33 +1,37 @@
-#include "BasicCamera.hpp"
+#include "Camera2D.hpp"
 #include "IRenderer.hpp"
 #include "Serializer.hpp"
-#include "IUserdata.hpp"
 
 #include "lua.hpp"
 
-void BasicCamera::construct(lua_State* L, int index)
-{
-    const int relIndex = index < 0 ? index - 1 : index;
+const luaL_Reg Camera2D::METHODS[];
 
-    IUserdata::getListOpt(L, relIndex, "size", m_width, m_height);
+void Camera2D::construct(lua_State* L)
+{
+    getListOpt(L, 2, "size", m_width, m_height);
     m_transform.setScale(m_width, m_height);
     m_center.x = m_width * 0.5f;
     m_center.y = m_height * 0.5f;
-    IUserdata::getListOpt(L, relIndex, "center", m_center.x, m_center.y);
-    IUserdata::getValueOpt(L, relIndex, "fixed", m_fixed);
+    getListOpt(L, 2, "center", m_center.x, m_center.y);
+    getValueOpt(L, 2, "fixed", m_fixed);
 }
 
-void BasicCamera::serialize(lua_State* /*L*/, const char* table, Serializer* serializer, ObjectRef* ref) const
+void Camera2D::clone(lua_State* L, Camera2D* source)
 {
-    serializer->setList(ref, table, "size", m_width, m_height);
-    serializer->setList(ref, table, "center", m_center.x, m_center.y);
-
-    //serializer->setBoolean(ref, table, "fixed", m_fixed);
-    if (!m_fixed)
-        serializer->setBoolean(ref, table, "fixed", false);
+    m_width = source->m_width;
+    m_height = source->m_height;
+    m_center = source->m_center;
+    m_fixed = source->m_fixed;
 }
 
-void BasicCamera::resize(int width, int height)
+void Camera2D::serialize(lua_State* /*L*/, Serializer* serializer, ObjectRef* ref)
+{
+    serializer->setList(ref, "", "size", m_width, m_height);
+    serializer->setList(ref, "", "center", m_center.x, m_center.y);
+    serializer->setBoolean(ref, "", "fixed", m_fixed);
+}
+
+void Camera2D::resize(int width, int height)
 {
     if (m_fixed)
     {
@@ -52,17 +56,17 @@ void BasicCamera::resize(int width, int height)
     m_transform.setY(m_center.y - m_transform.getScaleY() * 0.5f);
 }
 
-void BasicCamera::preRender(IRenderer* renderer)
+void Camera2D::preRender(IRenderer* renderer)
 {
     renderer->pushCameraTransform(m_transform);
 }
 
-void BasicCamera::postRender(IRenderer* renderer)
+void Camera2D::postRender(IRenderer* renderer)
 {
     renderer->popCameraTransform();
 }
 
-void BasicCamera::setCenter(float x, float y)
+void Camera2D::setCenter(float x, float y)
 {
     m_center.x = x;
     m_center.y = y;
@@ -71,7 +75,7 @@ void BasicCamera::setCenter(float x, float y)
     m_transform.setY(y - m_transform.getScaleY() * 0.5f);
 }
 
-void BasicCamera::setOrigin(float x, float y)
+void Camera2D::setOrigin(float x, float y)
 {
     m_center.x = x + m_transform.getScaleX() * 0.5f;
     m_center.y = y + m_transform.getScaleY() * 0.5f;
@@ -80,7 +84,7 @@ void BasicCamera::setOrigin(float x, float y)
     m_transform.setY(y);
 }
 
-void BasicCamera::mouseToWorld(const MouseEvent& event, float& x, float& y) const
+void Camera2D::mouseToWorld(const MouseEvent& event, float& x, float& y) const
 {
     const float fractionX = float(event.x) / float(event.w);
     const float fractionY = float(event.y) / float(event.h);

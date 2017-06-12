@@ -9,7 +9,7 @@ end
 
 mult2 = mult
 
-local hidden = Canvas{size={8, 6}, fixed=true}
+local hidden = Canvas{camera = Camera2D{size={8, 6}, fixed=true}}
 addCanvas(hidden)
 
 player = Actor

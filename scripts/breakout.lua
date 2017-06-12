@@ -1,5 +1,5 @@
 -- create a 20x15 game window
-local game = Canvas{size = {20, 15}, fixed = true}
+local game = Canvas{camera = Camera2D{size = {20, 15}, fixed = true}}
 addCanvas(game)
 
 local wallHit = function(self, hit)

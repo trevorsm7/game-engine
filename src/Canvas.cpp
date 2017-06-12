@@ -1,7 +1,7 @@
 #include "Canvas.hpp"
 #include "Scene.hpp"
 #include "Actor.hpp"
-#include "BasicCamera.hpp"
+#include "ICamera.hpp"
 #include "ICollider.hpp"
 #include "Physics.hpp"
 #include "Serializer.hpp"
@@ -32,23 +32,23 @@ void Canvas::update(lua_State *L, float delta)
     }
 
     // Skip the remainder of the update if we are paused
-    if (m_paused)
-        return;
+    if (!m_paused)
+    {
+        // Call user-defined update method
+        lua_pushnumber(L, delta);
+        pcall(L, "onUpdatePre", 1, 0);
 
-    // Call user-defined update method
-    lua_pushnumber(L, delta);
-    pcall(L, "onUpdatePre", 1, 0);
+        updatePhysics(L, delta);
 
-    updatePhysics(L, delta);
+        // Order of update dispatch doesn't really matter; choose bottom to top
+        for (auto& actor : m_actors)
+            actor->update(L, delta);
 
-    // Order of update dispatch doesn't really matter; choose bottom to top
-    for (auto& actor : m_actors)
-        actor->update(L, delta);
-
-    // Call user-defined update method
-    // TODO is this necessary?
-    lua_pushnumber(L, delta);
-    pcall(L, "onUpdatePost", 1, 0);
+        // Call user-defined update method
+        // TODO is this necessary?
+        lua_pushnumber(L, delta);
+        pcall(L, "onUpdatePost", 1, 0);
+    }
 
     // Recently added Actors should now be added to the end
     processAddedActors(L);
@@ -58,6 +58,10 @@ void Canvas::render(IRenderer *renderer)
 {
     // Don't render anything if Canvas is not visible
     if (!m_visible)
+        return;
+
+    // TODO should camera be allowed to be null?
+    if (!m_camera)
         return;
 
     m_camera->preRender(renderer);
@@ -81,6 +85,10 @@ bool Canvas::mouseEvent(lua_State *L, MouseEvent& event)
 {
     // Don't allow capturing mouse events when Canvas is inactive
     if (!m_visible || m_paused)
+        return false;
+
+    // TODO should camera be allowed to be null?
+    if (!m_camera)
         return false;
 
     // Convert click into world coordinates
@@ -120,7 +128,8 @@ bool Canvas::mouseEvent(lua_State *L, MouseEvent& event)
 
 void Canvas::resize(lua_State* /*L*/, int width, int height)
 {
-    m_camera->resize(width, height);
+    if (m_camera)
+        m_camera->resize(width, height);
 }
 
 void Canvas::processAddedActors(lua_State *L)
@@ -173,8 +182,6 @@ void Canvas::processRemovedActors(lua_State *L)
     // If any Actors were removed, clear the end of the list
     if (tail != end)
         m_actors.erase(tail, end);
-
-    // TODO: should we iterate through the add queue as well?
 }
 
 void Canvas::updatePhysics(lua_State *L, float delta)
@@ -374,17 +381,11 @@ bool Canvas::getEarliestCollision(const Actor* actor1, ActorIterator it, ActorIt
 
 void Canvas::construct(lua_State* L)
 {
-    /*lua_pushliteral(L, "camera");
+    // TODO make this required?
+    lua_pushliteral(L, "camera");
     if (lua_rawget(L, 2) != LUA_TNIL)
-    {
-        luaL_checktype(L, -1, LUA_TTABLE);
-        m_camera = ICameraPtr(new BasicCamera());
-        m_camera->construct(L, -1);
-    }
-    lua_pop(L, 1);*/
-
-    m_camera = ICameraPtr(new BasicCamera());
-    m_camera->construct(L, 2);
+        set(L, m_camera, -1);
+    lua_pop(L, 1);
 
     getValueOpt(L, 2, "paused", m_paused);
     getValueOpt(L, 2, "visible", m_visible);
@@ -392,8 +393,13 @@ void Canvas::construct(lua_State* L)
 
 void Canvas::clone(lua_State* L, Canvas* source)
 {
+    // TODO make this required?
     if (source->m_camera)
-        m_camera = ICameraPtr(source->m_camera->clone());
+    {
+        source->m_camera->pushClone(L);
+        set(L, m_camera, -1);
+        lua_pop(L, 1);
+    }
 
     for (auto& actor : source->m_actors)
     {
@@ -464,16 +470,10 @@ void Canvas::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
         serializer->serializeMember(ref, "", "", "addActor", L, actor);
     }
 
-    if (m_camera)
-        m_camera->serialize(L, "", serializer, ref);
+    serializer->serializeMember(ref, "", "camera", "setCamera", L, m_camera);
 
-    //ref->setBoolean("", "paused", m_paused);
-    if (m_paused)
-        serializer->setBoolean(ref, "", "paused", true);
-
-    //ref->setBoolean("", "visible", m_visible);
-    if (!m_visible)
-        serializer->setBoolean(ref, "", "visible", false);
+    serializer->setBoolean(ref, "", "paused", m_paused);
+    serializer->setBoolean(ref, "", "visible", m_visible);
 }
 
 int Canvas::canvas_addActor(lua_State *L)
@@ -547,6 +547,19 @@ int Canvas::canvas_clear(lua_State* L)
     // Notify Canvas that Actors are marked for removal
     canvas->m_actorRemoved = true;
 
+    return 0;
+}
+
+int Canvas::canvas_getCamera(lua_State* L)
+{
+    Canvas* canvas = Canvas::checkUserdata(L, 1);
+    return pushMember(L, canvas->m_camera);
+}
+
+int Canvas::canvas_setCamera(lua_State* L)
+{
+    Canvas* canvas = Canvas::checkUserdata(L, 1);
+    canvas->set(L, canvas->m_camera, 2);
     return 0;
 }
 

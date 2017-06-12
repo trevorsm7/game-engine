@@ -247,8 +247,11 @@ setPortraitHint(true)
 
 local game = Canvas
 {
-    size = {screenSize[1] + 6, screenSize[2] + 1},
-    fixed = true
+    camera = Camera2D
+    {
+        size = {screenSize[1] + 6, screenSize[2] + 1},
+        fixed = true
+    }
 }
 game:setOrigin(-1, 0)
 addCanvas(game)

@@ -178,7 +178,6 @@ void Actor::destroy(lua_State* L)
 
 void Actor::serialize(lua_State* L, Serializer* serializer, ObjectRef* ref)
 {
-
     serializer->serializeMember(ref, "", "graphics", "setGraphics", L, m_graphics);
     serializer->serializeMember(ref, "", "collider", "setCollider", L, m_collider);
     serializer->serializeMember(ref, "", "pathing", "setPathing", L, m_pathing);

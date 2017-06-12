@@ -11,6 +11,7 @@
 #include "AabbCollider.hpp"
 #include "TiledCollider.hpp"
 #include "TiledPathing.hpp"
+#include "Camera2D.hpp"
 
 #include <cassert>
 #include <cstring>
@@ -147,6 +148,7 @@ bool Scene::load(const char *filename)
     AabbCollider::initMetatable(m_L);
     TiledCollider::initMetatable(m_L);
     TiledPathing::initMetatable(m_L);
+    Camera2D::initMetatable(m_L);
 
     lua_pushliteral(m_L, "inf");
     lua_pushnumber(m_L, std::numeric_limits<lua_Number>::infinity());

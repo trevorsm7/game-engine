@@ -59,9 +59,12 @@ end
 
 palettePicker = Canvas
 {
-    size = {#maps, 1},
-    fixed = true,
-    visible = false
+    camera = Camera2D
+    {
+        size = {#maps, 1},
+        fixed = true,
+        visible = false
+    }
 }
 addCanvas(palettePicker)
 
@@ -91,9 +94,12 @@ end
 
 tilePicker = Canvas
 {
-    size = {1, 1},
-    fixed = true,
-    visible = false
+    camera = Camera2D
+    {
+        size = {1, 1},
+        fixed = true,
+        visible = false
+    }
 }
 addCanvas(tilePicker)
 
@@ -127,8 +133,11 @@ tilePickerActor:setPalette(curPalette)
 
 painter = Canvas
 {
-    size = canvasSize,
-    fixed = true
+    camera = Camera2D
+    {
+        size = canvasSize,
+        fixed = true
+    }
 }
 addCanvas(painter)
 

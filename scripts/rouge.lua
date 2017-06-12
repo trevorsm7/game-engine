@@ -198,8 +198,11 @@ spawnPoints = {{3,2}, {7, 3}, {13, 2}, {2,3}, {8, 2}, {12, 3}}
 
 local game = Canvas
 {
-    size = {20, 20},
-    fixed = false,
+    camera = Camera2D
+    {
+        size = {20, 20},
+        fixed = false,
+    },
     members =
     {
         time = gameTime,

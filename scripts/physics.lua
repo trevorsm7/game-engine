@@ -54,7 +54,7 @@ end
 canvases = {}
 reset = {}
 
-canvases[1] = Canvas{size = {20, 20}, fixed = false}
+canvases[1] = Canvas{camera = Camera2D{size = {20, 20}, fixed = false}}
 canvases[1]:setCenter(0, 0)
 addCanvas(canvases[1])
 
@@ -72,7 +72,7 @@ end
 
 reset[1](canvases[1])
 
-canvases[2] = Canvas{size = {20, 20}, fixed = false}
+canvases[2] = Canvas{camera = Camera2D{size = {20, 20}, fixed = false}}
 canvases[2]:setCenter(0, 0)
 canvases[2]:setVisible(false)
 canvases[2]:setPaused(true)
@@ -93,7 +93,7 @@ end
 
 reset[2](canvases[2])
 
-canvases[3] = Canvas{size = {20, 20}, fixed = false}
+canvases[3] = Canvas{camera = Camera2D{size = {20, 20}, fixed = false}}
 canvases[3]:setCenter(0, 0)
 canvases[3]:setVisible(false)
 canvases[3]:setPaused(true)
@@ -115,7 +115,7 @@ end
 
 reset[3](canvases[3])
 
-canvases[4] = Canvas{size = {16, 12}, fixed = false}
+canvases[4] = Canvas{camera = Camera2D{size = {16, 12}, fixed = false}}
 canvases[4]:setVisible(false)
 canvases[4]:setPaused(true)
 addCanvas(canvases[4])
@@ -177,7 +177,7 @@ end
 
 reset[4](canvases[4])
 
-canvases[5] = Canvas{size = {30, 30}, fixed = false}
+canvases[5] = Canvas{camera = Camera2D{size = {30, 30}, fixed = false}}
 canvases[5]:setCenter(0, 0)
 canvases[5]:setVisible(false)
 canvases[5]:setPaused(true)

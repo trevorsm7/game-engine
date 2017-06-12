@@ -188,7 +188,7 @@ local function resetGame(game)
 end
 
 -- create and populate our game canvas
-local game = Canvas{size = {20, 15}, fixed = true}
+local game = Canvas{camera = Camera2D{size = {20, 15}, fixed = true}}
 addCanvas(game)
 resetGame(game)
 
@@ -201,7 +201,7 @@ function game:onClickPost(down)
 end
 
 -- create game menu
-local menu = Canvas({20, 15}, true)
+local menu = Canvas{camera = Camera2D{size = {20, 15}, fixed = true}}
 menu:setCenter(0, 0)
 menu:setVisible(false)
 addCanvas(menu)

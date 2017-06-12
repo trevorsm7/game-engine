@@ -1,4 +1,4 @@
-game = Canvas{size = {20, 20}, fixed = false}
+game = Canvas{camera = Camera2D{size = {20, 20}, fixed = false}}
 addCanvas(game)
 
 player = Actor

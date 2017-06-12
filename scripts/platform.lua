@@ -1,7 +1,7 @@
 red = {1, 0, 0}
 white = {1, 1, 1}
 
-game = Canvas{size = {20, 20}, fixed = false}
+game = Canvas{camera = Camera2D{size = {20, 20}, fixed = false}}
 game:setCenter(0.5, -5)
 addCanvas(game)
 

@@ -2,10 +2,7 @@ local mapsize = {40, 30}
 local rawdata = {}
 local prettydata = {}
 
-local game = Canvas {
-    size = mapsize,
-    fixed = true
-}
+local game = Canvas{camera = Camera2D{size = mapsize, fixed = true}}
 addCanvas(game)
 
 function fillRect(x, y, w, h, val)
