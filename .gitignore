@@ -1,6 +1,7 @@
 .DS_Store
 .idea/workspace.xml
 .idea/tasks.xml
+x64/*
 build
 assets
 lib
