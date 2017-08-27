@@ -4,7 +4,8 @@
 #include <cassert>
 #include <string>
 #include <vector>
-#include "lua.hpp"
+#include "lua.h"
+#include "lauxlib.h"
 // TODO limit to lua_State* in this file so we can remove header
 //struct lua_State;
 

@@ -17,7 +17,9 @@
 #include <cstring>
 #include <cstdio>
 #include <limits>
-#include "lua.hpp"
+#include "lua.h"
+#include "lauxlib.h"
+#include "lualib.h"
 
 static void copyglobal(lua_State* L, const char* name, int src, int dst)
 {

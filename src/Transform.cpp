@@ -2,7 +2,7 @@
 #include "Serializer.hpp"
 #include "IUserdata.hpp"
 
-#include "lua.hpp"
+#include "lua.h"
 
 void Transform::construct(lua_State* L, int index)
 {

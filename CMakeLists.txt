@@ -16,10 +16,7 @@ add_executable(${TARGET_NAME} ${SOURCE_FILES} ${HEADER_FILES})
 target_include_directories(${TARGET_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/src)
 
 # Find Lua (can set env LUA_DIR)
-find_package(Lua REQUIRED)
-add_library(Lua UNKNOWN IMPORTED)
-set_property(TARGET Lua PROPERTY IMPORTED_LOCATION ${LUA_LIBRARIES})
-set_property(TARGET Lua PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${LUA_INCLUDE_DIR})
+add_subdirectory(Lua)
 target_link_libraries(${TARGET_NAME} PRIVATE Lua)
 
 # Find OpenGL

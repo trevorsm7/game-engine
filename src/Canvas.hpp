@@ -5,7 +5,7 @@
 
 #include <vector>
 #include <memory>
-#include "lua.hpp"
+#include "lua.h"
 
 class Scene;
 class Actor;

@@ -2,7 +2,7 @@
 #include "IRenderer.hpp"
 #include "Serializer.hpp"
 
-#include "lua.hpp"
+#include "lua.h"
 
 const luaL_Reg Camera2D::METHODS[];
 

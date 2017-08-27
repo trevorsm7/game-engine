@@ -3,7 +3,7 @@
 #include "Serializer.hpp"
 #include "IUserdata.hpp"
 
-#include "lua.hpp"
+#include "lua.h"
 #include <cmath>
 #include <algorithm>
 
