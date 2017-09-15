@@ -18,6 +18,8 @@ protected:
     static constexpr const char* const CLASS_NAME = "IUserdata";
 
 public:
+    virtual ~IUserdata() {}
+
     void pushUserdata(lua_State* L);
     void pushClone(lua_State* L);
 
@@ -32,17 +34,24 @@ public:
 
     static IUserdata* testInterface(lua_State* L, int index)
     {
-        void* ptr = testInterfaceBase(L, index, const_cast<char*>(CLASS_NAME));
-        return reinterpret_cast<IUserdata*>(ptr);
+        // TODO add IUserdata* to userdata if necessary
+        return reinterpret_cast<IUserdata*>(lua_touserdata(L, index));
     }
 
     static IUserdata* checkInterface(lua_State* L, int index)
     {
-        void* ptr = testInterfaceBase(L, index, const_cast<char*>(CLASS_NAME));
+        // TODO add IUserdata* to userdata if necessary
+        IUserdata* ptr = reinterpret_cast<IUserdata*>(lua_touserdata(L, index));
         luaL_argcheck(L, ptr, index, "expected IUserdata subtype");
-        return reinterpret_cast<IUserdata*>(ptr);
+        return ptr;
     }
 
+private:
+    template <class, class> friend class TUserdata;
+    virtual void* upcastInterface(const void* className) = 0;
+    static void* downcastInterface(IUserdata*, const void*) { return nullptr; }
+
+public:
     static void getStringReq(lua_State* L, int index, const char* key, std::string& var)
     {
         lua_pushstring(L, key);
@@ -253,22 +262,13 @@ protected:
         return pcallT<N+1>(L, method, ret, args...);
     }
 
+private:
     // Base cases for TUserdata helper recursion
     static void initInterface(lua_State* L); // TODO rename initHelper or similar?
     static void constructHelper(lua_State* L, IUserdata* ptr, int index);
     static void cloneHelper(lua_State* L, IUserdata* ptr, IUserdata* source, int index);
     static void destroyHelper(lua_State* L, IUserdata* ptr);
     static void serializeHelper(lua_State* L, IUserdata* ptr, Serializer* serializer, ObjectRef* ref);
-
-    static void* testInterfaceBase(lua_State* L, int index, void* className);
-    static void* upcastHelper(IUserdata* ptr, void* className)//const char* className)
-    {
-        //if (strcmp(className, CLASS_NAME) == 0)
-        if (className == CLASS_NAME)
-            return ptr;
-
-        return nullptr;
-    }
 
 private:
     static int script_index(lua_State* L);
@@ -310,6 +310,8 @@ protected:
     //static const luaL_Reg METHODS[];
 
 public:
+    static void initMetatable(lua_State* L);
+
     static T* testUserdata(lua_State* L, int index)
     {
         return reinterpret_cast<T*>(luaL_testudata(L, index, T::CLASS_NAME));
@@ -322,21 +324,41 @@ public:
 
     static T* testInterface(lua_State* L, int index)
     {
-        void* ptr = B::testInterfaceBase(L, index, const_cast<char*>(T::CLASS_NAME));
-        return reinterpret_cast<T*>(ptr);
+        // TODO add IUserdata* to userdata if necessary
+        IUserdata* ptr = reinterpret_cast<IUserdata*>(lua_touserdata(L, index));
+        if (!ptr) return nullptr;
+        return reinterpret_cast<T*>(ptr->upcastInterface(T::CLASS_NAME));
     }
 
     static T* checkInterface(lua_State* L, int index)
     {
-        void* ptr = B::testInterfaceBase(L, index, const_cast<char*>(T::CLASS_NAME));
+        // TODO add IUserdata* to userdata if necessary
+        IUserdata* ptr = reinterpret_cast<IUserdata*>(lua_touserdata(L, index));
         // TODO generate a "expected "..T::CLASS_NAME.." subtype" literal
         luaL_argcheck(L, ptr, index, T::CLASS_NAME);
-        return reinterpret_cast<T*>(ptr);
+        return reinterpret_cast<T*>(ptr->upcastInterface(T::CLASS_NAME));
     }
 
-    static void initMetatable(lua_State* L);
+private:
+    template <class, class> friend class TUserdata;
 
-protected:
+    void* upcastInterface(const void* className) override
+    {
+        T* ptr = static_cast<T*>(this);
+        return downcastInterface(ptr, className);
+    }
+
+    static void* downcastInterface(T* ptr, const void* className)//const char* className)
+    {
+        //if (strcmp(className, T::CLASS_NAME) == 0)
+        if (className == T::CLASS_NAME)
+            return ptr;
+
+        // Implicitly static_cast up to parent type
+        return B::downcastInterface(ptr, className);
+    }
+
+private:
     static void initInterface(lua_State* L)
     {
         B::initInterface(L);
@@ -354,7 +376,7 @@ protected:
         int top = lua_gettop(L);
         ptr->construct(L); // if T::construct is protected, requires friend class
         assert(top == lua_gettop(L));
-		(void)top; // unused in release
+        (void)top; // unused in release
     }
 
     void clone(lua_State* /*L*/, T* /*source*/) {} // child inherits no-op
@@ -364,7 +386,7 @@ protected:
         int top = lua_gettop(L);
         ptr->clone(L, source);
         assert(top == lua_gettop(L));
-		(void)top; // unused in release
+        (void)top; // unused in release
     }
 
     void destroy(lua_State* /*L*/) {} // child inherits no-op
@@ -373,7 +395,7 @@ protected:
         int top = lua_gettop(L);
         ptr->destroy(L); // if T::destroy is protected, requires friend class
         assert(top == lua_gettop(L));
-		(void)top; // unused in release
+        (void)top; // unused in release
         B::destroyHelper(L, ptr);
     }
 
@@ -384,17 +406,7 @@ protected:
         int top = lua_gettop(L);
         ptr->serialize(L, serializer, ref); // if T::serialize is protected, requires friend class
         assert(top == lua_gettop(L));
-		(void)top; // unused in release
-    }
-
-    static void* upcastHelper(T* ptr, void* className)//const char* className)
-    {
-        //if (strcmp(className, T::CLASS_NAME) == 0)
-        if (className == T::CLASS_NAME)
-            return ptr;
-
-        // Implicitly static_cast up to parent type
-        return B::upcastHelper(ptr, className);
+        (void)top; // unused in release
     }
 
 private:
@@ -469,21 +481,6 @@ private:
 
         return 0;
     }
-
-    static int script_upcast(lua_State* L)
-    {
-        // Validate userdata
-        T* ptr = testUserdata(L, 1);
-        assert(ptr != nullptr);
-        //const char* className = luaL_checkstring(L, 2);
-        void* className = lua_touserdata(L, 2);
-
-        void* cast = upcastHelper(ptr, className);
-        //printf("upcast %s(%p) to %s(%p)\n", T::CLASS_NAME, ptr, reinterpret_cast<const char*>(className), cast);
-        lua_pushlightuserdata(L, cast);
-
-        return 1;
-    }
 };
 
 template <class T, class B>
@@ -495,9 +492,9 @@ void TUserdata<T, B>::initMetatable(lua_State* L)
 
     // === B::createMetatable(L, CLASS_NAME); ===
     // Push new metatable on the stack
-	int rval = luaL_newmetatable(L, T::CLASS_NAME);
+    int rval = luaL_newmetatable(L, T::CLASS_NAME);
     assert(rval == 1); // assert if table already initialized
-	(void)rval; // unused in release
+    (void)rval; // unused in release
 
     // Prevent metatable from being accessed directly
     lua_pushliteral(L, "__metatable");
@@ -523,11 +520,6 @@ void TUserdata<T, B>::initMetatable(lua_State* L)
     // Add upcast converter needed for testInterface
     lua_pushliteral(L, "clone");
     lua_pushcfunction(L, script_clone);
-    lua_rawset(L, -3);
-
-    // Add upcast converter needed for testInterface
-    lua_pushliteral(L, "upcast");
-    lua_pushcfunction(L, script_upcast);
     lua_rawset(L, -3);
 
     initInterface(L);

@@ -212,30 +212,6 @@ void IUserdata::serializeHelper(lua_State* L, IUserdata* /*ptr*/, Serializer* se
     lua_pop(L, 1);
 }
 
-void* IUserdata::testInterfaceBase(lua_State* L, int index, void* className)
-{
-    // Get userdata upcast function
-    luaL_getmetafield(L, index, "upcast");
-    if (lua_type(L, -1) != LUA_TFUNCTION)
-        return nullptr;
-
-    // Push the userdata and pointer as arguments
-    const int adjIndex = (index < 0) ? index - 1 : index;
-    lua_pushvalue(L, adjIndex);
-    //lua_pushstring(L, className);
-    lua_pushlightuserdata(L, className);
-
-    // Do a regular call; pops function and arguments
-    // TODO use pcall? see script_upcast behavior
-    lua_call(L, 2, 1);
-
-    // Retrieve the upcast pointer (safe to reinterpret_cast)
-    void* ptr = lua_touserdata(L, -1);
-    lua_pop(L, 1);
-
-    return ptr;
-}
-
 int IUserdata::script_index(lua_State* L)
 {
     // Validate userdata
