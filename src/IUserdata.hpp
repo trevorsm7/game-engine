@@ -414,11 +414,15 @@ private:
     {
         // Validate constructor arguments
         //luaL_checktype(L, 1, LUA_TTABLE); // table/class; unused for now
+
+        // Clone uses index 1, construct uses index 2
+        int index = std::min(lua_gettop(L), 2);
+
         T* source = nullptr;
-        if (lua_type(L, 2) != LUA_TTABLE)
+        if (lua_type(L, index) != LUA_TTABLE)
         {
-            source = testUserdata(L, 2);
-            luaL_argcheck(L, source != nullptr, 2, "expected table or class");
+            source = testUserdata(L, index);
+            luaL_argcheck(L, source != nullptr, index, "expected table or class");
         }
 
         // Create userdata with the full size of the object
@@ -430,27 +434,7 @@ private:
         lua_setmetatable(L, -2);
 
         new(ptr) T();
-        source ? cloneHelper(L, ptr, source, 2) : constructHelper(L, ptr, 2);
-
-        return 1;
-    }
-
-    static int script_clone(lua_State* L)
-    {
-        // Validate userdata
-        T* source = testUserdata(L, 1);
-        assert(source != nullptr);
-
-        // Create userdata with the full size of the object
-        T* ptr = reinterpret_cast<T*>(lua_newuserdata(L, sizeof(T)));
-
-        // Get the metatable for this class
-        luaL_getmetatable(L, T::CLASS_NAME);
-        assert(lua_type(L, -1) == LUA_TTABLE);
-        lua_setmetatable(L, -2);
-
-        new(ptr) T(); // TODO can try copy ctor, but will also have issues
-        cloneHelper(L, ptr, source, 1);
+        source ? cloneHelper(L, ptr, source, index) : constructHelper(L, ptr, index);
 
         return 1;
     }
@@ -518,8 +502,8 @@ void TUserdata<T, B>::initMetatable(lua_State* L)
     lua_rawset(L, -3);
 
     // Add upcast converter needed for testInterface
-    lua_pushliteral(L, "clone");
-    lua_pushcfunction(L, script_clone);
+    lua_pushliteral(L, "construct");
+    lua_pushcfunction(L, script_construct);
     lua_rawset(L, -3);
 
     initInterface(L);

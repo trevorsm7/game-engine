@@ -21,7 +21,7 @@ void IUserdata::pushClone(lua_State* L)
     pushUserdata(L);
 
     // Get userdata clone function
-    luaL_getmetafield(L, -1, "clone");
+    luaL_getmetafield(L, -1, "construct");
     assert(lua_type(L, -1) == LUA_TFUNCTION);
 
     // Swap the userdata and the function
