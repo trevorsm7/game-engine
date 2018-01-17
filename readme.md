@@ -6,7 +6,19 @@ I don't plan on continuing development of this engine as I was finding the tight
 
 Some parts may be interesting to look at on their own, like the Serializer which dumps the entire game state, including functions, closures, and metatables, to plain-text Lua script.
 
-![dungeon](screenshots/dungeon.png)
+## Screenshots
+
+*breakout.lua*
+![breakout.lua](screenshots/breakout.png)
+
+*dungeon.lua*
+![dungeon.lua](screenshots/dungeon.png)
+
+*rouge.lua*
+![rouge.lua](screenshots/rouge.png)
+
+*tetromino.lua*
+![tetromino.lua](screenshots/tetromino.png)
 
 ## Features
 
@@ -80,10 +92,6 @@ More complex example scripts are included in the `scripts/` folder:
 - **snake.lua** multi-player Snake clone
 - **test.lua** self-reproducing serialization test
 - **tetromino.lua** a Tetris clone
-
-![breakout](screenshots/breakout.png)
-![tetromino](screenshots/tetromino.png)
-![rouge](screenshots/rouge.png)
 
 ## Scripting System
 
