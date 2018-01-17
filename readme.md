@@ -8,16 +8,16 @@ Some parts may be interesting to look at on their own, like the Serializer which
 
 ## Screenshots
 
-*breakout.lua*
+*breakout.lua*  
 ![breakout.lua](screenshots/breakout.png)
 
-*dungeon.lua*
+*dungeon.lua*  
 ![dungeon.lua](screenshots/dungeon.png)
 
-*rouge.lua*
+*rouge.lua*  
 ![rouge.lua](screenshots/rouge.png)
 
-*tetromino.lua*
+*tetromino.lua*  
 ![tetromino.lua](screenshots/tetromino.png)
 
 ## Features
@@ -80,18 +80,18 @@ game:addActor(hero)
 
 More complex example scripts are included in the `scripts/` folder:
 
-- **bomb.lua** Bomberman clone
-- **breakout.lua** Breakout clone
-- **dungeon.lua** timemap beautifier
-- **painter.lua** tilemap painter
-- **pftest.lua** pathfinding test
-- **physics.lua** physics test benches
-- **platform.lua** platformer test
-- **rouge.lua** Roguelike test
-- **runner.lua** endless running test
-- **snake.lua** multi-player Snake clone
-- **test.lua** self-reproducing serialization test
-- **tetromino.lua** a Tetris clone
+- *bomb.lua* - Bomberman clone
+- *breakout.lua* - Breakout clone
+- *dungeon.lua* - timemap beautifier
+- *painter.lua* - tilemap painter
+- *pftest.lua* - pathfinding test
+- *physics.lua* - physics test benches
+- *platform.lua* - platformer test
+- *rouge.lua* - Roguelike test
+- *runner.lua* - endless running test
+- *snake.lua* - multi-player Snake clone
+- *test.lua* - self-reproducing serialization test
+- *tetromino.lua* - a Tetris clone
 
 ## Scripting System
 
