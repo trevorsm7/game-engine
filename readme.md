@@ -8,6 +8,9 @@ Some parts may be interesting to look at on their own, like the Serializer which
 
 ## Screenshots
 
+*asteroid.lua*  
+![asteroid.lua](screenshots/asteroid.png)
+
 *breakout.lua*  
 ![breakout.lua](screenshots/breakout.png)
 
@@ -53,7 +56,7 @@ On Windows, use CMake GUI to generate a Visual Studio solution.
 
 Run the engine with the path to a Lua script as a command-line argument. For example:
 ```
-./engine breakout.lua
+./engine asteroid.lua
 ```
 
 If a file is not found at the specified path, the directories `scripts/` and `../scripts/` will be searched as well.
@@ -80,6 +83,7 @@ game:addActor(hero)
 
 More complex example scripts are included in the `scripts/` folder:
 
+- *asteroid.lua* - space shooter game
 - *bomb.lua* - Bomberman clone
 - *breakout.lua* - Breakout clone
 - *dungeon.lua* - timemap beautifier

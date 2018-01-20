@@ -72,7 +72,7 @@ bool findFile(const char* name, std::string& fullpath)
 
 int main(int argc, char* argv[])
 {
-    const char* script = "breakout.lua";
+    const char* script = "asteroid.lua";
     RunFunc platform = platforms[0].func;
     assert(platform != nullptr);
 
