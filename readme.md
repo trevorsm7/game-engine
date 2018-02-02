@@ -63,7 +63,7 @@ If a file is not found at the specified path, the directories `scripts/` and `..
 
 ### Example Script
 
-This example script creates a 3x3 unit **Canvas** with a single sprite (on an **Actor** objcet) drawn in the center.
+This example script creates a 3x3 unit **Canvas** with a single sprite (on an **Actor** object) drawn in the center.
 ```
 local game = Canvas {
     camera = Camera2D {
@@ -103,62 +103,113 @@ This section documents the features of the scripting system.
 
 ### Scene
 
-The scene encompases the global table, list of **Canvas**es, and other bits of game state. The scene is not directly exposed to scripting, but a number of global functions are defined to interact with it.
+The scene encompases the global table, list of **Canvas**es, and other bits of game state. The scene object is not directly exposed to scripting, but a number of global functions are defined to interact with it.
 
-The following libraries are available: base, table, io, os, string, math, utf8. Added global math constants `inf` and `nan`. The following global functions are defined:
+The following libraries are available: `base`, `table`, `io`, `os`, `string`, `math`, `utf8`. Added global math constants `inf` and `nan`. The following global functions are defined:
 
 - `addCanvas(canvas)` - add `canvas` to the scene (stacked on top of the previous)
-- `loadClosure(string)` - load the Lua function encoded in `string` 
-- `saveState()` - save the current scene as Lua script, currently written to stdout for development
-- `playSample(string)` - play the audio clip with file name `string`
-- `registerControl(string, function)` - register `function` to control named `string`
+- `loadClosure(data)` - load the Lua function encoded in _string_ `data` 
+- `saveState()` - save the current scene as Lua script, currently written to `stdout` for development
+- `playSample(filename)` - play the audio clip located at _string_ `filename`
+- `registerControl(control, function)` - register `function` to control named by _string_ `control`
 - `setPortraitHint(boolean)` - hint to the platform to use a portrait (`true`) or landscape (`false`) mode
 - `quit()` - exit the application
+
+### Classes
+
+Classes are instantiated by their `_ClassName_(table)` method. The shorthand `_ClassName_{key1=val1, key2=val2}` can be used as well. Keys in the `table` map to settings on the created object. New instances may also be created by cloning existing objects by calling `_ClassName_(instance)` where `instance` is an instance of that class.
+
+All instances have individual properties that can be set with the **.** and **[]** operators. For example: `object.foo = 'bar'` and `print(object['baz'])`. Additionally, methods set on the object can be called with the `:` operator, like `object:qux()`. Built-in properties like `_Canvas_.addActor` are read-only, but unused properties can be freely set by the user.
+
+All class constructors take the key `members`, which is a table containing properties to be set on the object.
 
 ### Canvas
 
 **Canvas** is a game object that acts like a layer in a scene.
 
-A **Canvas** is created by the `Canvas(table)` method. The shorthand `Canvas{key=val}` can be used as well. The following properties may be set in table:
-- `camera` - a **Camera** specifying how to render the scene 
-- `paused` - a `boolean` indicating if the **Canvas** is paused
-- `visible` - a `boolean` indicating if the children of the **Canvas** will be rendered
+A **Canvas** is created by the `Canvas(table)` method. The following keys may be set in `table`:
+
+- `camera` - a **Camera** to affect the layout of the **Canvas**
+- `paused` - a _boolean_ indicating if the **Canvas** is paused
+- `visible` - a _boolean_ indicating if the children of the **Canvas** will be rendered
 
 The following methods are defined on **Canvas**:
 
 - `addActor(actor)` - add `actor` to the **Canvas**
 - `removeActor(actor)` - remove `actor` from the **Canvas** 
-- `clear()` - remove all **Actor**s from the **Canvas** 
+- `clear()` - remove all **Actor**s from the **Canvas**
 - `setCenter(actor / x, y)` - centers the camera on either `actor` or coordinates <`x`, `y`> 
 - `setOrigin(x, y)` - places the upper left of the camera at coordinates <`x`, `y`>
-- `getCollision(x, y)` - return the first actor to collide with coordinates <`x`, `y`>
+- `getCollision(x, y)` - return the first **Actor** to collide with coordinates <`x`, `y`>
 - `setPaused(boolean)` - same as the `paused` property above
-- `setVisible(boolean)` - same as the `visible` property above 
+- `setVisible(boolean)` - same as the `visible` property above
 
-The following methods may be overloaded on **Canvas**:
+The following methods may be overloaded on an instance of **Canvas**:
 
-- `onUpdatePre(number)` - called before physics and player updates, with `number` seconds elapsed since last frame 
-- `onUpdatePost(number)` - called after physics and player updates, with `number` seconds elapsed since last frame
-- `onClickPre(boolean)` - called before propagating mouse clicks, with `boolean` indicating press/release
-- `onClickPost(boolean)` - called after propagating mouse clicks, with `boolean` indicating press/release 
+- `onUpdatePre(delta)` - called before **Actor**s update, with `delta` seconds elapsed since last frame
+- `onUpdatePost(delta)` - called after **Actor**s update, with `delta` seconds elapsed since last frame
+- `onClickPre(down)` - called before propagating mouse clicks, with _boolean_ `down` indicating press/release
+- `onClickPost(down)` - called after propagating mouse clicks, with _boolean_ `down` indicating press/release
 
 ### Camera2D
 
 **Camera2D** is an implementation of **Camera** that can be set on **Canvas**.
 
-TODO
+A **Camera2D** is created by the `Camera2D(table)` method. The following keys may be set in `table`:
+
+- `size` - a _table_ {w, h} to set the number of game units along each axis
+- `center` - a _table_ {x, y} to set the center coordinate of the window
+- `fixed` - a _boolean_ `true` if both axes are locked, `false` if vertical axis follows aspect ratio
+
+There are no methods defined on **Camera2D**, but **Canvas** has methods to adjust the camera position.
 
 ### Actor
 
-**Actor** is a game object that represents an entity on a **Canvas**. The **Actor** can be decorated with components that affect the appearance and behavior of the object.
+**Actor** is a game object that represents an entity shown on a **Canvas**. The **Actor** can be decorated with components that affect the appearance and behavior of the object.
 
-TODO
+An **Actor** is created by the `Actor(table)` method. The following keys may be set in `table`:
+
+- `graphics` - a **Graphics** component to affect appearance
+- `collider` - a **Collider** component to affect collision detection
+- `pathing` - a **Pathing** component to affect path finding
+- `physics` - a _table_ of physics properties
+    - `mass` - a _number_ with the mass of the object
+    - `cor` - a _number_ with the coefficient of restitution (1 for perfectly elastic)
+    - `velocity` - a _table_ {x, y} with the initial linear velocity
+    - `acceleration` - a _table_ {x, y} with the initial linear acceleration
+- `transform` - a _table_ of transform properties
+    - `position` - a _table_ {x, y} with the initial position 
+    - `scale` - a _table_ {x, y} with the initial scale
+- `layer` - a _number_ where higher layers are rendered last (on top) of other object
+
+The following methods are defined on an instance of **Actor**:
+
+- `getCanvas()` - gets the **Canvas** to which this belongs, or `nil`
+- `getGraphics()` - gets the **Graphics** component, or nil 
+- `setGraphics(graphics)` - sets the **Graphics** component to `graphics`
+- `getCollider()` - gets the **Collider** component, or nil
+- `setCollider(collider)` - sets the **Collider** component to `collider`
+- `getPathing()` - gets the **Pathing** component, or nil
+- `setPathing(pathing)` - sets the **Pathing** component to `pathing`
+- `getPosition()` - returns position as `x`, `y`
+- `setPosition(x, y)` - sets the position to `x`, `y`
+- `setScale(x, y)` - sets the scale to `x`, `y`
+- `testCollision(dx, dy)` - returns an **Actor** which would collide if this instance were moved by `dx`, `dy`
+- `setVelocity(x, y)` - sets the velocity to `x`, `y`
+- `getVelocity()` - returns velocity as `x`, `y`
+- `addAcceleration(x, y)` - adds `x`, `y` to the acceleration
+
+The following methods may be overloaded on an instance of **Actor**:
+
+- `onUpdate(delta)` - called before **Actor**s update, with `delta` seconds elapsed since last frame
+- `onClick(down, x, y)` - called when receiving mouse clicks, with _boolean_ `down` and position `x`, `y`
+- `onCollide(actor)` - called on collision with **Actor** `actor`
 
 ### Input
 
-Keyboard controls can be mapped to functions by calling `registerControl()`. The currently defined control names are 'up', 'left', 'down', 'right', 'w', 'a', 's', 'd', ```'action'```, and 'quit'. The cardinal directions and 'action' (`A` button) can be triggered by gamepads as well.
+Keyboard controls can be mapped to functions by calling `registerControl()`. The currently defined control names are `'up'`, `'left'`, `'down'`, `'right'`, `'w'`, `'a'`, `'s'`, `'d'`, `'action'`, and `'quit'`. The cardinal directions and `'action'` (`A` button) can be triggered by gamepads as well.
 
-Mouse clicks can be received on **Actor**s by defining the `onClick()` function. **Canvas**es can also receive mouse clicks by defining `onClickPre()` and `onClickPost()` (which fire before and after mouse clicks are handled by children). If any of these objects return `true`, the event will be captured and not propagated further.
+Mouse clicks can be received on **Actor**s by overloading the `onClick()` method. **Canvas**es can also receive mouse clicks by overriding `onClickPre()` and `onClickPost()` (which fire before and after mouse clicks are handled by children). If any of these callbacks return `true`, the event will be captured and not propagated further.
 
 ## Engine Architecture
 
