@@ -117,11 +117,11 @@ The following libraries are available: `base`, `table`, `io`, `os`, `string`, `m
 
 ### Classes
 
-Classes are instantiated by their `_ClassName_(table)` method. The shorthand `_ClassName_{key1=val1, key2=val2}` can be used as well. Keys in the `table` map to settings on the created object. New instances may also be created by cloning existing objects by calling `_ClassName_(instance)` where `instance` is an instance of that class.
+Classes are instantiated by their `ClassName(table)` method. The shorthand `ClassName{key=val}` can be used as well. Keys in `table` map to settings on the created object. New instances may also be created by cloning existing objects, by calling `ClassName(instance)` where `instance` is an instance of that class.
 
-All instances have individual properties that can be set with the **.** and **[]** operators. For example: `object.foo = 'bar'` and `print(object['baz'])`. Additionally, methods set on the object can be called with the `:` operator, like `object:qux()`. Built-in properties like `_Canvas_.addActor` are read-only, but unused properties can be freely set by the user.
+All instances have individual properties that can be set with the **.** and **[]** operators. For example: `object.foo = 'bar'` and `print(object[3])`. Additionally, methods set on the object can be called with the `:` operator, like `object:baz()`. Built-in properties like `Canvas.addActor` are read-only, but unused properties can be freely set by the user.
 
-All class constructors take the key `members`, which is a table containing properties to be set on the object.
+All class constructors take the key `members`, which is a _table_ containing properties to be set on the object.
 
 ### Canvas
 
@@ -180,7 +180,7 @@ An **Actor** is created by the `Actor(table)` method. The following keys may be 
 - `transform` - a _table_ of transform properties
     - `position` - a _table_ {x, y} with the initial position 
     - `scale` - a _table_ {x, y} with the initial scale
-- `layer` - a _number_ where higher layers are rendered last (on top) of other object
+- `layer` - a _number_ where higher layers are drawn on top of other object
 
 The following methods are defined on an instance of **Actor**:
 
@@ -194,7 +194,7 @@ The following methods are defined on an instance of **Actor**:
 - `getPosition()` - returns position as `x`, `y`
 - `setPosition(x, y)` - sets the position to `x`, `y`
 - `setScale(x, y)` - sets the scale to `x`, `y`
-- `testCollision(dx, dy)` - returns an **Actor** which would collide if this instance were moved by `dx`, `dy`
+- `testCollision(dx, dy)` - returns an **Actor**, or nil, which would collide if this is moved by `dx`, `dy`
 - `setVelocity(x, y)` - sets the velocity to `x`, `y`
 - `getVelocity()` - returns velocity as `x`, `y`
 - `addAcceleration(x, y)` - adds `x`, `y` to the acceleration
@@ -205,7 +205,101 @@ The following methods may be overloaded on an instance of **Actor**:
 - `onClick(down, x, y)` - called when receiving mouse clicks, with _boolean_ `down` and position `x`, `y`
 - `onCollide(actor)` - called on collision with **Actor** `actor`
 
-### Input
+### SpriteGraphics
+
+**SpriteGraphics** is a type of **Graphics** component for **Actor**. This specialization draws a 2D sprite on the **Canvas**.
+
+A **SpriteGraphics** is created by the `SpriteGraphics(table)` method. The following keys may be set in `table`:
+
+- `visible` - a _boolean_ `true` if the sprite will be drawn
+- `color` - a _table_ {r, g, b} color with which to modulate the sprite
+- `sprite` - a _string_ filename from which to load the sprite
+
+The following methods are defined on an instance of **SpriteGraphics**:
+
+- `isVisible()` - returns _boolean_ visible, same as property above
+- `setVisible(visible)` - `visible` is same as the property of the same name above
+- `setColor(color)` - `color` is same as the property of the same name above
+
+### AabbCollider
+
+**AabbCollider** is a type of **Collider** component for **Actor**. This specialization adds a 2D bounding box collider to the physics system.
+
+A **AabbCollider** is created by the `AabbCollider(table)` method. The following keys may be set in `table`:
+
+- `group` - an _integer_ index of the collision group to which this belongs
+- `mask` - an _integer_ bitfield mask of collision groups with which this can collide
+- `collidable` - a _string_ filename from which to load the sprite
+
+The following methods are defined on an instance of **AabbCollider**:
+
+- `isVisible()` - returns _boolean_ visible, same as property above
+- `setVisible(visible)` - `visible` is same as the property of the same name above
+- `setColor(color)` - `color` is same as the property of the same name above
+
+### TileMap
+
+**TileMap** is an interface for building tiled maps from a tile atlas. This object is used by the Tiled- components for **Actor**.
+
+A **TileMap** is created by the `TileMap(table)` method. The following keys may be set in `table`:
+
+- `tileset` - a **TileSet** containing the tile atlas
+- `mask` - a **TileMask** containing a greyscale overlay for the tiles
+- `size` - a _table_ {w, h} for the size in tiles of the map
+- `data` - a _table_ of _integer_ atlas indices in row-major order
+
+The following methods are defined on an instance of **TileMap**:
+
+- `setTileSet(tileset)` - **TileSet** `tileset` same as the property above
+- `setTileMask(mask)` - **TileMask** `mask` same as the property above
+- `getSize()` - returns size `w`, `h` of the map 
+- `setSize(w, h)` - resizes the map to `w`x`h` tiles 
+- `setTiles(x, y, w, h, val)` - fills rect `x, y, w, h` with _integer_ index `val`
+- `getTile(x, y)` - returns the atlas index of the tile at offset `x`, `y`
+- `moveTiles(x, y, w, h, dx, dy)` - shifts tiles from rect `x`, `y`, `w`, `h` by delta `dx`, `dy`
+- `castShadows(mask, x, y, r, mode)` - into **TileMask** `mask`, cast shadows from offset `x`, `y` with radius `r`
+
+### TileSet
+
+**TileSet** is an interface for a tile atlas, used by the **TileMap** class.
+
+A **TileSet** is created by the `TileSet(table)` method. The following keys may be set in `table`:
+
+- `filename` - a _string_ filename from which to load the sprite
+- `size` - a _table_ {`w`, `h`} with the size of the tile atlas in tiles
+- `data` - a _table_ of _integer_ flag bitfields per tile in row-major order
+
+The following methods are defined on an instance of **TileSet**:
+
+- `getSize()` - returns size `w`, `h` of the atlas in tiles
+
+### TileMask
+
+**TileMask** is an interface for a tile color modulation mask, used with the **TileMap** class.
+
+A **TileMask** is created by the `TileMask(table)` method. The following keys may be set in `table`:
+
+- `size` - a _table_ {`w`, `h`} with the size of the tile mask in tiles
+- `data` - a _table_ of _integer_ tile masks from `0` (black) to `255` (white)
+
+The following methods are defined on an instance of **TileMask**:
+
+- `getMask(x, y)` - returns tile mask at offset `x`, `y`
+- `fillMask(value)` - fills the mask with _integer_ `value`
+- `fillCircle(x, y, r, in, out)` - fills with `in` inside circle `x`, `y`, `r`, else with `out`
+- `clampMask(low, high)` - clamps the mask values between `low` and `high`
+- `blendMax(mask)` - set each tile to the maximum between this and `mask`
+- `blendMin(mask)` - set each tile to the minimum between this and `mask`
+
+### TiledGraphics
+
+### TiledCollider
+
+### TiledPathing
+
+TODO
+
+### Input Handling
 
 Keyboard controls can be mapped to functions by calling `registerControl()`. The currently defined control names are `'up'`, `'left'`, `'down'`, `'right'`, `'w'`, `'a'`, `'s'`, `'d'`, `'action'`, and `'quit'`. The cardinal directions and `'action'` (`A` button) can be triggered by gamepads as well.
 
