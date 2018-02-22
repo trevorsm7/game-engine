@@ -11,7 +11,7 @@ local function spawnWall(canvas, position, scale)
             onCollide = function(self, hit)
                 if hit.asteroid or hit.bolt then
                     local canvas = hit:getCanvas()
-                    if canvas then canvas:removeActor(hit) end
+                    canvas:removeActor(hit)
                 end
             end
         }
@@ -40,7 +40,6 @@ local function spawnExplosion(canvas, pos, time)
 
                 onUpdate = function(self, delta)
                     local canvas = self:getCanvas()
-                    if not canvas then return end
                     self.lifetime = self.lifetime - delta
                     if self.lifetime < 0 then
                         canvas:removeActor(self)
@@ -67,6 +66,9 @@ local function spawnPlayer(canvas)
         transform = {position = {x, y}},
         members =
         {
+            player = true,
+            alive = true,
+
             vel_x = 0,
             vel_y = 0,
             firing = false,
@@ -102,7 +104,6 @@ local function spawnPlayer(canvas)
 
             spawnBolt = function(self)
                 local canvas = self:getCanvas()
-                if not canvas then return end
 
                 playSample("laser.wav")
                 local my_x, my_y = self:getPosition()
@@ -140,7 +141,6 @@ local function spawnAsteroid(canvas)
 
             onCollide = function(self, hit)
                 local canvas = hit:getCanvas()
-                if not canvas then return end
 
                 if hit.bolt then
                     playSample("boom.wav")
@@ -148,13 +148,13 @@ local function spawnAsteroid(canvas)
                     canvas:removeActor(hit)
                     canvas:removeActor(self)
                     canvas:addScore(1)
-                elseif hit == player then
+                elseif hit.player then
+                    hit.alive = false
                     playSample("boom.wav")
                     spawnExplosion(canvas, {self:getPosition()})
-                    spawnExplosion(canvas, {player:getPosition()})
-                    canvas:removeActor(player)
+                    spawnExplosion(canvas, {hit:getPosition()})
+                    canvas:removeActor(hit)
                     canvas:removeActor(self)
-                    player = nil
                 end
             end
         }
@@ -252,7 +252,7 @@ local game = Canvas
         max_player_cooldown = 4,
 
         onUpdatePost = function(self, delta)
-            if not player then
+            if not player or not player.alive then
                 -- wait for player cooldown to respawn
                 self.asteroid_cooldown = 1
                 self.player_cooldown = self.player_cooldown - delta

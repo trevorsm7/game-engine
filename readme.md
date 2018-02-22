@@ -103,7 +103,7 @@ This section documents the features of the scripting system.
 
 ### Scene
 
-The scene encompases the global table, list of **Canvas**es, and other bits of game state. The scene object is not directly exposed to scripting, but a number of global functions are defined to interact with it.
+The scene encompases the global table, list of **Canvas** objects, and other bits of game state. The scene object is not directly exposed to scripting, but a number of global functions are defined to interact with it.
 
 The following libraries are available: `base`, `table`, `io`, `os`, `string`, `math`, `utf8`. Added global math constants `inf` and `nan`. The following global functions are defined:
 
@@ -119,7 +119,7 @@ The following libraries are available: `base`, `table`, `io`, `os`, `string`, `m
 
 Classes are instantiated by their `ClassName(table)` method. The shorthand `ClassName{key=val}` can be used as well. Keys in `table` map to settings on the created object. New instances may also be created by cloning existing objects, by calling `ClassName(instance)` where `instance` is an instance of that class.
 
-All instances have individual properties that can be set with the **.** and **[]** operators. For example: `object.foo = 'bar'` and `print(object[3])`. Additionally, methods set on the object can be called with the `:` operator, like `object:baz()`. Built-in properties like `Canvas.addActor` are read-only, but unused properties can be freely set by the user.
+All instances have individual properties that can be set with the `.` and `[]` operators. For example: `object.foo = 'bar'` and `print(object[3])`. Additionally, methods set on the object can be called with the `:` operator, like `object:baz()`. Built-in properties like `Canvas.addActor` are read-only, but unused properties can be freely set by the user.
 
 All class constructors take the key `members`, which is a _table_ containing properties to be set on the object.
 
@@ -137,17 +137,17 @@ The following methods are defined on **Canvas**:
 
 - `addActor(actor)` - add `actor` to the **Canvas**
 - `removeActor(actor)` - remove `actor` from the **Canvas** 
-- `clear()` - remove all **Actor**s from the **Canvas**
-- `setCenter(actor / x, y)` - centers the camera on either `actor` or coordinates <`x`, `y`> 
-- `setOrigin(x, y)` - places the upper left of the camera at coordinates <`x`, `y`>
-- `getCollision(x, y)` - return the first **Actor** to collide with coordinates <`x`, `y`>
+- `clear()` - remove all **Actor** children from the **Canvas**
+- `setCenter(actor / x, y)` - centers the camera on either `actor` or coordinates `x`, `y`
+- `setOrigin(x, y)` - places the upper left of the camera at coordinates `x`, `y`
+- `getCollision(x, y)` - return the first **Actor** to collide with coordinates `x`, `y`
 - `setPaused(boolean)` - same as the `paused` property above
 - `setVisible(boolean)` - same as the `visible` property above
 
 The following methods may be overloaded on an instance of **Canvas**:
 
-- `onUpdatePre(delta)` - called before **Actor**s update, with `delta` seconds elapsed since last frame
-- `onUpdatePost(delta)` - called after **Actor**s update, with `delta` seconds elapsed since last frame
+- `onUpdatePre(delta)` - called before updating **Actor** children, with `delta` seconds elapsed since last frame
+- `onUpdatePost(delta)` - called after updating **Actor** children, with `delta` seconds elapsed since last frame
 - `onClickPre(down)` - called before propagating mouse clicks, with _boolean_ `down` indicating press/release
 - `onClickPost(down)` - called after propagating mouse clicks, with _boolean_ `down` indicating press/release
 
@@ -201,7 +201,7 @@ The following methods are defined on an instance of **Actor**:
 
 The following methods may be overloaded on an instance of **Actor**:
 
-- `onUpdate(delta)` - called before **Actor**s update, with `delta` seconds elapsed since last frame
+- `onUpdate(delta)` - called when **Actor** updates, with `delta` seconds elapsed since last frame
 - `onClick(down, x, y)` - called when receiving mouse clicks, with _boolean_ `down` and position `x`, `y`
 - `onCollide(actor)` - called on collision with **Actor** `actor`
 
@@ -229,13 +229,11 @@ A **AabbCollider** is created by the `AabbCollider(table)` method. The following
 
 - `group` - an _integer_ index of the collision group to which this belongs
 - `mask` - an _integer_ bitfield mask of collision groups with which this can collide
-- `collidable` - a _string_ filename from which to load the sprite
+- `collidable` - a _boolean_ flag to enable collisions for this **Actor**
 
 The following methods are defined on an instance of **AabbCollider**:
 
-- `isVisible()` - returns _boolean_ visible, same as property above
-- `setVisible(visible)` - `visible` is same as the property of the same name above
-- `setColor(color)` - `color` is same as the property of the same name above
+- `setCollidable(collidable)` - `collidable` is same as the property of the same name above
 
 ### TileMap
 
@@ -275,7 +273,7 @@ The following methods are defined on an instance of **TileSet**:
 
 ### TileMask
 
-**TileMask** is an interface for a tile color modulation mask, used with the **TileMap** class.
+**TileMask** is an interface for a tile brightness mask, used with the **TileMap** class.
 
 A **TileMask** is created by the `TileMask(table)` method. The following keys may be set in `table`:
 
@@ -286,24 +284,72 @@ The following methods are defined on an instance of **TileMask**:
 
 - `getMask(x, y)` - returns tile mask at offset `x`, `y`
 - `fillMask(value)` - fills the mask with _integer_ `value`
-- `fillCircle(x, y, r, in, out)` - fills with `in` inside circle `x`, `y`, `r`, else with `out`
+- `fillCircle(x, y, r, in, out)` - fills with _integer_ `in` inside circle `x`, `y`, `r`, else with `out`
 - `clampMask(low, high)` - clamps the mask values between `low` and `high`
 - `blendMax(mask)` - set each tile to the maximum between this and `mask`
 - `blendMin(mask)` - set each tile to the minimum between this and `mask`
 
 ### TiledGraphics
 
+**TiledGraphics** is a type of **Graphics** component for **Actor**. This specialization draws a tiled map on the **Canvas**.
+
+A **TiledGraphics** is created by the `TiledGraphics(table)` method. The following keys may be set in `table`:
+
+- `visible` - a _boolean_ `true` if the map will be drawn
+- `color` - a _table_ {r, g, b} color with which to modulate the map
+- `tilemap` - a **TileMap** with which to draw the map
+
+The following methods are defined on an instance of **TiledGraphics**:
+
+- `isVisible()` - returns _boolean_ visible, same as property above
+- `setVisible(visible)` - `visible` is same as the property of the same name above
+- `setColor(color)` - `color` is same as the property of the same name above
+- `getTileMap()` - returns the current **TileMap**, same as the property above
+- `setTileMap(tilemap)` - `tilemap` is same as the property of the same name above
+
 ### TiledCollider
+
+**TiledCollider** is a type of **Collider** component for **Actor**. This specialization adds a grid-based collider to the physics system.
+
+A **TiledCollider** is created by the `TiledCollider(table)` method. The following keys may be set in `table`:
+
+- `group` - an _integer_ index of the collision group to which this belongs
+- `mask` - an _integer_ bitfield mask of collision groups with which this can collide
+- `collidable` - a _boolean_ flag to enable collisions for this **Actor**
+- `tilemap` - a **TileMap** with which to determine per-tile collisions
+
+The following methods are defined on an instance of **TiledCollider**:
+
+- `setCollidable(collidable)` - `collidable` is same as the property of the same name above
+- `getTileMap()` - returns the current **TileMap**, same as the property above
+- `setTileMap(tilemap)` - `tilemap` is same as the property of the same name above
 
 ### TiledPathing
 
-TODO
+**TiledPathing** is a type of **Pathing** component for **Actor**. This component adds an interface for navigating a path within a **TileMap**.
+
+A **TiledPathing** is created by the `TiledPathing(table)` method. The following keys may be set in `table`:
+
+- `tilemap` - a **TileMap** with which to determine per-tile occupancy
+
+The following methods are defined on an instance of **TiledPathing**:
+
+- `findPath(x1, y1, x2, y2)` - finds path from `x1`, `y1` to `x2`, `y2` and returns next step `x`, `y` 
+- `clearPath()` - used for debugging (may be compiled with an overlay that draws the last path)
+- `getTileMap()` - returns the current **TileMap**, same as the property above
+- `setTileMap(tilemap)` - `tilemap` is same as the property of the same name above
 
 ### Input Handling
 
 Keyboard controls can be mapped to functions by calling `registerControl()`. The currently defined control names are `'up'`, `'left'`, `'down'`, `'right'`, `'w'`, `'a'`, `'s'`, `'d'`, `'action'`, and `'quit'`. The cardinal directions and `'action'` (`A` button) can be triggered by gamepads as well.
 
-Mouse clicks can be received on **Actor**s by overloading the `onClick()` method. **Canvas**es can also receive mouse clicks by overriding `onClickPre()` and `onClickPost()` (which fire before and after mouse clicks are handled by children). If any of these callbacks return `true`, the event will be captured and not propagated further.
+Mouse clicks can be received on an **Actor** by overloading the `onClick()` method. **Canvas** objects can also receive mouse clicks by overriding `onClickPre()` and `onClickPost()` (which fire before and after mouse clicks are handled by children). If any of these callbacks return `true`, the event will be captured and not propagated further.
+
+### Saving State
+
+The global function `saveState()` serializes the entire game state to a new Lua script, including active **Canvas** and **Actor** objects and their children, as well as all Lua variables referenced globally or by game objects. Function variables will be saved as compiled bytecode. The output is currently written to `stdout` but can be redirected to file on the command line.
+
+The sample script *test.lua* is a self-reproducing script that demonstrates how different kinds of objects are serialized.
 
 ## Engine Architecture
 
