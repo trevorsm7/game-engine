@@ -6,23 +6,6 @@ I don't plan on continuing development of this engine as I was finding the tight
 
 Some parts may be interesting to look at on their own, like the Serializer which dumps the entire game state, including functions, closures, and metatables, to plain-text Lua script.
 
-## Screenshots
-
-*asteroid.lua*  
-![asteroid.lua](screenshots/asteroid.png)
-
-*breakout.lua*  
-![breakout.lua](screenshots/breakout.png)
-
-*dungeon.lua*  
-![dungeon.lua](screenshots/dungeon.png)
-
-*rouge.lua*  
-![rouge.lua](screenshots/rouge.png)
-
-*tetromino.lua*  
-![tetromino.lua](screenshots/tetromino.png)
-
 ## Features
 
 - Sprite and tilemap graphics
@@ -31,6 +14,9 @@ Some parts may be interesting to look at on their own, like the Serializer which
 - Serialize entire game state to Lua files
 - Gamepad support through SDL and GLFW
 - Limited audio support through SDL
+
+*asteroid.lua*  
+![asteroid.lua](screenshots/asteroid.png)
 
 ## Getting Started
 
@@ -96,6 +82,9 @@ More complex example scripts are included in the `scripts/` folder:
 - *snake.lua* - multi-player Snake clone
 - *test.lua* - self-reproducing serialization test
 - *tetromino.lua* - a Tetris clone
+
+*breakout.lua*  
+![breakout.lua](screenshots/breakout.png)
 
 ## Scripting System
 
@@ -163,6 +152,9 @@ A **Camera2D** is created by the `Camera2D(table)` method. The following keys ma
 
 There are no methods defined on **Camera2D**, but **Canvas** has methods to adjust the camera position.
 
+*dungeon.lua*  
+![dungeon.lua](screenshots/dungeon.png)
+
 ### Actor
 
 **Actor** is a game object that represents an entity shown on a **Canvas**. The **Actor** can be decorated with components that affect the appearance and behavior of the object.
@@ -180,7 +172,7 @@ An **Actor** is created by the `Actor(table)` method. The following keys may be 
 - `transform` - a _table_ of transform properties
     - `position` - a _table_ {x, y} with the initial position 
     - `scale` - a _table_ {x, y} with the initial scale
-- `layer` - a _number_ where higher layers are drawn on top of other object
+- `layer` - a _number_ such that a higher value draws this on top of objects with smaller values 
 
 The following methods are defined on an instance of **Actor**:
 
@@ -225,7 +217,7 @@ The following methods are defined on an instance of **SpriteGraphics**:
 
 **AabbCollider** is a type of **Collider** component for **Actor**. This specialization adds a 2D bounding box collider to the physics system.
 
-A **AabbCollider** is created by the `AabbCollider(table)` method. The following keys may be set in `table`:
+An **AabbCollider** is created by the `AabbCollider(table)` method. The following keys may be set in `table`:
 
 - `group` - an _integer_ index of the collision group to which this belongs
 - `mask` - an _integer_ bitfield mask of collision groups with which this can collide
@@ -234,6 +226,9 @@ A **AabbCollider** is created by the `AabbCollider(table)` method. The following
 The following methods are defined on an instance of **AabbCollider**:
 
 - `setCollidable(collidable)` - `collidable` is same as the property of the same name above
+
+*rouge.lua*  
+![rouge.lua](screenshots/rouge.png)
 
 ### TileMap
 
@@ -265,7 +260,9 @@ A **TileSet** is created by the `TileSet(table)` method. The following keys may 
 
 - `filename` - a _string_ filename from which to load the sprite
 - `size` - a _table_ {`w`, `h`} with the size of the tile atlas in tiles
-- `data` - a _table_ of _integer_ flag bitfields per tile in row-major order
+- `data` - a _table_ of _integer_ bitfield flags per tile in row-major order
+    - `1` - tile blocks movement
+    - `2` - tile blocks vision
 
 The following methods are defined on an instance of **TileSet**:
 
@@ -350,6 +347,9 @@ Mouse clicks can be received on an **Actor** by overloading the `onClick()` meth
 The global function `saveState()` serializes the entire game state to a new Lua script, including active **Canvas** and **Actor** objects and their children, as well as all Lua variables referenced globally or by game objects. Function variables will be saved as compiled bytecode. The output is currently written to `stdout` but can be redirected to file on the command line.
 
 The sample script *test.lua* is a self-reproducing script that demonstrates how different kinds of objects are serialized.
+
+*tetromino.lua*  
+![tetromino.lua](screenshots/tetromino.png)
 
 ## Engine Architecture
 
