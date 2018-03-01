@@ -1,10 +1,10 @@
 # Game Engine
 
-This is an experimental cross-platform 2D game engine developed around Lua as both a scripting language and as a data description language.
+This is a hobby cross-platform 2D game engine developed around Lua as both a scripting language and as a data description language.
 
-I don't plan on continuing development of this engine as I was finding the tight coupling with the scripting language to be more restrictive than I'd like. Regardless, the scripting system turned out  rather flexible and I was able to prototype a variety of minigames with it.
+I don't plan on continuing development of the engine in its current state as I feel that the scripting system ended up too tightly integrated into the other systems. I was still able to prototype a variety of minigames with it and get a feel for what features of the engine that I'd like to recycle on the next engine.
 
-Some parts may be interesting to look at on their own, like the Serializer which dumps the entire game state, including functions, closures, and metatables, to plain-text Lua script.
+Some parts may be interesting to look at independently from the engine, like the Serializer which dumps the entire game state, including functions, closures, and metatables, to plain-text Lua script.
 
 ## Features
 
@@ -88,7 +88,19 @@ More complex example scripts are included in the `scripts/` folder:
 
 ## Scripting System
 
-This section documents the features of the scripting system.
+This section documents the features of the scripting system, including the following data types:
+
+- **Canvas**
+- **Camera2D**
+- **Actor**
+- **SpriteGraphics**
+- **AabbCollider**
+- **TileMap**
+- **TileSet**
+- **TileMask**
+- **TiledGraphics**
+- **TiledCollider**
+- **TiledPathing**
 
 ### Scene
 
@@ -336,6 +348,9 @@ The following methods are defined on an instance of **TiledPathing**:
 - `getTileMap()` - returns the current **TileMap**, same as the property above
 - `setTileMap(tilemap)` - `tilemap` is same as the property of the same name above
 
+*tetromino.lua*
+![tetromino.lua](screenshots/tetromino.png)
+
 ### Input Handling
 
 Keyboard controls can be mapped to functions by calling `registerControl()`. The currently defined control names are `'up'`, `'left'`, `'down'`, `'right'`, `'w'`, `'a'`, `'s'`, `'d'`, `'action'`, and `'quit'`. The cardinal directions and `'action'` (`A` button) can be triggered by gamepads as well.
@@ -348,12 +363,18 @@ The global function `saveState()` serializes the entire game state to a new Lua 
 
 The sample script *test.lua* is a self-reproducing script that demonstrates how different kinds of objects are serialized.
 
-*tetromino.lua*  
-![tetromino.lua](screenshots/tetromino.png)
+## Adding Components
 
-## Engine Architecture
+New object types can be added to the scripting system by inheriting from the `TUserdata<>` template. This includes interface types, like **IGraphics**, from which graphics components like **SpriteGraphics** are extended; see _IGraphics.hpp_ and _SpriteGraphics.hpp_ for how to use the template. Concrete types also need to be registered with the scene by calling the static method `initMetatable()`; see `Scene::load()` in _Scene.cpp_ for examples.
 
-TODO
+Types extending `TUserdata<>` can override the following methods:
+
+- `construct(lua_State*)` - handle object constructor parameters
+- `clone(lua_State*, T*)` - copy state into a cloned object
+- `destroy(lua_State*)` - release resources that must be accessed through Lua state
+- `serialize(lua_State*, Serializer*, ObjectRef*)` - store state in the serializer
+
+New **Actor** components can be created by extending `IGraphics`, `ICollider`, or `IPathing`. New component types can be created as well by handling more interface types in **Actor**. The header files for all of the types mentioned in the scripting section should have plenty examples to work from.
 
 ## Authors
 
