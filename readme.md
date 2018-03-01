@@ -348,7 +348,7 @@ The following methods are defined on an instance of **TiledPathing**:
 - `getTileMap()` - returns the current **TileMap**, same as the property above
 - `setTileMap(tilemap)` - `tilemap` is same as the property of the same name above
 
-*tetromino.lua*
+*tetromino.lua*  
 ![tetromino.lua](screenshots/tetromino.png)
 
 ### Input Handling
