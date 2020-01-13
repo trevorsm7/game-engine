@@ -522,23 +522,39 @@ local pawnA = Actor
 }
 game:addActor(pawnA)
 
-local shadowMode = 0
+local shadowMode = false
 local visibility = TileMask{size = mapsize}
+local visibility_temp = TileMask{size = mapsize}
 local seen = TileMask{size = mapsize}
-local overlay = TileMask{size = mapsize}
 
 local function updateVisibility(x, y)
     local tilemap = dungeon:getGraphics():getTileMap()
-    if shadowMode == 0 then
-        visibility:fillMask(255)
+    if shadowMode then
+        -- Least permissive shadow mode
+        tilemap:castShadows(visibility, x, y, 8, 3)
+
+        -- Medium permissive shadow mode
+        tilemap:castShadows(visibility_temp, x, y, 8, 2)
+        visibility_temp:clampMask(0, 191)
+        visibility:blendMax(visibility_temp)
+
+        -- Most permissive shadow mode
+        tilemap:castShadows(visibility_temp, x, y, 8, 1)
+        visibility_temp:clampMask(0, 127)
+        visibility:blendMax(visibility_temp)
+
+        -- Clamp visibility to radius
+        visibility_temp:fillCircle(x, y, 8)
+        visibility:blendMin(visibility_temp)
+
+        seen:clampMask(0, 63)
+        seen:blendMax(visibility)
+        tilemap:setTileMask(seen)
     else
-        tilemap:castShadows(visibility, x, y, 8, shadowMode)
-        overlay:fillCircle(x, y, 8)
-        visibility:blendMin(overlay)
-        seen:clampMask(0, 127)
+        seen:fillMask(0)
+        visibility:fillMask(255)
+        tilemap:setTileMask(visibility)
     end
-    seen:blendMax(visibility)
-    tilemap:setTileMask(seen)
 end
 
 local generateMode = 1
@@ -607,10 +623,7 @@ registerControl("a",
 registerControl("s",
     function (down)
         if down then
-            shadowMode = shadowMode + 1
-            if shadowMode > 3 then
-                shadowMode = 0
-            end
+            shadowMode = not shadowMode
             updateVisibility(pawnA:getPosition())
         end
     end)
