@@ -212,7 +212,7 @@ local function spawnAsteroid(canvas)
 
     local asteroid = asteroidPool:pull()
     asteroid:setGraphics(sprite)
-    asteroid:setPosition(pos, 0)
+    asteroid:setPosition(pos, -1)
     asteroid:setVelocity(0, vel)
 
     canvas:addActor(asteroid)
@@ -338,8 +338,8 @@ local game = Canvas
 game:addScore(0)
 spawnWall(game, {-1, 0}, {1, screen_size[2]})
 spawnWall(game, {screen_size[1], 0}, {1, screen_size[2]})
-spawnWall(game, {0, -1}, {screen_size[1], 1})
-spawnWall(game, {0, screen_size[2]}, {screen_size[1], 1})
+spawnWall(game, {0, -2}, {screen_size[1], 1})
+spawnWall(game, {0, screen_size[2] + 1}, {screen_size[1], 1})
 
 addCanvas(game)
 addCanvas(overlay)
