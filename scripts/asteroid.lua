@@ -35,9 +35,7 @@ local function spawnWall(canvas, position, scale)
         {
             onCollide = function(self, hit)
                 if hit.asteroid or hit.bolt then
-                    local canvas = hit:getCanvas()
-                    canvas:removeActor(hit)
-                    hit._pool:push(hit)
+                    hit:kill()
                 end
             end
         }
@@ -53,12 +51,15 @@ local explosionPool = createPool(20, Actor {
     transform = {scale={0.25, 0.25}},
     members = {
         onUpdate = function(self, delta)
-            local canvas = self:getCanvas()
             self.lifetime = self.lifetime - delta
             if self.lifetime < 0 then
-                canvas:removeActor(self)
-                self._pool:push(self)
+                self:kill()
             end
+        end,
+
+        kill = function(self)
+            self:getCanvas():removeActor(self)
+            self._pool:push(self)
         end
     }
 })
@@ -83,7 +84,14 @@ local boltPool = createPool(10, Actor {
     collider = AabbCollider{},
     physics = {mass = 1},
     transform = {scale = {0.1, 1}},
-    members = {bolt = true}
+    members = {
+        bolt = true,
+
+        kill = function(self)
+            self:getCanvas():removeActor(self)
+            self._pool:push(self)
+        end
+    }
 })
 
 local function spawnPlayer(canvas)
@@ -146,6 +154,11 @@ local function spawnPlayer(canvas)
                 bolt:setPosition(my_x + 0.5, my_y - 1)
                 bolt:setVelocity(0, -bolt_vel)
                 canvas:addActor(bolt)
+            end,
+
+            kill = function(self)
+                self.alive = false
+                self:getCanvas():removeActor(self)
             end
         }
     }
@@ -167,20 +180,21 @@ local asteroidPool = createPool(10, Actor {
             if hit.bolt then
                 playSample("boom.wav")
                 spawnExplosion(canvas, 10, {self:getPosition()})
-                canvas:removeActor(hit)
-                hit._pool:push(hit)
-                canvas:removeActor(self)
-                self._pool:push(self)
+                hit:kill()
+                self:kill()
                 canvas:addScore(1)
             elseif hit.player then
-                hit.alive = false
                 playSample("boom.wav")
                 spawnExplosion(canvas, 10, {self:getPosition()})
                 spawnExplosion(canvas, 10, {hit:getPosition()})
-                canvas:removeActor(hit)
-                canvas:removeActor(self)
-                self._pool:push(self)
+                hit:kill()
+                self:kill()
             end
+        end,
+
+        kill = function(self)
+            self:getCanvas():removeActor(self)
+            self._pool:push(self)
         end
     }
 })
