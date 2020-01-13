@@ -1,6 +1,31 @@
 setPortraitHint(true)
 local screen_size = {12, 16}
 
+local function createPool(size, template)
+    local pool = {}
+    template._pool = pool
+    pool._template = template
+
+    for i = 1, size do
+        pool[i] = Actor(template)
+    end
+
+    pool.pull = function(self)
+        local object = table.remove(self)
+        if not object then
+            -- clone new instance if pool is empty
+            object = Actor(self._template)
+        end
+        return object
+    end
+
+    pool.push = function(self, object)
+        table.insert(self, object)
+    end
+
+    return pool
+end
+
 local function spawnWall(canvas, position, scale)
     local wall = Actor
     {
@@ -12,6 +37,7 @@ local function spawnWall(canvas, position, scale)
                 if hit.asteroid or hit.bolt then
                     local canvas = hit:getCanvas()
                     canvas:removeActor(hit)
+                    hit._pool:push(hit)
                 end
             end
         }
@@ -21,35 +47,44 @@ local function spawnWall(canvas, position, scale)
     return wall
 end
 
-local function spawnExplosion(canvas, pos, time)
-    local N = 10
-    local S = 2 * math.pi / N
+local explosionPool = createPool(20, Actor {
+    graphics = SpriteGraphics{sprite="round.tga", color={0.4, 0.4, 0.4}},
+    physics = {},
+    transform = {scale={0.25, 0.25}},
+    members = {
+        onUpdate = function(self, delta)
+            local canvas = self:getCanvas()
+            self.lifetime = self.lifetime - delta
+            if self.lifetime < 0 then
+                canvas:removeActor(self)
+                self._pool:push(self)
+            end
+        end
+    }
+})
+
+local function spawnExplosion(canvas, size, pos, time)
+    local S = 2 * math.pi / size
     time = time or 0.5
 
-    for i = 1, N do
+    for i = 1, size do
         local vel_x = math.cos(i * S) * (math.random() * 3 + 5)
         local vel_y = math.sin(i * S) * (math.random() * 3 + 5)
-        local particle = Actor
-        {
-            graphics = SpriteGraphics{sprite="round.tga", color={0.4, 0.4, 0.4}},
-            physics = {velocity = {vel_x, vel_y}},
-            transform = {position = pos, scale={0.25, 0.25}},
-            members =
-            {
-                lifetime = time,
-
-                onUpdate = function(self, delta)
-                    local canvas = self:getCanvas()
-                    self.lifetime = self.lifetime - delta
-                    if self.lifetime < 0 then
-                        canvas:removeActor(self)
-                    end
-                end
-            }
-        }
+        local particle = explosionPool:pull()
+        particle.lifetime = time
+        particle:setVelocity(vel_x, vel_y)
+        particle:setPosition(pos[1], pos[2])
         canvas:addActor(particle)
     end
 end
+
+local boltPool = createPool(10, Actor {
+    graphics = SpriteGraphics{sprite="round.tga", color={0, 1, 0}},
+    collider = AabbCollider{},
+    physics = {mass = 1},
+    transform = {scale = {0.1, 1}},
+    members = {bolt = true}
+})
 
 local function spawnPlayer(canvas)
     local x = (screen_size[1] - 1) / 2
@@ -107,14 +142,9 @@ local function spawnPlayer(canvas)
 
                 playSample("laser.wav")
                 local my_x, my_y = self:getPosition()
-                local bolt = Actor
-                {
-                    graphics = SpriteGraphics{sprite="round.tga", color={0, 1, 0}},
-                    collider = AabbCollider{},
-                    physics = {mass = 1, velocity = {0, -bolt_vel}},
-                    transform = {position = {my_x + 0.5, my_y - 1}, scale = {0.1, 1}},
-                    members = {bolt = true}
-                }
+                local bolt = boltPool:pull()
+                bolt:setPosition(my_x + 0.5, my_y - 1)
+                bolt:setVelocity(0, -bolt_vel)
                 canvas:addActor(bolt)
             end
         }
@@ -124,41 +154,52 @@ local function spawnPlayer(canvas)
     return player
 end
 
+local asteroidPool = createPool(10, Actor {
+    collider = AabbCollider{},
+    physics = {mass = math.huge},
+    members =
+    {
+        asteroid = true,
+
+        onCollide = function(self, hit)
+            local canvas = hit:getCanvas()
+
+            if hit.bolt then
+                playSample("boom.wav")
+                spawnExplosion(canvas, 10, {self:getPosition()})
+                canvas:removeActor(hit)
+                hit._pool:push(hit)
+                canvas:removeActor(self)
+                self._pool:push(self)
+                canvas:addScore(1)
+            elseif hit.player then
+                hit.alive = false
+                playSample("boom.wav")
+                spawnExplosion(canvas, 10, {self:getPosition()})
+                spawnExplosion(canvas, 10, {hit:getPosition()})
+                canvas:removeActor(hit)
+                canvas:removeActor(self)
+                self._pool:push(self)
+            end
+        end
+    }
+})
+
+local asteroidSprites = {
+    SpriteGraphics{sprite="asteroid1.tga"},
+    SpriteGraphics{sprite="asteroid2.tga"},
+    SpriteGraphics{sprite="asteroid3.tga"},
+}
+
 local function spawnAsteroid(canvas)
-    local sprite = "asteroid"..math.random(1,3)..".tga"
+    local sprite = asteroidSprites[math.random(1, #asteroidSprites)]
     local pos = math.random() * (screen_size[1] - 1)
     local vel = 4
 
-    local asteroid = Actor
-    {
-        graphics = SpriteGraphics{sprite=sprite},
-        collider = AabbCollider{},
-        physics = {mass = math.huge, velocity = {0, vel}},
-        transform = {position = {pos, 0}},
-        members =
-        {
-            asteroid = true,
-
-            onCollide = function(self, hit)
-                local canvas = hit:getCanvas()
-
-                if hit.bolt then
-                    playSample("boom.wav")
-                    spawnExplosion(canvas, {self:getPosition()})
-                    canvas:removeActor(hit)
-                    canvas:removeActor(self)
-                    canvas:addScore(1)
-                elseif hit.player then
-                    hit.alive = false
-                    playSample("boom.wav")
-                    spawnExplosion(canvas, {self:getPosition()})
-                    spawnExplosion(canvas, {hit:getPosition()})
-                    canvas:removeActor(hit)
-                    canvas:removeActor(self)
-                end
-            end
-        }
-    }
+    local asteroid = asteroidPool:pull()
+    asteroid:setGraphics(sprite)
+    asteroid:setPosition(pos, 0)
+    asteroid:setVelocity(0, vel)
 
     canvas:addActor(asteroid)
     return asteroid
