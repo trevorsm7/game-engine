@@ -94,14 +94,14 @@ local boltPool = createPool(10, Actor {
     }
 })
 
-local function spawnPlayer(canvas)
+local function createPlayer()
     local x = (screen_size[1] - 1) / 2
     local y = screen_size[2] - 2
     local ship_vel = 6
     local ship_acc = 5
     local bolt_vel = 10
 
-    local player = Actor
+    return Actor
     {
         graphics = SpriteGraphics{sprite="ship.tga"},
         collider = AabbCollider{},
@@ -110,33 +110,47 @@ local function spawnPlayer(canvas)
         members =
         {
             player = true,
-            alive = true,
 
-            vel_x = 0,
-            vel_y = 0,
+            left = 0,
+            right = 0,
+            down = 0,
+            up = 0,
+
             firing = false,
-            cooldown = 0,
+            fire_cooldown = 0,
+            max_fire_cooldown = 0.2,
 
-            max_cooldown = 0.2,
+            alive = true,
+            respawn_cooldown = 0,
+            max_respawn_cooldown = 4,
+
+            reset = function(self, canvas)
+                self:setPosition(x, y)
+                self:setVelocity(0, 0)
+                self.alive = true
+                self.fire_cooldown = 0
+                canvas:addActor(self)
+            end,
 
             onUpdate = function(self, delta)
+                local target_vel_x = self.left + self.right
+                local target_vel_y = self.down + self.up
                 local vel_x, vel_y = self:getVelocity()
-                local acc_x = (self.vel_x - vel_x) * ship_acc
-                local acc_y = (self.vel_y - vel_y) * ship_acc
+                local acc_x = (target_vel_x - vel_x) * ship_acc
+                local acc_y = (target_vel_y - vel_y) * ship_acc
                 self:addAcceleration(acc_x, acc_y)
 
-                self.cooldown = self.cooldown - delta
-                if self.firing and self.cooldown < 0 then
-                    self.cooldown = self.max_cooldown
+                self.fire_cooldown = self.fire_cooldown - delta
+                if self.firing and self.fire_cooldown < 0 then
+                    self.fire_cooldown = self.max_fire_cooldown
                     self:spawnBolt()
                 end
             end,
 
             move = function(self, down, axis, dir)
-                local vel = dir * ship_vel
                 if down then
-                    self[axis] = vel
-                elseif self[axis] == vel then
+                    self[axis] = dir * ship_vel
+                else
                     self[axis] = 0
                 end
             end,
@@ -146,25 +160,23 @@ local function spawnPlayer(canvas)
             end,
 
             spawnBolt = function(self)
-                local canvas = self:getCanvas()
-
                 playSample("laser.wav")
                 local my_x, my_y = self:getPosition()
                 local bolt = boltPool:pull()
                 bolt:setPosition(my_x + 0.5, my_y - 1)
                 bolt:setVelocity(0, -bolt_vel)
-                canvas:addActor(bolt)
+                self:getCanvas():addActor(bolt)
             end,
 
             kill = function(self)
                 self.alive = false
-                self:getCanvas():removeActor(self)
+                self.respawn_cooldown = self.max_respawn_cooldown
+                local canvas = self:getCanvas()
+                spawnExplosion(canvas, 10, {self:getPosition()})
+                canvas:removeActor(self)
             end
         }
     }
-
-    canvas:addActor(player)
-    return player
 end
 
 local asteroidPool = createPool(10, Actor {
@@ -177,16 +189,12 @@ local asteroidPool = createPool(10, Actor {
         onCollide = function(self, hit)
             local canvas = hit:getCanvas()
 
-            if hit.bolt then
+            if hit.bolt or hit.player then
                 playSample("boom.wav")
                 spawnExplosion(canvas, 10, {self:getPosition()})
-                hit:kill()
-                self:kill()
-                canvas:addScore(1)
-            elseif hit.player then
-                playSample("boom.wav")
-                spawnExplosion(canvas, 10, {self:getPosition()})
-                spawnExplosion(canvas, 10, {hit:getPosition()})
+                if hit.bolt then
+                    canvas:addScore(1)
+                end
                 hit:kill()
                 self:kill()
             end
@@ -288,6 +296,8 @@ local overlay = Canvas
 local scoreText = createText(overlay, {0, 0}, {10, 1}, {0.5, 1})
 local respawnText = createText(overlay, screen_size, {9, 1}, {0.5, 1}, true)
 
+local player = createPlayer()
+
 local game = Canvas
 {
     camera = Camera2D
@@ -301,27 +311,22 @@ local game = Canvas
 
         asteroid_cooldown = 1,
         max_asteroid_cooldown = 0.5,
-        spawning_asteroids = true,
-
-        player_cooldown = 0,
-        max_player_cooldown = 4,
 
         onUpdatePost = function(self, delta)
-            if not player or not player.alive then
+            if not player.alive then
                 -- wait for player cooldown to respawn
                 self.asteroid_cooldown = 1
-                self.player_cooldown = self.player_cooldown - delta
+                player.respawn_cooldown = player.respawn_cooldown - delta
                 respawnText:getGraphics():setVisible(true)
-                respawnText:setTextL(0, "Respawn:"..tostring(math.floor(self.player_cooldown)))
-                if self.player_cooldown < 0 then
-                    player = spawnPlayer(self)
+                respawnText:setTextL(0, "Respawn:"..tostring(math.floor(player.respawn_cooldown)))
+                if player.respawn_cooldown < 0 then
+                    player:reset(self)
                     respawnText:getGraphics():setVisible(false)
-                    self.player_cooldown = self.max_player_cooldown
                 end
             else
                 -- wait for asteroid cooldown
                 self.asteroid_cooldown = self.asteroid_cooldown - delta
-                if self.spawning_asteroids and self.asteroid_cooldown < 0 then
+                if self.asteroid_cooldown < 0 then
                     self.asteroid_cooldown = self.max_asteroid_cooldown
                     spawnAsteroid(self)
                 end
@@ -335,6 +340,8 @@ local game = Canvas
     }
 }
 
+game:addActor(player)
+
 game:addScore(0)
 spawnWall(game, {-1, 0}, {1, screen_size[2]})
 spawnWall(game, {screen_size[1], 0}, {1, screen_size[2]})
@@ -346,22 +353,18 @@ addCanvas(overlay)
 
 local function playerMove(axis, vel)
     return function(down)
-        if player then
-            player:move(down, axis, vel)
-        end
+        player:move(down, axis, vel)
     end
 end
 
 local function playerFire()
     return function(down)
-        if player then
-            player:fire(down)
-        end
+        player:fire(down)
     end
 end
 
-registerControl("left", playerMove("vel_x", -1))
-registerControl("right", playerMove("vel_x", 1))
-registerControl("down", playerMove("vel_y", 1))
-registerControl("up", playerMove("vel_y", -1))
+registerControl("left", playerMove("left", -1))
+registerControl("right", playerMove("right", 1))
+registerControl("down", playerMove("down", 1))
+registerControl("up", playerMove("up", -1))
 registerControl("action", playerFire())
